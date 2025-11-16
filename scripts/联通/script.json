@@ -1,0 +1,42 @@
+{
+  "author" : {
+    "email" : "627908664@qq.com",
+    "homepage" : null,
+    "name" : "王大大"
+  },
+  "intentInputTypes" : [
+
+  ],
+  "icon" : "antenna.radiowaves.left.and.right",
+  "runInApp" : false,
+  "remoteResource" : null,
+  "localizedNames" : {
+    "zh" : "",
+    "de" : "",
+    "fr" : "",
+    "it" : "",
+    "ja" : "",
+    "es" : "",
+    "pt" : "",
+    "en" : "",
+    "ru" : ""
+  },
+  "contributors" : [
+
+  ],
+  "description" : "",
+  "version" : "1.0.0",
+  "name" : "联通",
+  "color" : "rgba(238, 92, 98,1)",
+  "localizedDescriptions" : {
+    "zh" : "",
+    "de" : "",
+    "fr" : "",
+    "it" : "",
+    "ja" : "",
+    "es" : "",
+    "pt" : "",
+    "en" : "",
+    "ru" : ""
+  }
+}
