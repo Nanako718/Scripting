@@ -1,0 +1,42 @@
+{
+  "author" : {
+    "email" : "2753086015@qq.com",
+    "homepage" : null,
+    "name" : "DTZSGHNR"
+  },
+  "intentInputTypes" : [
+
+  ],
+  "icon" : "server.rack",
+  "runInApp" : false,
+  "remoteResource" : null,
+  "localizedNames" : {
+    "zh" : "MoviePilot PT",
+    "de" : "",
+    "fr" : "",
+    "it" : "",
+    "ja" : "",
+    "es" : "",
+    "pt" : "",
+    "en" : "MoviePilot PT",
+    "ru" : ""
+  },
+  "contributors" : [
+
+  ],
+  "description" : "MoviePilot PT 站点信息小组件",
+  "version" : "1.0.0",
+  "name" : "MoviePilotPT",
+  "color" : "rgba(0, 122, 255, 1)",
+  "localizedDescriptions" : {
+    "zh" : "MoviePilot PT 站点信息小组件",
+    "de" : "",
+    "fr" : "",
+    "it" : "",
+    "ja" : "",
+    "es" : "",
+    "pt" : "",
+    "en" : "MoviePilot PT Site Info Widget",
+    "ru" : ""
+  }
+}
