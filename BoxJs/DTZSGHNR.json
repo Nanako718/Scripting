@@ -1,0 +1,30 @@
+{
+    "id": "DTZSGHNR.app.sub",
+    "name": "10010 Cookie 查看",
+    "description": "抓取并显示 10010 Cookie，兼容 BoxJS",
+    "author": "@DTZSGHNR",
+    "icon": "https://raw.githubusercontent.com/Enjoyee/Scriptable/v2/img/ic_logo_10010.png",
+    "apps": [
+      {
+        "id": "10010",
+        "name": "10010 Cookie",
+        "keys": [
+          "10010.cookie"
+        ],
+        "descs_html": [
+          "<h4 align=\"center\">点击查看抓取到的 10010 Cookie</h4>"
+        ],
+        "settings": [
+          {
+            "id": "10010_CookieList",
+            "name": "Cookie 列表",
+            "type": "textarea",
+            "rows": 6,
+            "val": "[{\"cookie\": \"此处填写抓到的 Cookie\"}]",
+            "placeholder": "[{\"cookie\": \"ecs_token=xxx;t3_token=xxx;\"}]",
+            "desc": "保存抓取的 10010 Cookie，可直接查看。"
+          }
+        ]
+      }
+    ]
+  }
