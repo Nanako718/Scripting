@@ -1,0 +1,41 @@
+/*
+  10010ck.js
+  功能：自动抓取中国联通 App 的 Cookie，并保存为统一 key：10010.cookie
+  URL: https://m.client.10010.com/mobileserviceNine/v1/riskCollection/riskSync
+*/
+
+(function () {
+    try {
+      if (typeof $request === "undefined" || !$request.headers) {
+        console.log("[10010.cookie] 未检测到请求信息");
+        return $done({});
+      }
+  
+      const cookie = $request.headers["Cookie"] ||
+                     $request.headers["cookie"] ||
+                     "";
+  
+      if (!cookie) {
+        console.log("[10010.cookie] 请求中未包含 Cookie");
+        return $done({});
+      }
+  
+      console.log("[10010.cookie] 捕获到 Cookie:", cookie);
+  
+      // 写入 10010.cookie（兼容 Surge / Loon / QX）
+      function write(key, value) {
+        try { if ($prefs?.setValue) $prefs.setValue(value, key); } catch (_) {}
+        try { if ($persistentStore?.write) $persistentStore.write(value, key); } catch (_) {}
+        try { if ($store?.put) $store.put(value, key); } catch (_) {}
+        try { if ($task?.write) $task.write(value, key); } catch (_) {}
+      }
+  
+      write("10010.cookie", cookie);
+      console.log("[10010.cookie] 已写入 10010.cookie");
+  
+    } catch (e) {
+      console.log("[10010.cookie] 脚本错误:", e);
+    } finally {
+      $done({});
+    }
+  })();
