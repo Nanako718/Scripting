@@ -1,6 +1,6 @@
 {
     "id": "DTZSGHNR.app.sub",
-    "name": "联通营业厅 Cookie 查看",
+    "name": "DTZSGHNR",
     "description": "抓取并显示 10010 Cookie，兼容 BoxJS",
     "author": "@DTZSGHNR",
     "icon": "https://avatars.githubusercontent.com/u/60038246?s=96&v=4",
@@ -8,12 +8,14 @@
       {
         "id": "10010",
         "name": "联通营业厅 Cookie",
-        "icon": "https://raw.githubusercontent.com/Enjoyee/Scriptable/v2/img/ic_logo_10010.png",
         "keys": [
           "10010.cookie"
         ],
         "descs_html": [
           "<h4 align=\"center\">点击查看抓取到的 10010 Cookie</h4>"
+        ],
+        "icons": [
+          "https://raw.githubusercontent.com/Enjoyee/Scriptable/v2/img/ic_logo_10010.png"
         ]
       }
     ]
