@@ -371,7 +371,7 @@ function StatCard({
         widgetBackground={{
           style: {
             light: "rgba(0, 122, 255, 0.1)",
-            dark: "rgba(64, 156, 255, 0.2)",
+            dark: "rgba(64, 156, 255, 0.12)",
           },
           shape: {
             type: "rect",
@@ -394,7 +394,7 @@ function StatCard({
             fontWeight="medium"
             foregroundStyle={{
               light: "#666666",
-              dark: "#E5E5EA",
+              dark: "#D1D1D6",
             }}
             lineLimit={1}
             minScaleFactor={0.8}
@@ -406,7 +406,7 @@ function StatCard({
             fontWeight="bold"
             foregroundStyle={{
               light: "#000000",
-              dark: "#FFFFFF",
+              dark: "#F2F2F7",
             }}
             lineLimit={1}
             minScaleFactor={0.6}
@@ -427,7 +427,7 @@ function StatCard({
       widgetBackground={{
         style: {
           light: "rgba(0, 122, 255, 0.1)",
-          dark: "rgba(64, 156, 255, 0.2)",
+          dark: "rgba(64, 156, 255, 0.12)",
         },
         shape: {
           type: "rect",
@@ -448,7 +448,7 @@ function StatCard({
           fontWeight="medium"
           foregroundStyle={{
             light: "#666666",
-            dark: "#E5E5EA",
+            dark: "#D1D1D6",
           }}
           lineLimit={1}
           minScaleFactor={0.8}
@@ -461,7 +461,7 @@ function StatCard({
           fontWeight="bold"
           foregroundStyle={{
             light: "#000000",
-            dark: "#FFFFFF",
+            dark: "#F2F2F7",
           }}
           lineLimit={1}
           minScaleFactor={0.6}
@@ -489,7 +489,7 @@ function TableHeader({
       widgetBackground={{
         style: {
           light: "rgba(0, 0, 0, 0.1)",
-          dark: "rgba(255, 255, 255, 0.15)",
+          dark: "rgba(255, 255, 255, 0.08)",
         },
         shape: {
           type: "rect",
@@ -541,7 +541,7 @@ function SiteTableRow({
       widgetBackground={{
         style: {
           light: "rgba(0, 0, 0, 0.03)",
-          dark: "rgba(255, 255, 255, 0.08)",
+          dark: "rgba(255, 255, 255, 0.05)",
         },
         shape: {
           type: "rect",
@@ -568,7 +568,7 @@ function SiteTableRow({
         fontWeight="medium"
         foregroundStyle={{
           light: "#34C759",
-          dark: "#30D158",
+          dark: "#4CD964",
         }}
         frame={{ width: 60 }}
         lineLimit={1}
@@ -583,7 +583,7 @@ function SiteTableRow({
         fontWeight="medium"
         foregroundStyle={{
           light: "#FF3B30",
-          dark: "#FF453A",
+          dark: "#FF6B6B",
         }}
         frame={{ width: 60 }}
         lineLimit={1}
@@ -789,7 +789,7 @@ function LargeWidgetView({
               fontWeight="medium"
               foregroundStyle={{
                 light: "#999999",
-                dark: "#B8B8B8",
+                dark: "#98989D",
               }}
             />
             <Text
@@ -797,7 +797,7 @@ function LargeWidgetView({
               fontWeight="medium"
               foregroundStyle={{
                 light: "#999999",
-                dark: "#B8B8B8",
+                dark: "#98989D",
               }}
               lineLimit={1}
             >
@@ -878,7 +878,7 @@ function LargeWidgetView({
                     font={9}
                     foregroundStyle={{
                       light: "#999999",
-                      dark: "#B8B8B8",
+                      dark: "#98989D",
                     }}
                   >
                     还有 {validSites.length - 8} 个站点...
@@ -908,11 +908,11 @@ function WidgetView({
 }) {
   const titleStyle: DynamicShapeStyle = {
     light: "#666666",
-    dark: "#E5E5EA",
+    dark: "#D1D1D6",
   }
   const descStyle: DynamicShapeStyle = {
     light: "#000000",
-    dark: "#FFFFFF",
+    dark: "#F2F2F7",
   }
 
   // 只支持 medium 和 large 两种尺寸
