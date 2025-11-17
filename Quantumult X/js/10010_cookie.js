@@ -30,8 +30,16 @@
         try { if ($task?.write) $task.write(value, key); } catch (_) {}
       }
   
+      // 发送通知（兼容 Surge / Loon / QX）
+      function notify(title, subtitle, body) {
+        try { if ($notification?.post) $notification.post(title, subtitle, body); } catch (_) {}
+      }
+  
       write("10010.cookie", cookie);
       console.log("[10010.cookie] 已写入 10010.cookie");
+      
+      // 发送 Loon 通知
+      notify("10010 Cookie 更新", "Cookie 已成功保存", "已自动抓取并保存中国联通 Cookie");
   
     } catch (e) {
       console.log("[10010.cookie] 脚本错误:", e);
