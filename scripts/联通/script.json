@@ -1,42 +1,46 @@
 {
+  "remoteResource" : {
+    "autoUpdateInterval" : 300,
+    "url" : "https:\/\/imarkr.com\/api\/github\/download\/Nanako718\/Scripting\/tree\/main\/scripts\/联通.zip",
+    "hash" : "b296234b523ac76fd59f036cba648311"
+  },
+  "localizedNames" : {
+    "es" : "",
+    "zh" : "",
+    "ja" : "",
+    "en" : "",
+    "de" : "",
+    "fr" : "",
+    "ru" : "",
+    "pt" : "",
+    "it" : ""
+  },
+  "color" : "rgba(238, 92, 98,1)",
+  "contributors" : [
+
+  ],
+  "localizedDescriptions" : {
+    "it" : "",
+    "en" : "",
+    "de" : "",
+    "ru" : "",
+    "zh" : "",
+    "ja" : "",
+    "es" : "",
+    "fr" : "",
+    "pt" : ""
+  },
+  "icon" : "antenna.radiowaves.left.and.right",
+  "description" : "",
+  "name" : "10010",
   "author" : {
     "email" : "2753086015@qq.com",
-    "homepage" : null,
-    "name" : "DTZSGHNR"
+    "name" : "DTZSGHNR",
+    "homepage" : null
   },
   "intentInputTypes" : [
 
   ],
-  "icon" : "antenna.radiowaves.left.and.right",
   "runInApp" : false,
-  "remoteResource" : null,
-  "localizedNames" : {
-    "zh" : "",
-    "de" : "",
-    "fr" : "",
-    "it" : "",
-    "ja" : "",
-    "es" : "",
-    "pt" : "",
-    "en" : "",
-    "ru" : ""
-  },
-  "contributors" : [
-
-  ],
-  "description" : "",
-  "version" : "1.0.1",
-  "name" : "10010",
-  "color" : "rgba(238, 92, 98,1)",
-  "localizedDescriptions" : {
-    "zh" : "",
-    "de" : "",
-    "fr" : "",
-    "it" : "",
-    "ja" : "",
-    "es" : "",
-    "pt" : "",
-    "en" : "",
-    "ru" : ""
-  }
+  "version" : "1.0.1"
 }
