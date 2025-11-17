@@ -27,6 +27,8 @@ type ChinaUnicomSettings = {
   showOtherFlow?: boolean
   otherFlowMatchType?: "flowType" | "addupItemCode"
   otherFlowMatchValue?: string
+  enableBoxJs?: boolean
+  boxJsUrl?: string
 }
 
 const SETTINGS_KEY = "chinaUnicomSettings"
@@ -82,6 +84,37 @@ type DetailApiResponse = {
     xcanusevalue: string
     xusedvalue: string
   }>
+}
+
+// 从 BoxJs 读取 Cookie
+async function fetchCookieFromBoxJs(boxJsUrl: string): Promise<string | null> {
+  try {
+    const url = `${boxJsUrl.replace(/\/$/, "")}/query/data/10010.cookie`
+    console.log("📡 从 BoxJs 读取 Cookie:", url)
+    
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+      }
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      // BoxJs 返回格式: { "key": "10010.cookie", "val": "cookie值" }
+      const cookie = data?.val
+      if (cookie && typeof cookie === 'string' && cookie.trim()) {
+        console.log("✅ 从 BoxJs 成功读取 Cookie")
+        return cookie.trim()
+      } else {
+        console.warn("⚠️ BoxJs 返回的数据格式不正确:", data)
+      }
+    } else {
+      console.error("❌ 从 BoxJs 读取 Cookie 失败，状态码:", response.status)
+    }
+  } catch (error) {
+    console.error("🚨 从 BoxJs 读取 Cookie 异常:", error)
+  }
+  return null
 }
 
 // 获取话费数据（仅从第一个 API）
@@ -222,34 +255,34 @@ function formatFlowValue(value: number, unit: string = "MB"): { balance: string;
   }
 }
 
-// 卡片主题配置
+// 卡片主题配置 - 优化配色，更现代柔和
 const cardThemes = {
   fee: {
-    background: { light: "rgba(0, 122, 255, 0.15)", dark: "rgba(64, 156, 255, 0.2)" } as DynamicShapeStyle,
-    iconColor: { light: "#007AFF", dark: "#5AC8FA" } as DynamicShapeStyle,
-    titleColor: { light: "#0051D5", dark: "#7DB8FF" } as DynamicShapeStyle,
-    descColor: { light: "#003D9E", dark: "#A8D0FF" } as DynamicShapeStyle,
+    background: { light: "rgba(0, 122, 255, 0.12)", dark: "rgba(64, 156, 255, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#007AFF", dark: "#64B5FF" } as DynamicShapeStyle,
+    titleColor: { light: "#0066CC", dark: "#8FC7FF" } as DynamicShapeStyle,
+    descColor: { light: "#0052A3", dark: "#B8DCFF" } as DynamicShapeStyle,
     icon: "creditcard.fill"
   },
   voice: {
-    background: { light: "rgba(52, 199, 89, 0.15)", dark: "rgba(48, 209, 88, 0.2)" } as DynamicShapeStyle,
-    iconColor: { light: "#34C759", dark: "#30D158" } as DynamicShapeStyle,
-    titleColor: { light: "#248A3D", dark: "#5FE877" } as DynamicShapeStyle,
-    descColor: { light: "#1A5F2A", dark: "#7FEB9A" } as DynamicShapeStyle,
+    background: { light: "rgba(52, 199, 89, 0.12)", dark: "rgba(48, 209, 88, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#34C759", dark: "#66D98F" } as DynamicShapeStyle,
+    titleColor: { light: "#2BA84A", dark: "#7FE99F" } as DynamicShapeStyle,
+    descColor: { light: "#1F7A35", dark: "#9FECB3" } as DynamicShapeStyle,
     icon: "phone.fill"
   },
   flow: {
-    background: { light: "rgba(255, 149, 0, 0.15)", dark: "rgba(255, 159, 10, 0.2)" } as DynamicShapeStyle,
-    iconColor: { light: "#FF9500", dark: "#FF9F0A" } as DynamicShapeStyle,
-    titleColor: { light: "#CC7700", dark: "#FFB84D" } as DynamicShapeStyle,
-    descColor: { light: "#995500", dark: "#FFD180" } as DynamicShapeStyle,
+    background: { light: "rgba(255, 149, 0, 0.12)", dark: "rgba(255, 159, 10, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#FF9500", dark: "#FFB340" } as DynamicShapeStyle,
+    titleColor: { light: "#CC7700", dark: "#FFC973" } as DynamicShapeStyle,
+    descColor: { light: "#995500", dark: "#FFD99F" } as DynamicShapeStyle,
     icon: "antenna.radiowaves.left.and.right"
   },
   otherFlow: {
-    background: { light: "rgba(175, 82, 222, 0.15)", dark: "rgba(191, 90, 242, 0.2)" } as DynamicShapeStyle,
-    iconColor: { light: "#AF52DE", dark: "#BF5AF2" } as DynamicShapeStyle,
-    titleColor: { light: "#8B41B1", dark: "#D19FF5" } as DynamicShapeStyle,
-    descColor: { light: "#6B3185", dark: "#E3BFF8" } as DynamicShapeStyle,
+    background: { light: "rgba(175, 82, 222, 0.12)", dark: "rgba(191, 90, 242, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#AF52DE", dark: "#C77AF5" } as DynamicShapeStyle,
+    titleColor: { light: "#8B41B1", dark: "#D9A5F8" } as DynamicShapeStyle,
+    descColor: { light: "#6B3185", dark: "#E8C5FB" } as DynamicShapeStyle,
     icon: "wifi.circle.fill"
   }
 }
@@ -292,7 +325,7 @@ function DataCard({
           style: theme.background,
           shape: {
             type: "rect",
-            cornerRadius: 8,
+            cornerRadius: 15,
             style: "continuous"
           }
         }}
@@ -399,7 +432,7 @@ function SmallDataCard({
           style: theme.background,
           shape: {
             type: "rect",
-            cornerRadius: 8,
+            cornerRadius: 12,
             style: "continuous"
           }
         }}
@@ -507,84 +540,59 @@ function WidgetView({ data, settings }: { data: UnicomData; settings: ChinaUnico
     light: settings.descDayColor,
     dark: settings.descNightColor,
   }
-  const refreshTimeStyle: DynamicShapeStyle = {
-    light: settings.refreshTimeDayColor,
-    dark: settings.refreshTimeNightColor,
-  }
 
   if (Widget.family === "systemSmall") {
     return <SmallWidgetView data={data} titleStyle={titleStyle} descStyle={descStyle} />
   }
 
   return (
-    <ZStack>
-      <VStack alignment="leading" padding={{ top: 10, leading: 10, bottom: 10, trailing: 10 }} spacing={8}>
-        <HStack alignment="center" spacing={6}>
+    <VStack alignment="leading" padding={{ top: 10, leading: 10, bottom: 10, trailing: 10 }} spacing={8}>
+      <HStack alignment="center" spacing={6}>
+        <DataCard
+          title={data.fee.title}
+          value={data.fee.balance}
+          unit={data.fee.unit}
+          theme={cardThemes.fee}
+          titleStyle={titleStyle}
+          descStyle={descStyle}
+          showLogo={true}
+        />
+        <DataCard
+          title={data.voice.title}
+          value={data.voice.balance}
+          unit={data.voice.unit}
+          theme={cardThemes.voice}
+          titleStyle={titleStyle}
+          descStyle={descStyle}
+          progressUsed={data.voice.used}
+          progressTotal={data.voice.total}
+        />
+        {settings?.showFlow !== false ? (
           <DataCard
-            title={data.fee.title}
-            value={data.fee.balance}
-            unit={data.fee.unit}
-            theme={cardThemes.fee}
+            title={data.flow.title}
+            value={data.flow.balance}
+            unit={data.flow.unit}
+            theme={cardThemes.flow}
             titleStyle={titleStyle}
             descStyle={descStyle}
-            showLogo={true}
+            progressUsed={data.flow.used}
+            progressTotal={data.flow.total}
           />
+        ) : null}
+        {data.otherFlow && settings?.showOtherFlow !== false ? (
           <DataCard
-            title={data.voice.title}
-            value={data.voice.balance}
-            unit={data.voice.unit}
-            theme={cardThemes.voice}
+            title={data.otherFlow.title}
+            value={data.otherFlow.balance}
+            unit={data.otherFlow.unit}
+            theme={cardThemes.otherFlow}
             titleStyle={titleStyle}
             descStyle={descStyle}
-            progressUsed={data.voice.used}
-            progressTotal={data.voice.total}
+            progressUsed={data.otherFlow.used}
+            progressTotal={data.otherFlow.total}
           />
-          {settings?.showFlow !== false ? (
-            <DataCard
-              title={data.flow.title}
-              value={data.flow.balance}
-              unit={data.flow.unit}
-              theme={cardThemes.flow}
-              titleStyle={titleStyle}
-              descStyle={descStyle}
-              progressUsed={data.flow.used}
-              progressTotal={data.flow.total}
-            />
-          ) : null}
-          {data.otherFlow && settings?.showOtherFlow !== false ? (
-            <DataCard
-              title={data.otherFlow.title}
-              value={data.otherFlow.balance}
-              unit={data.otherFlow.unit}
-              theme={cardThemes.otherFlow}
-              titleStyle={titleStyle}
-              descStyle={descStyle}
-              progressUsed={data.otherFlow.used}
-              progressTotal={data.otherFlow.total}
-            />
-          ) : null}
-        </HStack>
-        
-        <Spacer />
-      </VStack>
-      <VStack>
-        <Spacer />
-        <HStack alignment="center" padding={{ leading: 10, trailing: 10, bottom: 8 }}>
-          <HStack alignment="center" spacing={4}>
-            <Image 
-              systemName="arrow.clockwise" 
-              font={9}
-              fontWeight="medium"
-              foregroundStyle={refreshTimeStyle} 
-            />
-            <Text font={10} fontWeight="medium" foregroundStyle={refreshTimeStyle}>
-              {new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })}
-            </Text>
-          </HStack>
-          <Spacer />
-        </HStack>
-      </VStack>
-    </ZStack>
+        ) : null}
+      </HStack>
+    </VStack>
   )
 }
 
@@ -598,15 +606,28 @@ async function render() {
     date: nextUpdate
   }
 
-  if (!settings || !settings.cookie) {
-    Widget.present(<Text>请先在主应用中设置联通 Cookie。</Text>, reloadPolicy)
+  // 确定使用的 Cookie：如果开启了 BoxJs，优先从 BoxJs 读取
+  let cookie = settings?.cookie || ""
+  
+  if (settings?.enableBoxJs && settings?.boxJsUrl) {
+    const boxJsCookie = await fetchCookieFromBoxJs(settings.boxJsUrl)
+    if (boxJsCookie) {
+      cookie = boxJsCookie
+      console.log("✅ 使用 BoxJs 中的 Cookie")
+    } else {
+      console.warn("⚠️ 从 BoxJs 读取 Cookie 失败，使用配置的 Cookie")
+    }
+  }
+
+  if (!cookie) {
+    Widget.present(<Text>请先在主应用中设置联通 Cookie，或配置 BoxJs 地址。</Text>, reloadPolicy)
     return
   }
 
   // 并行获取两个 API 数据
   const [feeData, detailData] = await Promise.all([
-    fetchFeeData(settings.cookie),
-    fetchDetailData(settings.cookie)
+    fetchFeeData(cookie),
+    fetchDetailData(cookie)
   ])
 
   if (!feeData || !detailData) {
@@ -692,6 +713,12 @@ async function render() {
     voice: voiceAndFlowData.voice,
     flow: voiceAndFlowData.flow,
     otherFlow: otherFlowData,
+  }
+
+  // 确保 settings 不为 null
+  if (!settings) {
+    Widget.present(<Text>请先在主应用中设置联通 Cookie，或配置 BoxJs 地址。</Text>, reloadPolicy)
+    return
   }
 
   Widget.present(<WidgetView data={mergedData} settings={settings} />, reloadPolicy)

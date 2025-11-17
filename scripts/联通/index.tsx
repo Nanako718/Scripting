@@ -29,6 +29,8 @@ type ChinaUnicomSettings = {
   showOtherFlow: boolean
   otherFlowMatchType: "flowType" | "addupItemCode"
   otherFlowMatchValue: string
+  enableBoxJs: boolean
+  boxJsUrl: string
 }
 
 const SETTINGS_KEY = "chinaUnicomSettings"
@@ -53,6 +55,9 @@ const defaultSettings: ChinaUnicomSettings = {
   showOtherFlow: true,
   otherFlowMatchType: "flowType",
   otherFlowMatchValue: "3",
+  // BoxJs 配置
+  enableBoxJs: false,
+  boxJsUrl: "",
 }
 
 function SettingsPage() {
@@ -72,6 +77,8 @@ function SettingsPage() {
   const [showOtherFlow, setShowOtherFlow] = useState(initialSettings.showOtherFlow ?? true)
   const [otherFlowMatchType, setOtherFlowMatchType] = useState<"flowType" | "addupItemCode">(initialSettings.otherFlowMatchType ?? "flowType")
   const [otherFlowMatchValue, setOtherFlowMatchValue] = useState(initialSettings.otherFlowMatchValue ?? "3")
+  const [enableBoxJs, setEnableBoxJs] = useState(initialSettings.enableBoxJs ?? false)
+  const [boxJsUrl, setBoxJsUrl] = useState(initialSettings.boxJsUrl ?? "")
 
   const handleSave = () => {
     const newSettings: ChinaUnicomSettings = {
@@ -87,6 +94,8 @@ function SettingsPage() {
       showOtherFlow,
       otherFlowMatchType,
       otherFlowMatchValue,
+      enableBoxJs,
+      boxJsUrl,
     }
     Storage.set(SETTINGS_KEY, newSettings)
     dismiss()
@@ -166,6 +175,25 @@ function SettingsPage() {
                 • 建议使用 flowType="3" 以适配不同套餐
               </Text>
             </>
+          ) : null}
+        </Section>
+
+        <Section
+          title="BoxJs 配置"
+          footer={<Text>开启后将从 BoxJs 读取 10010.cookie 作为 Cookie。如果开启，将优先使用 BoxJs 中的 Cookie。</Text>}
+        >
+          <Toggle
+            title="启用 BoxJs"
+            value={enableBoxJs}
+            onChanged={setEnableBoxJs}
+          />
+          {enableBoxJs ? (
+            <TextField
+              title="BoxJs 地址"
+              value={boxJsUrl}
+              prompt="请输入 BoxJs 地址，例如：http://boxjs.com"
+              onChanged={setBoxJsUrl}
+            />
           ) : null}
         </Section>
 
