@@ -648,29 +648,33 @@ async function render() {
   const matchValue = settings?.otherFlowMatchValue ?? "3"
   
   if (showOtherFlow && detailData) {
-    let totalRemain = 0
-    let totalUsed = 0
+    let totalRemainMB = 0
+    let totalUsedMB = 0
     
     // 方法1：从 flowSumList 获取（flowtype="3"）
+    // flowSumList 中的值单位是 MB
     if (matchType === "flowType" && matchValue === "3") {
       const item = detailData.flowSumList?.find(item => item.flowtype === "3")
       if (item) {
-        totalRemain = parseFloat(item.xcanusevalue || "0")
-        totalUsed = parseFloat(item.xusedvalue || "0")
+        totalRemainMB = parseFloat(item.xcanusevalue || "0")
+        totalUsedMB = parseFloat(item.xusedvalue || "0")
       }
     }
     
     // 方法2：从 fresSumList 获取
-    if (totalRemain === 0 && matchType === "flowType") {
+    // fresSumList 中的值单位也是 MB
+    if (totalRemainMB === 0 && matchType === "flowType") {
       const item = detailData.fresSumList?.find(item => item.flowtype === matchValue)
       if (item) {
-        totalRemain = parseFloat(item.xcanusevalue || "0")
-        totalUsed = parseFloat(item.xusedvalue || "0")
+        totalRemainMB = parseFloat(item.xcanusevalue || "0")
+        totalUsedMB = parseFloat(item.xusedvalue || "0")
       }
     }
     
     // 方法3：从 resources 计算
-    if (totalRemain === 0) {
+    // resources 中的值需要根据 canuseFlowAllUnit 判断单位
+    if (totalRemainMB === 0) {
+      const unit = detailData.canuseFlowAllUnit || "MB"
       detailData.resources?.find(r => r.type === "Flow")?.details?.forEach((detail: any) => {
         const match = matchType === "flowType" 
           ? detail.flowType === matchValue
@@ -680,30 +684,34 @@ async function render() {
           const remain = parseFloat(detail.remain)
           const used = parseFloat(detail.use || "0")
           if (!isNaN(remain) && remain > 0) {
-            totalRemain += remain
-            totalUsed += used
+            if (unit === "MB") {
+              totalRemainMB += remain
+              totalUsedMB += used
+            } else if (unit === "GB") {
+              totalRemainMB += remain * 1024
+              totalUsedMB += used * 1024
+            }
           }
         }
       })
     }
     
-    if (totalRemain > 0 || totalUsed > 0) {
-      const unit = detailData.canuseFlowAllUnit || "MB"
-      const formatted = formatFlowValue(totalRemain, unit)
-      const totalMB = totalRemain + totalUsed
+    if (totalRemainMB > 0 || totalUsedMB > 0) {
+      const formatted = formatFlowValue(totalRemainMB, "MB")
+      const totalMB = totalRemainMB + totalUsedMB
       
       otherFlowData = {
         title: "其他流量",
         balance: formatted.balance,
         unit: formatted.unit,
-        used: totalUsed,
+        used: totalUsedMB,
         total: totalMB
       }
       
       console.log("🌐 其他流量:", 
-        `已用${formatFlowValue(totalUsed, unit).balance}${formatFlowValue(totalUsed, unit).unit} ` +
+        `已用${formatFlowValue(totalUsedMB, "MB").balance}${formatFlowValue(totalUsedMB, "MB").unit} ` +
         `剩余${formatted.balance}${formatted.unit} ` +
-        `总计${formatFlowValue(totalMB, unit).balance}${formatFlowValue(totalMB, unit).unit}`
+        `总计${formatFlowValue(totalMB, "MB").balance}${formatFlowValue(totalMB, "MB").unit}`
       )
     }
   }
