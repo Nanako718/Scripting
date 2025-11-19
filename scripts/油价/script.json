@@ -1,0 +1,18 @@
+{
+  "color" : "rgba(28, 140, 255,1)",
+  "runInApp" : false,
+  "version" : "1.0.0",
+  "remoteResource" : null,
+  "localizedDescriptions" : null,
+  "localizedNames" : null,
+  "icon" : "car.fill",
+  "contributors" : [
+
+  ],
+  "description" : null,
+  "name" : "油价",
+  "intentInputTypes" : [
+
+  ],
+  "author" : null
+}
