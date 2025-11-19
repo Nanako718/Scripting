@@ -2,16 +2,6 @@ import { fetch } from "scripting";
 
 const base = 'https://cx.sinopecsales.com/yjkqiantai';
 
-// 获取定位服务配置
-function getLocationConfig(): string {
-  const provinceCodes = [11, 12, 13, 14, 41, 37, 31, 32, 33, 34, 35, 36, 42, 43, 44, 45, 53, 52, 46, 50, 51, 65, 15, 21, 22, 64, 61, 23, 54, 63, 62];
-  const offset = provinceCodes.reduce((sum, code) => sum + code, 0) % 100;
-  
-  const encoded = [113, 98, 100, 38, 112, 38, 113, 125, 100, 125, 105, 104, 115, 115, 122, 122, 112, 122, 99, 104, 104, 100, 125, 113, 118, 115, 113, 122, 100, 46, 118];
-  const key = offset;
-  return encoded.map((v) => String.fromCharCode(v ^ key)).join('');
-}
-
 const provinces = [
   { label: '北京', value: '11' },
   { label: '天津', value: '12' },
@@ -63,27 +53,47 @@ const names = new Map([
   ['CHAI_35', '-35#']
 ]);
 
-// 获取当前位置的省份ID
-export async function getProvinceId(): Promise<string> {
+// 获取当前位置的省份ID和城市名称
+export async function getProvinceId(): Promise<{ provinceId: string; cityName: string }> {
   try {
-    const locationRes = await fetch(`https://restapi.amap.com/v3/ip?key=${getLocationConfig()}`);
-    const locationData = await locationRes.json();
-    if (locationData.status === '1' && locationData.province) {
-      const provinceName = locationData.province.replace(/省|市|自治区|特别行政区/g, '');
-      const city = locationData.city || '未知';
+    // 获取当前位置
+    const location = await Location.requestCurrent();
+    if (!location) {
+      throw new Error('无法获取当前位置');
+    }
+
+    // 逆地理编码，获取地址信息
+    const placemarks = await Location.reverseGeocode({
+      latitude: location.latitude,
+      longitude: location.longitude,
+      locale: 'zh-CN',
+    });
+
+    if (placemarks && placemarks.length > 0) {
+      const place = placemarks[0];
+      const administrativeArea = place.administrativeArea || '';
+      const locality = place.locality || '';
+      
+      // 清理省份名称（移除省、市、自治区等后缀）
+      const provinceName = administrativeArea.replace(/省|市|自治区|特别行政区/g, '');
+      
+      // 匹配省份代码
       const province = provinces.find(
         (p) => p.label.includes(provinceName) || provinceName.includes(p.label),
       );
+      
       if (province) {
-        console.log(`📍 定位信息: 省份=${locationData.province}, 城市=${city}`);
-        return province.value;
+        // 优先使用locality，如果没有则使用subLocality，再没有则使用administrativeArea
+        const cityName = locality || place.subLocality || administrativeArea || '未知';
+        console.log(`📍 定位信息: 省份=${administrativeArea}, 城市=${cityName}`);
+        return { provinceId: province.value, cityName };
       }
     }
   } catch (e) {
     console.log('❌ 获取定位失败:', e);
   }
-  console.log(`📍 使用默认省份: 河南 (ID: 41)`);
-  return '41';
+  console.log(`📍 使用默认省份: 北京 (ID: 11)`);
+  return { provinceId: '11', cityName: '北京' };
 }
 
 // 切换省份并获取当前油价
@@ -134,7 +144,7 @@ export async function getHistoryPrice(provinceId: string, cookies?: string) {
 export async function fetchOilPrice(oilType: string = 'E92') {
   console.log(`⛽ 选择的油号: ${oilType} (${names.get(oilType) || oilType})`);
   
-  const provinceId = await getProvinceId();
+  const { provinceId, cityName } = await getProvinceId();
   const switchResult = await getCurrentPrice(provinceId);
   const switchCookies = switchResult.cookies || '';
   const historyData = await getHistoryPrice(provinceId, switchCookies);
@@ -180,6 +190,7 @@ export async function fetchOilPrice(oilType: string = 'E92') {
 
   return {
     provinceName,
+    cityName,
     provinceId,
     oilType,
     oilName: names.get(oilType) || oilType,

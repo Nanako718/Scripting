@@ -12,7 +12,7 @@ import {
 import { RefreshIntent } from "../../app_intents";
 
 export function View({ data }: { data: any }) {
-  const { provinceName, oilName, currentPrice, currentStatus, trendData } = data;
+  const { cityName, oilName, currentPrice, currentStatus, trendData } = data;
   
   // 取最近30条数据用于显示
   const displayData = trendData.length > 0 ? trendData.slice(-30) : [];
@@ -49,8 +49,8 @@ export function View({ data }: { data: any }) {
                 state ? "arrowtriangle.up.fill" : dif < 0 ? "arrowtriangle.down.fill" : "minus"
               }
             />
-            <Text font={"title3"}>
-              {provinceName}
+            <Text font={"headline"}>
+              {cityName}
             </Text>
           </HStack>
           <Text
