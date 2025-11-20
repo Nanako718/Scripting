@@ -1,7 +1,7 @@
 {
   "color" : "rgba(28, 140, 255,1)",
   "runInApp" : false,
-  "version" : "1.0.0",
+  "version" : "1.0.1",
   "remoteResource" : "https:\/\/imarkr.com\/api\/github\/download\/Nanako718\/Scripting\/tree\/main\/scripts\/油价.zip",
   "localizedDescriptions" : "一个显示中石化油价趋势的小组件，支持自动定位和多种油号显示。",
   "localizedNames" : "油价",
