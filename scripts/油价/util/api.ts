@@ -2,7 +2,7 @@ import { fetch } from "scripting";
 
 const base = 'https://cx.sinopecsales.com/yjkqiantai';
 
-const provinces = [
+export const provinces = [
   { label: '北京', value: '11' },
   { label: '天津', value: '12' },
   { label: '河北', value: '13' },
@@ -36,33 +36,48 @@ const provinces = [
   { label: '甘肃', value: '62' }
 ];
 
-const names = new Map([
-  ['GAS_92', '92#'],
-  ['GAS_95', '95#'],
-  ['GAS_98', '98#'],
-  ['E92', 'E92#'],
-  ['E95', 'E95#'],
-  ['AIPAO95', '爱跑95#'],
-  ['AIPAO98', '爱跑98#'],
-  ['AIPAOE92', '爱跑E92#'],
-  ['AIPAOE95', '爱跑E95#'],
-  ['AIPAOE98', '爱跑E98#'],
-  ['CHAI_0', '0#'],
-  ['CHAI_10', '-10#'],
-  ['CHAI_20', '-20#'],
-  ['CHAI_35', '-35#']
+const oilDisplayNames = new Map<string, string>([
+  ['92', '92#'],
+  ['95', '95#'],
+  ['98', '98#'],
+  ['0', '0#'],
+  ['10', '-10#'],
+  ['20', '-20#'],
+  ['35', '-35#'],
 ]);
 
-// 获取当前位置的省份ID和城市名称
-export async function getProvinceId(): Promise<{ provinceId: string; cityName: string }> {
+function getFieldNameByOilNumber(oilNumber: string, provinceCheck: any): string | null {
+  const num = oilNumber;
+  
+  if (num === '0' || num === '10' || num === '20' || num === '35') {
+    if (provinceCheck[`CHAI_${num}`] === 'Y') return `CHAI_${num}`;
+    if (provinceCheck[`CHECHAI_${num}`] === 'Y') return `CHECHAI_${num}`;
+    return null;
+  }
+  
+  const possibleFields = [`E${num}`, `GAS_${num}`];
+  for (const field of possibleFields) {
+    if (provinceCheck[field] === 'Y') {
+      return field;
+    }
+  }
+  
+  return null;
+}
+
+export async function getProvinceId(manualProvinceId?: string): Promise<{ provinceId: string; cityName: string }> {
+  if (manualProvinceId) {
+    const province = provinces.find((p) => p.value === manualProvinceId);
+    if (province) {
+      return { provinceId: province.value, cityName: province.label };
+    }
+  }
   try {
-    // 获取当前位置
     const location = await Location.requestCurrent();
     if (!location) {
       throw new Error('无法获取当前位置');
     }
 
-    // 逆地理编码，获取地址信息
     const placemarks = await Location.reverseGeocode({
       latitude: location.latitude,
       longitude: location.longitude,
@@ -72,27 +87,41 @@ export async function getProvinceId(): Promise<{ provinceId: string; cityName: s
     if (placemarks && placemarks.length > 0) {
       const place = placemarks[0];
       const administrativeArea = place.administrativeArea || '';
+      const subAdministrativeArea = place.subAdministrativeArea || '';
       const locality = place.locality || '';
+      const subLocality = place.subLocality || '';
       
-      // 清理省份名称（移除省、市、自治区等后缀）
-      const provinceName = administrativeArea.replace(/省|市|自治区|特别行政区/g, '');
+      const possibleProvinceNames = [
+        administrativeArea,
+        subAdministrativeArea,
+        locality,
+      ].filter(Boolean);
       
-      // 匹配省份代码
-      const province = provinces.find(
-        (p) => p.label.includes(provinceName) || provinceName.includes(p.label),
-      );
+      let matchedProvince = null;
       
-      if (province) {
-        // 优先使用locality，如果没有则使用subLocality，再没有则使用administrativeArea
-        const cityName = locality || place.subLocality || administrativeArea || '未知';
-        console.log(`📍 定位信息: 省份=${administrativeArea}, 城市=${cityName}`);
-        return { provinceId: province.value, cityName };
+      for (const areaName of possibleProvinceNames) {
+        const provinceName = areaName.replace(/省|市|自治区|特别行政区|回族自治区|维吾尔自治区|壮族自治区/g, '').trim();
+        
+        matchedProvince = provinces.find((p) => {
+          if (p.label === provinceName) return true;
+          if (p.label.includes(provinceName) || provinceName.includes(p.label)) return true;
+          if (areaName.includes(p.label) || p.label.includes(provinceName)) return true;
+          return false;
+        });
+        
+        if (matchedProvince) {
+          break;
+        }
+      }
+      
+      if (matchedProvince) {
+        const cityName = locality || subLocality || subAdministrativeArea || administrativeArea || '未知';
+        return { provinceId: matchedProvince.value, cityName };
       }
     }
   } catch (e) {
-    console.log('❌ 获取定位失败:', e);
+    console.log('定位失败:', e);
   }
-  console.log(`📍 使用默认省份: 北京 (ID: 11)`);
   return { provinceId: '11', cityName: '北京' };
 }
 
@@ -140,63 +169,67 @@ export async function getHistoryPrice(provinceId: string, cookies?: string) {
   return data;
 }
 
-// 获取油价数据（当前和历史）
-export async function fetchOilPrice(oilType: string = 'E92') {
-  console.log(`⛽ 选择的油号: ${oilType} (${names.get(oilType) || oilType})`);
+export async function fetchOilPrice(oilNumber: string = '92', manualProvinceId?: string) {
+  const oilDisplayName = oilDisplayNames.get(oilNumber) || `${oilNumber}#`;
   
-  const { provinceId, cityName } = await getProvinceId();
-  const switchResult = await getCurrentPrice(provinceId);
-  const switchCookies = switchResult.cookies || '';
-  const historyData = await getHistoryPrice(provinceId, switchCookies);
-  const currentResult = await getCurrentPrice(provinceId);
-  const currentData = currentResult.data;
-
-  const province = provinces.find((p) => p.value === provinceId);
-  const provinceName = province?.label || '未知';
-
-  const historyPrices = Array.isArray(historyData.data?.provinceData)
-    ? historyData.data.provinceData
-    : [];
-
-  const trendData = historyPrices
-    .filter((item: any) => item[oilType] !== undefined && item[oilType] !== null)
-    .map((item: any) => {
-      const price = item[oilType];
-      const date = item.STR_START_DATE || item.queryDate || item.START_DATE || '';
-      const status = item[`${oilType}_STATUS`] !== undefined ? item[`${oilType}_STATUS`] : 0;
-      return {
-        date,
-        price,
-        status,
-      };
-    })
-    .reverse();
-
-  const currentPriceData = (currentData as any)?.data?.provinceData || {};
-  const currentPrice = currentPriceData[oilType];
-  const currentStatus = currentPriceData[`${oilType}_STATUS`] || 0;
-
-  console.log(`💰 当前油价: ${currentPrice?.toFixed(2) || 'N/A'} 元/升`);
-  console.log(`📊 涨跌: ${currentStatus > 0 ? '+' : ''}${currentStatus.toFixed(2)} 元`);
-  console.log(`📈 历史油价数据: 共 ${trendData.length} 条`);
+  const { provinceId, cityName } = await getProvinceId(manualProvinceId);
   
-  // 显示所有历史数据
-  if (trendData.length > 0) {
-    trendData.forEach((item: any, index: number) => {
-      const statusStr = item.status > 0 ? `+${item.status.toFixed(2)}` : item.status.toFixed(2);
-      console.log(`  ${index + 1}. ${item.date}: ${item.price.toFixed(2)} 元 (${statusStr})`);
-    });
+  try {
+    const switchResult = await getCurrentPrice(provinceId);
+    const switchCookies = switchResult.cookies || '';
+    
+    const historyData = await getHistoryPrice(provinceId, switchCookies);
+    const currentResult = await getCurrentPrice(provinceId);
+    const currentData = currentResult.data;
+
+    const province = provinces.find((p) => p.value === provinceId);
+    const provinceName = province?.label || '未知';
+
+    const provinceCheck = (currentData as any)?.data?.provinceCheck || {};
+    const fieldName = getFieldNameByOilNumber(oilNumber, provinceCheck);
+    
+    if (!fieldName) {
+      throw new Error(`省份 ${provinceName} 不支持油号 ${oilNumber}`);
+    }
+
+    const historyPrices = Array.isArray(historyData.data?.provinceData)
+      ? historyData.data.provinceData
+      : [];
+    
+    const currentPriceData = (currentData as any)?.data?.provinceData || {};
+
+    const trendData = historyPrices
+      .filter((item: any) => item[fieldName] !== undefined && item[fieldName] !== null)
+      .map((item: any) => {
+        const price = item[fieldName];
+        const date = item.STR_START_DATE || item.queryDate || item.START_DATE || '';
+        const statusField = `${fieldName}_STATUS`;
+        const status = item[statusField] !== undefined ? item[statusField] : 0;
+        return {
+          date,
+          price,
+          status,
+        };
+      })
+      .reverse();
+    
+    const currentPrice = currentPriceData[fieldName];
+    const statusField = `${fieldName}_STATUS`;
+    const currentStatus = currentPriceData[statusField] !== undefined ? currentPriceData[statusField] : 0;
+
+    return {
+      provinceName,
+      cityName,
+      provinceId,
+      oilType: oilNumber,
+      oilName: oilDisplayName,
+      currentPrice,
+      currentStatus,
+      trendData,
+    };
+  } catch (error) {
+    console.log('获取油价数据失败:', error);
+    throw error;
   }
-
-  return {
-    provinceName,
-    cityName,
-    provinceId,
-    oilType,
-    oilName: names.get(oilType) || oilType,
-    currentPrice,
-    currentStatus,
-    trendData,
-  };
 }
 
