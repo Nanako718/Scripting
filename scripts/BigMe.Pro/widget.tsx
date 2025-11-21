@@ -216,62 +216,48 @@ function MediumWidgetView2({ data }: { data: ReturnType<typeof getSubscribe> ext
         </HStack>
       </HStack>
 
-      <VStack
-        padding={{ top: 0, leading:0, bottom: 0, trailing: 0 }}
-        spacing={0}
-        frame={{ minWidth: 0, maxWidth: Infinity }}
-        widgetBackground={{
-          style: theme.cardBackground,
-          shape: {
-            type: "rect",
-            cornerRadius: 30,
-            style: "continuous"
-          }
-        }}
-      >
-        <HStack alignment="top" spacing={8} padding={{ top: 0, leading: 0, bottom: 0, trailing: 0 }}>
-          <VStack alignment="center" frame={{ width: 85, minWidth: 85, maxWidth: 85 }}>
-            <InfoCardItem 
-              title="流量剩余" 
-              value={remainingFlow.value} 
-              unit={remainingFlow.unit}
-              doubleHeight={true}
-              valueColor={theme.remaining}
-            />
-          </VStack>
+      <HStack alignment="top" spacing={8}>
+        <VStack alignment="center" frame={{ width: 85, minWidth: 85, maxWidth: 85 }}>
+          <InfoCardItem 
+            title="流量剩余" 
+            value={remainingFlow.value} 
+            unit={remainingFlow.unit}
+            doubleHeight={true}
+            valueColor={theme.remaining}
+          />
+        </VStack>
 
-          <VStack alignment="leading" spacing={8} frame={{ minWidth: 0, maxWidth: Infinity }}>
-            <HStack alignment="center" spacing={8}>
-              <InfoCardItem 
-                title="上传流量" 
-                value={uploadFlow.value} 
-                unit={uploadFlow.unit}
-                valueColor={theme.upload}
-              />
-              <InfoCardItem 
-                title="下载流量" 
-                value={downloadFlow.value} 
-                unit={downloadFlow.unit}
-                valueColor={theme.download}
-              />
-            </HStack>
-            <HStack alignment="center" spacing={8}>
-              <InfoCardItem 
-                title="已用流量" 
-                value={usedFlow.value} 
-                unit={usedFlow.unit}
-                valueColor={theme.used}
-              />
-              <InfoCardItem 
-                title="总流量" 
-                value={totalFlow.value} 
-                unit={totalFlow.unit}
-                valueColor={theme.total}
-              />
-            </HStack>
-          </VStack>
-        </HStack>
-      </VStack>
+        <VStack alignment="leading" spacing={8} frame={{ minWidth: 0, maxWidth: Infinity }}>
+          <HStack alignment="center" spacing={8}>
+            <InfoCardItem 
+              title="上传流量" 
+              value={uploadFlow.value} 
+              unit={uploadFlow.unit}
+              valueColor={theme.upload}
+            />
+            <InfoCardItem 
+              title="下载流量" 
+              value={downloadFlow.value} 
+              unit={downloadFlow.unit}
+              valueColor={theme.download}
+            />
+          </HStack>
+          <HStack alignment="center" spacing={8}>
+            <InfoCardItem 
+              title="已用流量" 
+              value={usedFlow.value} 
+              unit={usedFlow.unit}
+              valueColor={theme.used}
+            />
+            <InfoCardItem 
+              title="总流量" 
+              value={totalFlow.value} 
+              unit={totalFlow.unit}
+              valueColor={theme.total}
+            />
+          </HStack>
+        </VStack>
+      </HStack>
     </VStack>
   );
 }
