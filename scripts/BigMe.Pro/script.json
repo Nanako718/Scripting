@@ -1,0 +1,28 @@
+{
+  "color" : "rgba(0, 122, 255, 1)",
+  "version" : "1.0.0",
+  "author" : {
+    "email" : "2753086015@qq.com",
+    "homepage" : null,
+    "name" : "DTZSGHNR"
+  },
+  "intentInputTypes" : [
+
+  ],
+  "remoteResource" : null,
+  "name" : "BigMe.Pro",
+  "contributors" : [
+
+  ],
+  "description" : "BigMe.Pro airport traffic widget with two UI styles",
+  "localizedNames" : {
+    "zh" : "BigMe.Pro",
+    "en" : "BigMe.Pro"
+  },
+  "localizedDescriptions" : {
+    "zh" : "BigMe.Pro 机场流量小组件，支持两种UI样式，可显示订阅信息、流量使用情况和有效期",
+    "en" : "BigMe.Pro airport traffic widget with two UI styles, displaying subscription info, traffic usage and validity"
+  },
+  "icon" : "antenna.radiowaves.left.and.right",
+  "runInApp" : false
+}
