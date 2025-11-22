@@ -13,15 +13,15 @@
 
     console.log("[10010.cookie] 捕获到 Cookie:", cookie);
 
-    // 写入 cookie
+    // 写入 cookie (全平台兼容)
     function write(key, value) {
-      try { if ($prefs?.setValue) $prefs.setValue(value, key); } catch (_) {}
+      try { if ($prefs?.setValueForKey) $prefs.setValueForKey(value, key); } catch (_) {}
       try { if ($persistentStore?.write) $persistentStore.write(value, key); } catch (_) {}
       try { if ($store?.put) $store.put(value, key); } catch (_) {}
       try { if ($task?.write) $task.write(value, key); } catch (_) {}
     }
 
-    // 发送通知
+    // 通知 (兼容 QX / Loon / Surge)
     function notify(title, subtitle, body) {
       try { if ($notification?.post) $notification.post(title, subtitle, body); } catch (_) {}
       try { if ($notify) $notify(title, subtitle, body); } catch (_) {}
@@ -29,7 +29,7 @@
 
     write("10010.cookie", cookie);
     console.log("[10010.cookie] 已写入 10010.cookie");
-    notify("10010 Cookie 更新", "Cookie 已成功保存", "已自动抓取并保存中国联通 Cookie");
+    notify("10010 Cookie 更新", "Cookie 已成功保存", "已写入持久化存储");
 
   } catch (e) {
     console.log("[10010.cookie] 脚本错误:", e);
