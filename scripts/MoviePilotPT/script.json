@@ -25,7 +25,7 @@
 
   ],
   "description" : "MoviePilot PT 站点信息小组件",
-  "version" : "1.0.0",
+  "version" : "1.0.1",
   "name" : "MoviePilotPT",
   "color" : "rgba(0, 122, 255, 1)",
   "localizedDescriptions" : {

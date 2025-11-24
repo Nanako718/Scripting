@@ -370,8 +370,8 @@ function StatCard({
         frame={{ minWidth: 0, maxWidth: Infinity }}
         widgetBackground={{
           style: {
-            light: "rgba(0, 122, 255, 0.1)",
-            dark: "rgba(64, 156, 255, 0.12)",
+            light: "rgba(30, 102, 245, 0.1)",
+            dark: "rgba(140, 170, 238, 0.12)",
           },
           shape: {
             type: "rect",
@@ -393,8 +393,8 @@ function StatCard({
             font={15}
             fontWeight="medium"
             foregroundStyle={{
-              light: "#666666",
-              dark: "#D1D1D6",
+              light: "#5c5f77",
+              dark: "#b5bfe2",
             }}
             lineLimit={1}
             minScaleFactor={0.8}
@@ -405,8 +405,8 @@ function StatCard({
             font={15}
             fontWeight="bold"
             foregroundStyle={{
-              light: "#000000",
-              dark: "#F2F2F7",
+              light: "#4c4f69",
+              dark: "#c6d0f5",
             }}
             lineLimit={1}
             minScaleFactor={0.6}
@@ -426,9 +426,9 @@ function StatCard({
       frame={{ minWidth: 0, maxWidth: Infinity }}
       widgetBackground={{
         style: {
-          light: "rgba(0, 122, 255, 0.1)",
-          dark: "rgba(64, 156, 255, 0.12)",
-        },
+          light: "rgba(30, 102, 245, 0.1)",
+          dark: "rgba(140, 170, 238, 0.12)",
+          },
         shape: {
           type: "rect",
           cornerRadius: 6,
@@ -447,8 +447,8 @@ function StatCard({
           font={8}
           fontWeight="medium"
           foregroundStyle={{
-            light: "#666666",
-            dark: "#D1D1D6",
+            light: "#5c5f77",
+            dark: "#b5bfe2",
           }}
           lineLimit={1}
           minScaleFactor={0.8}
@@ -460,8 +460,8 @@ function StatCard({
           font={11}
           fontWeight="bold"
           foregroundStyle={{
-            light: "#000000",
-            dark: "#F2F2F7",
+            light: "#4c4f69",
+            dark: "#c6d0f5",
           }}
           lineLimit={1}
           minScaleFactor={0.6}
@@ -488,8 +488,8 @@ function TableHeader({
       frame={{ minWidth: 0, maxWidth: Infinity }}
       widgetBackground={{
         style: {
-          light: "rgba(0, 0, 0, 0.1)",
-          dark: "rgba(255, 255, 255, 0.08)",
+          light: "rgba(204, 208, 218, 0.5)",
+          dark: "rgba(65, 69, 89, 0.3)",
         },
         shape: {
           type: "rect",
@@ -540,8 +540,8 @@ function SiteTableRow({
       frame={{ minWidth: 0, maxWidth: Infinity }}
       widgetBackground={{
         style: {
-          light: "rgba(0, 0, 0, 0.03)",
-          dark: "rgba(255, 255, 255, 0.05)",
+          light: "rgba(204, 208, 218, 0.3)",
+          dark: "rgba(65, 69, 89, 0.15)",
         },
         shape: {
           type: "rect",
@@ -567,8 +567,8 @@ function SiteTableRow({
         font={9}
         fontWeight="medium"
         foregroundStyle={{
-          light: "#34C759",
-          dark: "#4CD964",
+          light: "#40a02b",
+          dark: "#a6d189",
         }}
         frame={{ width: 60 }}
         lineLimit={1}
@@ -582,8 +582,8 @@ function SiteTableRow({
         font={9}
         fontWeight="medium"
         foregroundStyle={{
-          light: "#FF3B30",
-          dark: "#FF6B6B",
+          light: "#d20f39",
+          dark: "#e78284",
         }}
         frame={{ width: 60 }}
         lineLimit={1}
@@ -655,8 +655,8 @@ function MediumWidgetView({
           font={12}
           fontWeight="medium"
           foregroundStyle={{
-            light: "#007AFF",
-            dark: "#5AC8FA",
+            light: "#1e66f5",
+            dark: "#8caaee",
           }}
         />
         <Text
@@ -678,8 +678,8 @@ function MediumWidgetView({
           value={statistic.totalUpload}
           icon="arrow.up.circle.fill"
           iconColor={{
-            light: "#007AFF",
-            dark: "#5AC8FA",
+            light: "#1e66f5",
+            dark: "#8caaee",
           }}
           compact={true}
         />
@@ -688,8 +688,8 @@ function MediumWidgetView({
           value={statistic.totalDownload}
           icon="arrow.down.circle.fill"
           iconColor={{
-            light: "#FF3B30",
-            dark: "#FF453A",
+            light: "#d20f39",
+            dark: "#e78284",
           }}
           compact={true}
         />
@@ -702,8 +702,8 @@ function MediumWidgetView({
           value={statistic.totalSeeding}
           icon="leaf.fill"
           iconColor={{
-            light: "#34C759",
-            dark: "#30D158",
+            light: "#40a02b",
+            dark: "#a6d189",
           }}
           compact={true}
         />
@@ -712,8 +712,8 @@ function MediumWidgetView({
           value={statistic.totalSeedingSize}
           icon="externaldrive.fill"
           iconColor={{
-            light: "#FF9500",
-            dark: "#FF9F0A",
+            light: "#fe640b",
+            dark: "#ef9f76",
           }}
           compact={true}
         />
@@ -760,8 +760,8 @@ function LargeWidgetView({
             font={20}
             fontWeight="medium"
             foregroundStyle={{
-              light: "#007AFF",
-              dark: "#5AC8FA",
+              light: "#1e66f5",
+              dark: "#8caaee",
             }}
           />
           <VStack alignment="leading" spacing={1} frame={{ minWidth: 0, maxWidth: Infinity }} padding={{ leading: -150 }}>
@@ -788,16 +788,16 @@ function LargeWidgetView({
               font={9}
               fontWeight="medium"
               foregroundStyle={{
-                light: "#999999",
-                dark: "#98989D",
+                light: "#7c7f93",
+                dark: "#949cbb",
               }}
             />
             <Text
               font={10}
               fontWeight="medium"
               foregroundStyle={{
-                light: "#999999",
-                dark: "#98989D",
+                light: "#7c7f93",
+                dark: "#949cbb",
               }}
               lineLimit={1}
             >
@@ -817,8 +817,8 @@ function LargeWidgetView({
             value={statistic.totalUpload}
             icon="arrow.up.circle.fill"
             iconColor={{
-              light: "#007AFF",
-              dark: "#5AC8FA",
+              light: "#1e66f5",
+              dark: "#8caaee",
             }}
           />
           <StatCard
@@ -826,8 +826,8 @@ function LargeWidgetView({
             value={statistic.totalDownload}
             icon="arrow.down.circle.fill"
             iconColor={{
-              light: "#FF3B30",
-              dark: "#FF453A",
+              light: "#d20f39",
+              dark: "#e78284",
             }}
           />
           <StatCard
@@ -835,8 +835,8 @@ function LargeWidgetView({
             value={statistic.totalSeeding}
             icon="leaf.fill"
             iconColor={{
-              light: "#34C759",
-              dark: "#30D158",
+              light: "#40a02b",
+              dark: "#a6d189",
             }}
           />
           <StatCard
@@ -844,8 +844,8 @@ function LargeWidgetView({
             value={statistic.totalSeedingSize}
             icon="externaldrive.fill"
             iconColor={{
-              light: "#FF9500",
-              dark: "#FF9F0A",
+              light: "#fe640b",
+              dark: "#ef9f76",
             }}
           />
         </HStack>
@@ -877,8 +877,8 @@ function LargeWidgetView({
                   <Text
                     font={9}
                     foregroundStyle={{
-                      light: "#999999",
-                      dark: "#98989D",
+                      light: "#7c7f93",
+                      dark: "#949cbb",
                     }}
                   >
                     还有 {validSites.length - 8} 个站点...
@@ -907,12 +907,12 @@ function WidgetView({
   statistic: SiteStatistic
 }) {
   const titleStyle: DynamicShapeStyle = {
-    light: "#666666",
-    dark: "#D1D1D6",
+    light: "#5c5f77",
+    dark: "#b5bfe2",
   }
   const descStyle: DynamicShapeStyle = {
-    light: "#000000",
-    dark: "#F2F2F7",
+    light: "#4c4f69",
+    dark: "#c6d0f5",
   }
 
   // 只支持 medium 和 large 两种尺寸
