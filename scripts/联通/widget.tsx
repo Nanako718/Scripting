@@ -255,34 +255,34 @@ function formatFlowValue(value: number, unit: string = "MB"): { balance: string;
   }
 }
 
-// 卡片主题配置 - 优化配色，更现代柔和
+// 卡片主题配置 - Catppuccin 配色方案
 const cardThemes = {
   fee: {
-    background: { light: "rgba(0, 122, 255, 0.12)", dark: "rgba(64, 156, 255, 0.18)" } as DynamicShapeStyle,
-    iconColor: { light: "#007AFF", dark: "#64B5FF" } as DynamicShapeStyle,
-    titleColor: { light: "#0066CC", dark: "#8FC7FF" } as DynamicShapeStyle,
-    descColor: { light: "#0052A3", dark: "#B8DCFF" } as DynamicShapeStyle,
+    background: { light: "rgba(140, 170, 238, 0.12)", dark: "rgba(140, 170, 238, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#8caaee", dark: "#8caaee" } as DynamicShapeStyle,
+    titleColor: { light: "#737994", dark: "#99d1db" } as DynamicShapeStyle,
+    descColor: { light: "#51576d", dark: "#c6d0f5" } as DynamicShapeStyle,
     icon: "creditcard.fill"
   },
   voice: {
-    background: { light: "rgba(52, 199, 89, 0.12)", dark: "rgba(48, 209, 88, 0.18)" } as DynamicShapeStyle,
-    iconColor: { light: "#34C759", dark: "#66D98F" } as DynamicShapeStyle,
-    titleColor: { light: "#2BA84A", dark: "#7FE99F" } as DynamicShapeStyle,
-    descColor: { light: "#1F7A35", dark: "#9FECB3" } as DynamicShapeStyle,
+    background: { light: "rgba(166, 209, 137, 0.12)", dark: "rgba(166, 209, 137, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#a6d189", dark: "#a6d189" } as DynamicShapeStyle,
+    titleColor: { light: "#626880", dark: "#81c8be" } as DynamicShapeStyle,
+    descColor: { light: "#51576d", dark: "#c6d0f5" } as DynamicShapeStyle,
     icon: "phone.fill"
   },
   flow: {
-    background: { light: "rgba(255, 149, 0, 0.12)", dark: "rgba(255, 159, 10, 0.18)" } as DynamicShapeStyle,
-    iconColor: { light: "#FF9500", dark: "#FFB340" } as DynamicShapeStyle,
-    titleColor: { light: "#CC7700", dark: "#FFC973" } as DynamicShapeStyle,
-    descColor: { light: "#995500", dark: "#FFD99F" } as DynamicShapeStyle,
+    background: { light: "rgba(239, 159, 118, 0.12)", dark: "rgba(239, 159, 118, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#ef9f76", dark: "#ef9f76" } as DynamicShapeStyle,
+    titleColor: { light: "#737994", dark: "#e5c890" } as DynamicShapeStyle,
+    descColor: { light: "#51576d", dark: "#c6d0f5" } as DynamicShapeStyle,
     icon: "antenna.radiowaves.left.and.right"
   },
   otherFlow: {
-    background: { light: "rgba(175, 82, 222, 0.12)", dark: "rgba(191, 90, 242, 0.18)" } as DynamicShapeStyle,
-    iconColor: { light: "#AF52DE", dark: "#C77AF5" } as DynamicShapeStyle,
-    titleColor: { light: "#8B41B1", dark: "#D9A5F8" } as DynamicShapeStyle,
-    descColor: { light: "#6B3185", dark: "#E8C5FB" } as DynamicShapeStyle,
+    background: { light: "rgba(202, 158, 230, 0.12)", dark: "rgba(202, 158, 230, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#ca9ee6", dark: "#ca9ee6" } as DynamicShapeStyle,
+    titleColor: { light: "#737994", dark: "#babbf1" } as DynamicShapeStyle,
+    descColor: { light: "#51576d", dark: "#c6d0f5" } as DynamicShapeStyle,
     icon: "wifi.circle.fill"
   }
 }
