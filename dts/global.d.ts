@@ -1,4 +1,4 @@
-import { Color, ColorScheme } from "scripting"
+import { Color, ColorScheme, Size, VirtualNode, KeyboardType, Edge, Point, KeywordPoint } from "scripting"
 
 declare global {
 
@@ -42,70 +42,70 @@ declare global {
    * Provides the information abouts the device, also some methods to use the capabilities of the device.
    *
    */
-  declare namespace Device {
+  namespace Device {
     /**
      * Model of the device, e.g. "iPhone".
      */
-    readonly const model: string
+    const model: string
     /**
      * The current version of the operating system.
      */
-    readonly const systemVersion: string
+    const systemVersion: string
     /**
      * The name of the operating system running on the device.
      */
-    readonly const systemName: string
-    readonly const isiPad: boolean
-    readonly const isiPhone: boolean
-    readonly const screen: {
+    const systemName: string
+    const isiPad: boolean
+    const isiPhone: boolean
+    const screen: {
       width: number
       height: number
       scale: number
     }
-    readonly const batteryState: "full" | "charging" | "unplugged" | "unknown"
-    readonly const batteryLevel: number
-    readonly const isLandscape: boolean
-    readonly const isPortrait: boolean
-    readonly const isFlat: boolean
-    readonly const colorScheme: ColorScheme
+    const batteryState: "full" | "charging" | "unplugged" | "unknown"
+    const batteryLevel: number
+    const isLandscape: boolean
+    const isPortrait: boolean
+    const isFlat: boolean
+    const colorScheme: ColorScheme
     /**
      * A boolean value that indicates whether the process is an iPhone or iPad app running on a Mac.
      */
-    readonly const isiOSAppOnMac: boolean
+    const isiOSAppOnMac: boolean
     /**
      * The current locale used by the system, such as `"en_US"`.
      */
-    readonly const systemLocale: string
+    const systemLocale: string
     /**
      * User preferred languages, such as `["en-US", "zh-Hans-CN"]`.
      */
-    readonly const preferredLanguages: string[]
+    const preferredLanguages: string[]
     /**
      * User preferred locales, such as `["en-US", "zh-Hans-CN"]`.
      * @deprecated Use `Device.preferredLanguages` instead.
      */
-    readonly const systemLocales: string[]
+    const systemLocales: string[]
     /**
      * The current locale language tag, such as `"en-US"`
      */
-    readonly const systemLanguageTag: string
+    const systemLanguageTag: string
     /**
      * The current locale language code, such as `"en"`
      */
-    readonly const systemLanguageCode: string
+    const systemLanguageCode: string
     /**
      * The current locale country code, such as `"US"`
      */
-    readonly const systemCountryCode: string | undefined
+    const systemCountryCode: string | undefined
     /**
      * The current locale script code, such as `"Hans"` of `"zh_CN_Hans"`
      */
-    readonly const systemScriptCode: string | undefined
+    const systemScriptCode: string | undefined
 
     /**
      * Retrieve the current wakelock status.
      */
-    readonly const isWakeLockEnabled: Promise<boolean>
+    const isWakeLockEnabled: Promise<boolean>
 
     /**
      * Enable or disable the wakelock. This method is only available in Scripting app.
@@ -162,7 +162,7 @@ declare global {
    * This class represents the binary data, it provides some methods to convert the data to different formats.
    * It is used to represent the data in a more convenient way, such as converting to base64 or hex string, or reading from a file.
    */
-  declare class Data {
+  class Data {
     /**
      * The length of the data in bytes.
      */
@@ -213,7 +213,7 @@ declare global {
      * Append another Data instance to this data.
      * @param other The Data instance to append.
      */
-    append(other: Data)
+    append(other: Data): void
     /**
      * Get a byte array of the data.
      * @returns Returns a `Uint8Array` containing the bytes of the data, or `null` if the data is empty or cannot be converted to bytes.
@@ -245,6 +245,12 @@ declare global {
      * @returns Returns a string representation of the data, or `null` if the data is empty or cannot be converted to a string.
      */
     toRawString(encoding?: Encoding): string | null
+    /**
+     * Get a decoded string representation of the data.
+     * @param encoding The encoding of the string, defaults to `utf-8`.
+     * @returns Returns a decoded string representation of the data, it will replace any bad characters with the Unicode replacement character.
+     */
+    toDecodedString(encoding?: "utf8" | "ascii"): string
     /**
      * Get an array of integers representing the bytes of the data.
      * @returns Returns an array of integers representing the bytes of the data.
@@ -325,7 +331,7 @@ declare global {
   /**
    * A module for encrypting data using various algorithms.
    */
-  declare namespace Crypto {
+  namespace Crypto {
     /**
      * Generates a symmetric key for encryption.
      * @param size The size of the symmetric key in bits. Defaults to 256 bits.
@@ -467,7 +473,7 @@ declare global {
   /**
    * A module for generating UUID string.
    */
-  declare namespace UUID {
+  namespace UUID {
     /**
      * Generate a UUID string.
      */
@@ -475,9 +481,26 @@ declare global {
   }
 
   /**
+   * A class for creating UIImageSymbolConfiguration instances.
+   * These instances can be used to configure the appearance of a symbol image.
+   */
+  class UIImageSymbolConfiguration {
+    static preferringMonochrome(): UIImageSymbolConfiguration
+    static preferringMulticolor(): UIImageSymbolConfiguration
+    static scale(value: "default" | "large" | "medium" | "small" | "unspecified"): UIImageSymbolConfiguration
+    static weight(value: "ultraLight" | "thin" | "light" | "regular" | "medium" | "semibold" | "bold" | "heavy" | "black"): UIImageSymbolConfiguration
+    static pointSize(value: number): UIImageSymbolConfiguration
+    static paletteColors(value: Color[]): UIImageSymbolConfiguration
+    static hierarchicalColor(value: Color): UIImageSymbolConfiguration
+    static variableValueMode(value: "automatic" | "color" | "draw"): UIImageSymbolConfiguration
+    static colorRenderingMode(value: "automatic" | "flat" | "gradient"): UIImageSymbolConfiguration
+    static locale(identifier: string): UIImageSymbolConfiguration
+  }
+
+  /**
    * UIImage instance for displaying or saving an Image.
    */
-  declare class UIImage {
+  class UIImage {
     /**
      * The width of the image.
      */
@@ -486,6 +509,123 @@ declare global {
      * The height of the image.
      */
     readonly height: number
+    /**
+     * The scale of the image.
+     */
+    readonly scale: number
+    /**
+     * The orientation of the image.
+     */
+    readonly imageOrientation: "up" | "down" | "left" | "right" | "upMirrored" | "downMirrored" | "leftMirrored" | "rightMirrored" | "unknown"
+    /**
+     * Whether the image is a SFSymbol image.
+     */
+    readonly isSymbolImage: boolean
+    /**
+     * The rendering mode of the image.
+     */
+    readonly renderingMode: "automatic" | "alwaysOriginal" | "alwaysTemplate" | "unknown"
+    /**
+     * The resizing mode of the image.
+     */
+    readonly resizingMode: "tile" | "stretch" | "unknown"
+    /**
+     * The cap insets of the image.
+     */
+    readonly capInsets: {
+      top: number
+      left: number
+      bottom: number
+      right: number
+    }
+    /**
+     * Whether the image is flipped for right-to-left layout direction.
+     */
+    readonly flipsForRightToLeftLayoutDirection: boolean
+
+    /**
+     * Creates a thumbnail of the image with the specified size.
+     * @param size The size of the thumbnail.
+     * @param size.width The width of the thumbnail.
+     * @param size.height The height of the thumbnail.
+     * @returns A new UIImage instance representing the thumbnail, or null if the thumbnail cannot be created.
+     */
+    preparingThumbnail(size: Size): UIImage | null
+
+    /**
+     * Returns a new version of the image with the specified baseline offset. This is useful for aligning text to the bottom of an image.
+     * @param fromBottom The baseline offset from the bottom of the image.
+     * @returns A new UIImage instance with the specified baseline offset.
+     */
+    withBaselineOffset(fromBottom: number): UIImage
+
+    /**
+     * Flips the orientation of the image horizontally.
+     * @returns A new UIImage instance with horizontally flipped orientation.
+     */
+    withHorizontallyFlippedOrientation(): UIImage
+
+    /**
+     * Returns a new version of the image with a tint color that uses the specified rendering mode.
+     * @param color The tint color to apply to the image.
+     * @param renderingMode The rendering mode to use when applying the tint color. The default value is "automatic".
+     */
+    withTintColor(color: Color, renderingMode?: "automatic" | "alwaysOriginal" | "alwaysTemplate"): UIImage | null
+
+    /**
+     * Returns a new version of the image with the specified rendering mode.
+     */
+    withRenderingMode(renderingMode: "automatic" | "alwaysOriginal" | "alwaysTemplate"): UIImage | null
+
+    /**
+     * Returns a new version of the image with the specified cap insets and resizing mode.
+     * @param capInsets The cap insets to apply to the image.
+     * @param resizingMode The resizing mode to use when applying the cap insets. The default value is "tile".
+     */
+    resizableImage(capInsets: {
+      top: number
+      left: number
+      bottom: number
+      right: number
+    }, resizingMode?: "tile" | "stretch"): UIImage | null
+
+    /**
+     * Returns a new version of the image rendered in a circle with the specified radius and fitEntireImage flag.
+     * @param radius The radius of the circle in points. If this parameter is not specified, the circle will use the shortest dimension of the image when fitEntireImage is false, or the longest dimension of the image when fitEntireImage is true.
+     * @param fitEntireImage Whether to fit the entire image inside the circle. The default value is true.
+     */
+    renderedInCircle(radius?: number | null, fitEntireImage?: boolean): UIImage
+
+    /**
+     * Returns a new version of the image rendered in a rectangle with the specified size, source point, and source size.
+     * @param size The size of the rectangle in points.
+     * @param source The source point and source size of the image.
+     * @param source.position The source point of the image.
+     * @param source.size The source size of the image.
+     * @returns A new version of the image rendered in a rectangle with the specified size, source point, and source size, or null if the rendering fails.
+     */
+    renderedIn(
+      size: {
+        width: number
+        height: number
+      },
+      source?: {
+        position?: {
+          x: number
+          y: number
+        } | null
+        size?: {
+          width: number
+          height: number
+        } | null
+      }
+    ): UIImage | null
+
+    /**
+     * Returns a new version of the image with the specified symbol configuration.
+     * @param config The symbol configuration to apply to the image. If this parameter is an array, all configurations in the array will be applied to the image.
+     */
+    applySymbolConfiguration(config: UIImageSymbolConfiguration | UIImageSymbolConfiguration[]): UIImage | null
 
     /**
      * Converts the image to JPEG data.
@@ -498,7 +638,6 @@ declare global {
      * @returns The PNG data, or null if the conversion fails.
      */
     toPNGData(): Data | null
-
     /**
      * Converts the image to a JPEG base64 string.
      * @param compressionQuality The compression quality of the JPEG image. The value should be between 0 and 1. The default value is 1.
@@ -510,10 +649,38 @@ declare global {
      * @returns The PNG base64 string, or null if the conversion fails.
      */
     toPNGBase64String(): string | null
-
-    static fromData(data: Data): UIImage | null
+    /**
+     * Create a new UIImage instance from a Data instance.
+     * @param data The Data instance to convert to UIImage.
+     * @param scale The scale factor to apply to the image. The default value is 1.
+     * @returns A new UIImage instance, or null if the Data instance cannot be converted to an image.
+     */
+    static fromData(data: Data, scale?: number): UIImage | null
+    /**
+     * Create a new UIImage instance from a file path.
+     * @param filePath The file path to the image file.
+     * @returns A new UIImage instance, or null if the file does not exist or cannot be read.
+     */
     static fromFile(filePath: string): UIImage | null
+    /**
+     * Create a new UIImage instance from a base64 string.
+     * @param base64String The base64 string to convert to UIImage.
+     * @returns A new UIImage instance, or null if the base64 string is empty or cannot be converted to an image.
+     */
     static fromBase64String(base64String: string): UIImage | null
+    /**
+     * Create a new UIImage instance from an SFSymbol.
+     * @param name The name of the SFSymbol.
+     * @returns A new UIImage instance, or null if the SFSymbol is not found.
+     */
+    static fromSFSymbol(name: string): UIImage | null
+    /**
+     * Create a new UIImage instance from a network URL.
+     * @param url The URL to fetch the image from.
+     * @returns A new UIImage instance, or null if the URL is invalid or cannot be fetched.
+     * @throws An error if the URL is invalid or cannot be fetched.
+     */
+    static fromURL(url: string): Promise<UIImage | null>
   }
 
   /**
@@ -525,7 +692,7 @@ declare global {
    * @deprecated
    * Use `Pasteboard` instead
    */
-  declare namespace Clipboard {
+  namespace Clipboard {
     /**
      * Copy text to clipboard.
      * @param text Text content
@@ -548,7 +715,7 @@ declare global {
    * If you want to quickly paste text from other apps, you can go to
    * **Settings > Scripting > Paste from Other Apps > Allow**
    */
-  declare namespace Pasteboard {
+  namespace Pasteboard {
 
     /**
      * A pasteboard item is a map of UTType to string, UIImage, or Data.
@@ -658,7 +825,7 @@ declare global {
   /**
    * Present a website either in-app or leaving the app and opening the system default browser.
    */
-  declare namespace Safari {
+  namespace Safari {
     /**
      * Open a website in the system default browser.
      * @param url URL of website to present.
@@ -677,7 +844,7 @@ declare global {
   /**
    * This interface provides authentication with biometrics such as fingerprint or facial recognition.
    */
-  declare namespace LocalAuth {
+  namespace LocalAuth {
     /**
      * Check whether authentication can proceed for any policies.
      */
@@ -703,7 +870,7 @@ declare global {
   /**
    * Create previews of texts, images or files to use inside your script.
    */
-  declare namespace QuickLook {
+  namespace QuickLook {
     /**
      * Displays a preview of a text string. `fullscreen` defaults to false. The promise will be resolved after the preview is dismissed.
      */
@@ -721,7 +888,7 @@ declare global {
   /**
    * This interface provides some shortcut methods for displaying dialog boxes.
    */
-  declare namespace Dialog {
+  namespace Dialog {
     /**
      * Display an Alert UI.
      */
@@ -823,7 +990,7 @@ declare global {
   /**
    * The interface to store data in Keychain.
    */
-  declare namespace Keychain {
+  namespace Keychain {
     /**
      * Encrypts and saves the `key` with the given `value`.
      *
@@ -868,7 +1035,7 @@ declare global {
   /**
    * Haptic feedback provides a tactile response, such as a tap, that draws attention and reinforces both actions and events.
    */
-  declare namespace HapticFeedback {
+  namespace HapticFeedback {
     /**
      * Invoke a brief vibration.
      */
@@ -990,7 +1157,7 @@ declare global {
   /**
    * Getting the current location of your device.
    */
-  declare namespace Location {
+  namespace Location {
 
     /**
      * A Boolean value that indicates whether a widget is eligible to receive location updates.
@@ -1059,7 +1226,7 @@ declare global {
   /**
    * A convenient interface to the contents of the file system, and the primary means of interacting with it.
    */
-  declare namespace FileManager {
+  namespace FileManager {
     /**
      * Directory where scripts are stored.
      */
@@ -1327,7 +1494,7 @@ declare global {
   /**
    * You can share data from your script using this interface.
    */
-  declare namespace ShareSheet {
+  namespace ShareSheet {
     /**
      * Present a ShareSheet UI.
      * @param items The array of data on which to perform the activity. You can share text, url, or UIImage.
@@ -1339,7 +1506,7 @@ declare global {
   /**
    * Parse the QR code image file, or open the scan code page to scan.
    */
-  declare namespace QRCode {
+  namespace QRCode {
     /**
      * Parse QRCode file.
      * @example
@@ -1366,7 +1533,7 @@ declare global {
   /**
    * The interface that manages access and changes to the user’s photo library.
    */
-  declare namespace Photos {
+  namespace Photos {
     /**
      * Get the latest specified number of photos from the Photos app.
      * @param count The number of photos you want.
@@ -1579,7 +1746,7 @@ declare global {
   /**
    * Pick files from Files app.
    */
-  declare namespace DocumentPicker {
+  namespace DocumentPicker {
     /**
      * Pick files from documents.
      * @example
@@ -1636,6 +1803,24 @@ declare global {
   }
 
   /**
+   * This namespace contains methods for picking fonts.
+   */
+  namespace FontPicker {
+
+    /**
+     * Pick a font.
+     * @example
+     * ```ts
+     * const fontPostscriptName = await FontPicker.pickFont()
+     * if (fontPostscriptName == null) {
+     *   // user canceled the picker
+     * }
+     * ```
+     */
+    function pickFont(): Promise<string | null>
+  }
+
+  /**
    * Providing a persistent store for simple data. All data is deafult stored in current script's private domain, and you can set `shared` option to true to store data in shared domain, so the other scripts can access it.
    *
    * Data is persisted to disk asynchronously.
@@ -1647,7 +1832,7 @@ declare global {
    *  - `JSON`
    *  - `Data` (use `setData` or `getData` methods)
    */
-  declare namespace Storage {
+  namespace Storage {
     /**
      * Saves a `value` to persistent storage in the background.
      * @param key The key for the value to be stored.
@@ -1703,7 +1888,7 @@ declare global {
   /**
    * An object that displays interactive web content, such as for an in-app browser.
    */
-  declare class WebViewController {
+  class WebViewController {
     /**
      * When the web view performs a request to load a resource, the function can determine whether or not to allow the request. 
      */
@@ -1880,7 +2065,7 @@ declare global {
   /**
    * A class that defines the end of a recurrence rule.
    */
-  declare class RecurrenceEnd {
+  class RecurrenceEnd {
     /**
      *  The date when the recurrence ends. If the recurrence ends by count, this value is `null`.
      */
@@ -1902,7 +2087,7 @@ declare global {
   /**
    * A class that describes the pattern for a recurring event.
    */
-  declare class RecurrenceRule {
+  class RecurrenceRule {
     /**
      * The identifier for the recurrence rule’s calendar.
      */
@@ -2035,7 +2220,7 @@ declare global {
     | "event"
     | "reminder"
 
-  declare class CalendarSource {
+  class CalendarSource {
     /**
      * The source type representing the account to which this calendar belongs.
      */
@@ -2058,7 +2243,7 @@ declare global {
   /**
    * The `Calendar` API allows you to interact with iOS calendars, enabling operations like retrieving default calendars, creating custom calendars, and managing calendar settings and events.
    */
-  declare class Calendar {
+  class Calendar {
     /**
      * A unique identifier for the calendar.
      */
@@ -2160,7 +2345,7 @@ declare global {
   /**
    * The `Reminder` API allows you to create, edit, and manage reminders in a calendar. This includes setting titles, due dates, priorities, and recurrence rules.
    */
-  declare class Reminder {
+  class Reminder {
     /**
      * A unique identifier for the reminder.
      */
@@ -2222,11 +2407,11 @@ declare global {
     /**
      * Adds a recurrence rule to the recurrence rule array.
      */
-    addRecurrenceRule(rule: RecurrenceRule)
+    addRecurrenceRule(rule: RecurrenceRule): void
     /**
      * Removes a recurrence rule from the recurrence rule array.
      */
-    removeRecurrenceRule(rule: RecurrenceRule)
+    removeRecurrenceRule(rule: RecurrenceRule): void
     /**
      * Removes the reminder from the calendar.
      */
@@ -2341,7 +2526,7 @@ declare global {
   /**
    * The `CalendarEvent` API enables you to create and manage events in iOS calendars, with properties like title, location, dates, attendees, and recurrence.
    */
-  declare class CalendarEvent {
+  class CalendarEvent {
     /**
      * A unique identifier for the event.
      */
@@ -2395,15 +2580,15 @@ declare global {
      * A Boolean value that indicates whether the event has recurrence rules.
      */
     readonly hasRecurrenceRules: boolean
-    constructor(): CalendarEvent
+    new(): CalendarEvent
     /**
      * Adds a recurrence rule to the recurrence rule array.
      */
-    addRecurrenceRule(rule: RecurrenceRule)
+    addRecurrenceRule(rule: RecurrenceRule): void
     /**
      * Removes a recurrence rule from the recurrence rule array.
      */
-    removeRecurrenceRule(rule: RecurrenceRule)
+    removeRecurrenceRule(rule: RecurrenceRule): void
     /**
      * Removes an event or recurring events from the calendar.
      */
@@ -2432,11 +2617,11 @@ declare global {
   /**
    * The WebSocket object provides the API for creating and managing a WebSocket connection to a server, as well as for sending and receiving data on the connection.
    */
-  declare class WebSocket {
+  class WebSocket {
     /**
      * The WebSocket() constructor returns a new WebSocket object and immediately attempts to establish a connection to the specified WebSocket URL.
      */
-    constructor(url: string): WebSocket
+    new(url: string): WebSocket
     readonly url: string
     onopen?: () => void
     onerror?: (error: Error) => void
@@ -2454,12 +2639,12 @@ declare global {
     close(code?: 1000 | 1001 | 1002 | 1003, reason?: string): void
     addEventListener(event: "open", listener: () => void): void
     addEventListener(event: "error", listener: (error: Error) => void): void
-    addEventListener(event: "message", listener: (message: string | Data) => void)
-    addEventListener(event: "close", listener: (reason?: string) => void)
+    addEventListener(event: "message", listener: (message: string | Data) => void): void
+    addEventListener(event: "close", listener: (reason?: string) => void): void
     removeEventListener(event: "open", listener: () => void): void
     removeEventListener(event: "error", listener: (error: Error) => void): void
-    removeEventListener(event: "message", listener: (message: string | Data) => void)
-    removeEventListener(event: "close", listener: (reason?: string) => void)
+    removeEventListener(event: "message", listener: (message: string | Data) => void): void
+    removeEventListener(event: "close", listener: (reason?: string) => void): void
   }
 
   type DurationInSeconds = number
@@ -2468,7 +2653,7 @@ declare global {
    * The shared audio session instance.
    * An audio session acts as an intermediary between your app and the operating system — and, in turn, the underlying audio hardware.
    */
-  declare namespace SharedAudioSession {
+  namespace SharedAudioSession {
 
     type AudioSessionSetActiveOptions = "notifyOthersOnDeactivation"
 
@@ -2581,13 +2766,13 @@ declare global {
   *  - `maxWithOthers`: An option that indicates whether audio from this session mixes with audio from active sessions in other audio apps.
   *  - `duckOthers`: An option that reduces the volume of other audio sessions while audio from this session plays.
   *  - `interruptSpokenAudioAndMixWithOthers`: An option that determines whether to pause spoken audio content from other sessions when your app plays its audio.
-  *  - `allowBluetooth`: An option that determines whether Bluetooth hands-free devices appear as available input routes.
+  *  - `allowBluetoothHFP`: An option that determines whether Bluetooth hands-free devices appear as available input routes.
   *  - `allowBluetoothA2DP`: An option that determines whether you can stream audio from this session to Bluetooth devices that support the Advanced Audio Distribution Profile (A2DP).
   *  - `allowAirplay`: An option that determines whether you can stream audio from this session to AirPlay devices.
   *  - `defaultToSpeaker`: An option that determines whether audio from the session defaults to the built-in speaker instead of the receiver.
   *  - `overrideMutedMicrophoneInterruption`: An option that indicates whether the system interrupts the audio session when it mutes the built-in microphone.
   */
-  type AudioSessionCategoryOptions = 'mixWithOthers' | 'duckOthers' | 'interruptSpokenAudioAndMixWithOthers' | 'allowBluetooth' | 'allowBluetoothA2DP' | 'allowAirPlay' | 'defaultToSpeaker' | 'overrideMutedMicrophoneInterruption'
+  type AudioSessionCategoryOptions = 'mixWithOthers' | 'duckOthers' | 'interruptSpokenAudioAndMixWithOthers' | 'allowBluetoothHFP' | 'allowBluetoothA2DP' | 'allowAirPlay' | 'defaultToSpeaker' | 'overrideMutedMicrophoneInterruption'
   /**
   * Audio session category identifiers.
   *  - `ambient`: The category for an app in which sound playback is nonprimary — that is, your app also works with the sound turned off.
@@ -2679,7 +2864,7 @@ declare global {
   /**
    * Text To Speech.
    */
-  declare namespace Speech {
+  namespace Speech {
     /**
      * The default pitch value.
      * Set this property to a value within the range of 0.5 for lower pitch to 2.0 for higher pitch. The default value is 1.0.
@@ -2799,7 +2984,7 @@ declare global {
   /**
    * The interface for managing the speech recognizer process.
    */
-  declare namespace SpeechRecognition {
+  namespace SpeechRecognition {
     /**
      * Returns the list of locales that are supported by the speech recognizer.
      */
@@ -3230,7 +3415,7 @@ declare global {
   /**
    * This interface is used to interact with NowPlayingCenter, display NowPlayingInfo and register commands and related handlers.
    */
-  declare namespace MediaPlayer {
+  namespace MediaPlayer {
     /**
      * The current Now Playing information for the default Now Playing info center.
      * To clear the now playing info center dictionary, set it to null.
@@ -3269,7 +3454,7 @@ declare global {
   /**
    * Represents a single metadata item.
    */
-  declare class AVMetadataItem {
+  class AVMetadataItem {
     /**
      * The key of the metadata item.
      */
@@ -3332,7 +3517,7 @@ declare global {
   /**
    * Use for playing audio or video.
    */
-  declare class AVPlayer {
+  class AVPlayer {
     /**
      * Controls the volume of the AVPlayer.
      * Value ranges from `0.0` (muted) to `1.0` (full volume).
@@ -3376,16 +3561,16 @@ declare global {
     /**
      * Pauses the current media playback.
      */
-    pause()
+    pause(): void
     /**
      * Stops the current media playback and resets to the beginning.
      */
-    stop()
+    stop(): void
     /**
      * Releases all resources and removes any observers.
      * Should be called when the player is no longer needed.
      */
-    dispose()
+    dispose(): void
     /**
      * Callback that is called when the media is ready to play.
      */
@@ -3441,7 +3626,7 @@ declare global {
    *  - Record for a specified duration or until the user stops recording
    *  - Pause and resume a recording
    */
-  declare class AudioRecorder {
+  class AudioRecorder {
     /**
      * Creates an audio recorder with settings, it will fail and throw an error if you don't have permission.
      * @param filePath The file system location to record to.
@@ -3633,7 +3818,7 @@ declare global {
    * Sockets created through the manager are retained by the manager. So at the very least, a single strong reference to the manager must be maintained to keep sockets alive.
    * To disconnect a socket and remove it from the manager, either call `SocketIOClient.disconnect()` on the socket.
    */
-  declare class SocketManager {
+  class SocketManager {
     constructor(url: string, config?: SocketManagerConfig)
 
     /**
@@ -3698,7 +3883,7 @@ declare global {
    * // Add some handlers and connect
    * ```
    */
-  declare class SocketIOClient {
+  class SocketIOClient {
     /**
      * The id of this socket.io connect.
      */
@@ -3725,13 +3910,13 @@ declare global {
    * Represents an SSH authentication method.
    * This class provides static methods to create various types of SSH authentication methods, such as password-based and private key-based authentication.
    */
-  declare namespace SSHAuthenticationMethod {
+  class SSHAuthenticationMethod {
     /**
      * Creates a password based authentication method.
      * @param username The username to authenticate with.
      * @param password The password to authenticate with.
      */
-    function passwordBased(username: string, password: string): SSHAuthenticationMethod
+    static passwordBased(username: string, password: string): SSHAuthenticationMethod
     /**
      * Creates a private key based authentication method.
      * @param username The username to authenticate with.
@@ -3739,18 +3924,18 @@ declare global {
      * @param decryptionKey An optional decryption key for the private key, if it is encrypted.
      * @returns An SSHAuthenticationMethod instance
      */
-    function ras(username: string, sshRsa: Data, decryptionKey?: Data): SSHAuthenticationMethod | null
-    function ed25519(username: string, sshEd25519: Data, decryptionKey?: Data): SSHAuthenticationMethod | null
-    function p256(username: string, pemRepresentation: string): SSHAuthenticationMethod | null
-    function p384(username: string, pemRepresentation: string): SSHAuthenticationMethod | null
-    function p521(username: string, pemRepresentation: string): SSHAuthenticationMethod | null
+    static ras(username: string, sshRsa: Data, decryptionKey?: Data): SSHAuthenticationMethod | null
+    static ed25519(username: string, sshEd25519: Data, decryptionKey?: Data): SSHAuthenticationMethod | null
+    static p256(username: string, pemRepresentation: string): SSHAuthenticationMethod | null
+    static p384(username: string, pemRepresentation: string): SSHAuthenticationMethod | null
+    static p521(username: string, pemRepresentation: string): SSHAuthenticationMethod | null
   }
 
   /**
    * Represents a TTY Stdin Writer.
    * This class provides methods to write data to the TTY stdin and change the terminal size.
    */
-  declare class TTYStdinWriter {
+  class TTYStdinWriter {
 
     /**
      * Writes data to the TTY stdin.
@@ -3780,7 +3965,7 @@ declare global {
    * Represents an SFTP client that allows you to interact with an SFTP server.
    * This class provides methods to perform various file operations such as reading directories, creating directories, reading and writing files, and more.
    */
-  declare class SFTPClient {
+  class SFTPClient {
     /**
      * True if the SFTP connection is still open, false otherwise.
      */
@@ -3794,9 +3979,20 @@ declare global {
     /**
      * Reads the contents of a directory at the specified path.
      * @param atPath The path to the directory to read.
-     * @returns A promise that resolves to an array of file and directory names in the specified directory.
+     * @returns A promise that resolves to an array of directory entries.
      */
-    readDirectory(atPath: string): Promise<string[]>
+    readDirectory(atPath: string): Promise<{
+      filename: string
+      longname: string
+      attributes: {
+        size?: number
+        userId?: number
+        groupId?: number
+        accessTime?: Date
+        modificationTime?: Date
+        permissions?: number
+      }
+    }[]>
 
     /**
      * Creates a directory at the specified path.
@@ -3823,11 +4019,10 @@ declare global {
     /**
      * Gets the attributes of a file or directory at the specified path.
      * @param atPath The path to the file or directory whose attributes are to be retrieved.
-     * @returns A promise that resolves to an object containing the attributes of the file or directory, such as size, flag, userId, groupId, accessTime, modificationTime, and permissions. Or rejects with an error if the attributes cannot be retrieved.
+     * @returns A promise that resolves to an object containing the attributes of the file or directory, such as size, userId, groupId, accessTime, modificationTime, and permissions. Or rejects with an error if the attributes cannot be retrieved.
      */
     getAttributes(atPath: string): Promise<{
       size?: number
-      flag?: number
       userId?: number
       groupId?: number
       accessTime?: Date
@@ -3871,7 +4066,7 @@ declare global {
    * Represents an SSH client that allows you to connect to an SSH server and execute commands.
    * This class provides methods for connecting to the server, executing commands, and managing the SSH session.
    */
-  declare class SSHClient {
+  class SSHClient {
     /**
      * Connects to an SSH server using the provided options.
      * @param options The options for connecting to the SSH server.
@@ -3914,11 +4109,11 @@ declare global {
     /**
      * Executes a command on the SSH server and streams the output.
      * @param command The command to execute on the SSH server.
-     * @param onOutput A callback function that is called for each line of output from the command. The function receives the output text and a boolean indicating whether it is standard error output. The function should return `true` to continue receiving output or `false` to stop receiving output.
+     * @param onOutput A callback function that is called for each line of output from the command. The function receives the output data and a boolean indicating whether it is standard error output. The function should return `true` to continue receiving output or `false` to stop receiving output.
      * @param options An optional object containing additional options for the command execution.
      * @returns A promise that resolves when the command execution is complete, or rejects with an error if the command execution fails.
      */
-    executeCommandStream(command: string, onOutput: (text: string, isStderr: boolean) => boolean, options?: {
+    executeCommandStream(command: string, onOutput: (data: Data, isStderr: boolean) => boolean, options?: {
       inShell?: boolean
     }): Promise<void>
 
@@ -3931,7 +4126,7 @@ declare global {
      * @param options.terminalRowHeight The row height of the terminal. Defaults to 24.
      * @param options.terminalPixelWidth The pixel width of the terminal. Defaults to 0.
      * @param options.terminalPixelHeight The pixel height of the terminal. Defaults to 0.
-     * @param options.onOutput A callback function that is called for each line of output from the PTY session. The function receives the output text and a boolean indicating whether it is standard error output. The function should return `true` to continue receiving output or `false` to stop receiving output.
+     * @param options.onOutput A callback function that is called for each line of output from the PTY session. The function receives the output data and a boolean indicating whether it is standard error output. The function should return `true` to continue receiving output or `false` to stop receiving output.
      * @param options.onError An optional callback function that is called when an error occurs in the PTY session. The function receives the error message as a string.
      * @returns A promise that resolves to a TTYStdinWriter instance if the PTY session is successfully opened, or rejects with an error if the PTY session fails to open.
      */
@@ -3942,19 +4137,19 @@ declare global {
       terminalRowHeight?: number
       terminalPixelWidth?: number
       terminalPixelHeight?: number
-      onOutput: (text: string, isStderr: boolean) => boolean
+      onOutput: (data: Data, isStderr: boolean) => boolean
       onError?: (error: string) => void
     }): Promise<TTYStdinWriter>
 
     /**
      * Creates a TTY session and executes the provided closure with input/output streams.
      * @param options An object containing options for the TTY session.
-     * @param options.onOutput A callback function that is called for each line of output from the TTY session. The function receives the output text and a boolean indicating whether it is standard error output. The function should return `true` to continue receiving output or `false` to stop receiving output.
+     * @param options.onOutput A callback function that is called for each line of output from the TTY session. The function receives the output data and a boolean indicating whether it is standard error output. The function should return `true` to continue receiving output or `false` to stop receiving output.
      * @param options.onError An optional callback function that is called when an error occurs in the TTY session. The function receives the error message as a string.
      * @returns A promise that resolves to a TTYStdinWriter instance if the TTY session is successfully created, or rejects with an error if the TTY session fails to open.
      */
     withTTY(options: {
-      onOutput: (text: string, isStderr: boolean) => boolean
+      onOutput: (data: Data, isStderr: boolean) => boolean
       onError?: (error: string) => void
     }): Promise<TTYStdinWriter>
 
@@ -4025,7 +4220,7 @@ declare global {
     signatureMethod: string
   }
 
-  declare class OAuth2 {
+  class OAuth2 {
     /**
      * Creates an OAuth2 instance with the given options.
      * @param options The options for the OAuth2 instance.
@@ -4135,7 +4330,7 @@ declare global {
   /**
    * This interface allows you to create an editor controller, access and set editor content, listen for content changes, and display an editor or render it through an `Editor` view.
    */
-  declare class EditorController {
+  class EditorController {
     constructor(options?: EditorControllerOptions)
     /**
      * The extension is used to indicate the file type of the content.
@@ -4178,16 +4373,16 @@ declare global {
   /**
    * This interface provides tools to interact with the software keyboard. You can check the visibility of the keyboard, hide it, and listen for changes in its visibility.
    */
-  declare namespace Keyboard {
+  namespace Keyboard {
     /**
      * A read-only property that indicates whether the keyboard is currently visible.
      */
-    readonly var visible: boolean
+    const visible: boolean
 
     /**
      * Hides the keyboard if it is currently visible.
      */
-    function hide()
+    function hide(): void
 
     /**
      * Adds a listener function that is called whenever the keyboard's visibility changes.
@@ -4439,7 +4634,7 @@ declare global {
     /**
      * The wind speed, direction, and gust.
      */
-    wind: Wind
+    wind: WeatherWind
     /**
      * An enumeration value indicating the condition at the time.
      */
@@ -4451,7 +4646,7 @@ declare global {
     /**
      * A Boolean value indicating whether there is daylight.
      */
-    isDaylight: Bool
+    isDaylight: boolean
     /**
      * The level of ultraviolet radiation.
      */
@@ -4774,7 +4969,7 @@ declare global {
   /**
    * Provides an interface for obtaining weather data.
    */
-  declare namespace Weather {
+  namespace Weather {
     /**
      * Query current weather by speficeid location.
      */
@@ -4827,13 +5022,13 @@ declare global {
 
   type JSONSchemaType = JSONSchemaPrimitive | JSONSchemaArray | JSONSchemaObject
 
-  declare namespace Assistant {
+  namespace Assistant {
     /**
      * Indicates whether the Assistant API is available.
      * This status depends on the selected AI provider and whether a valid API Key is configured.
      * If the appropriate API Key is not provided, the Assistant API will be unavailable.
      */
-    readonly const isAvailable: boolean
+    const isAvailable: boolean
     /**
      * Requests structured JSON output from the assistant.
      * @param prompt The input prompt for the assistant.
@@ -4841,9 +5036,31 @@ declare global {
      * @param options The options for the request.
      * @param options.provider Specifies the AI provider to use. You can use a custom provider with the given name.
      * @param options.modelId You must ensure the specified ID matches a model supported by that provider (e.g., `"gpt-4-turbo"` for OpenAI, or `"gemini-1.5-pro"` for Gemini). If not specified, the app will use the default model configured for the provider.
+     * @returns A promise that resolves to the structured data.
      */
     function requestStructuredData<R>(
       prompt: string,
+      schema: JSONSchemaArray | JSONSchemaObject,
+      options?: {
+        provider: "openai" | "gemini" | "anthropic" | "deepseek" | "openrouter" | {
+          custom: string
+        }
+        modelId?: string
+      }
+    ): Promise<R>
+    /**
+     * Requests structured JSON output from the assistant.
+     * @param prompt The input prompt for the assistant.
+     * @param images The input images for the assistant, array of image data URIs, format: `data:image/png;base64,{base64}`. Do not pass too many images, or the request will fail.
+     * @param schema The expected output JSON schema.
+     * @param options The options for the request.
+     * @param options.provider Specifies the AI provider to use. You can use a custom provider with the given name.
+     * @param options.modelId You must ensure the specified ID matches a model supported by that provider (e.g., `"gpt-4-turbo"` for OpenAI, or `"gemini-1.5-pro"` for Gemini). If not specified, the app will use the default model configured for the provider.
+     * @returns A promise that resolves to the structured data.
+     */
+    function requestStructuredData<R>(
+      prompt: string,
+      images: string[],
       schema: JSONSchemaArray | JSONSchemaObject,
       options?: {
         provider: "openai" | "gemini" | "anthropic" | "deepseek" | "openrouter" | {
@@ -5088,7 +5305,7 @@ declare global {
    */
   type AssistantToolExecuteTestFn<P> = (params: P) => void
 
-  declare namespace AssistantTool {
+  namespace AssistantTool {
     /**
      * Registers the function that generates an approval request prompt for the user.
      * @param requestFn - The function that creates the approval request.
@@ -5125,7 +5342,7 @@ declare global {
    * @deprecated
    * Use MailUI instead.
    */
-  declare namespace Mail {
+  namespace Mail {
     const isAvailable: boolean
 
     /**
@@ -5162,7 +5379,7 @@ declare global {
   /**
    * This interface allows you present a mail compose view.
    */
-  declare namespace MailUI {
+  namespace MailUI {
     const isAvailable: boolean
 
     /**
@@ -5199,7 +5416,7 @@ declare global {
   /**
    * This interface allows you to present a message compose view.
    */
-  declare namespace MessageUI {
+  namespace MessageUI {
     /**
      * Returns true if the user has set up the device for sending text only messages.
      */
@@ -5408,7 +5625,7 @@ declare global {
   /**
    * Provides an interface for interacting with the contacts database.
    */
-  declare namespace Contact {
+  namespace Contact {
     /**
      * Creates a new contact.
      * @param info - An object containing the contact details. Must include at least a givenName or familyName.
@@ -5601,7 +5818,7 @@ declare global {
     /**
      * The default container identifier, typically the identifier of the first container in the contacts database.
      */
-    readonly const defaultContainerIdentifier: Promise<string>
+    const defaultContainerIdentifier: Promise<string>
   }
 
   /**
@@ -5668,7 +5885,7 @@ declare global {
    * This module provides an interface for text recognition tasks.
    * It allows you to detect and recognize text in images or camera input.
    */
-  declare namespace Vision {
+  namespace Vision {
 
     /**
      * Recognizes text in the provided image.
@@ -5701,7 +5918,7 @@ declare global {
   /**
    * This class provides an interface for working with PDF page.
    */
-  declare class PDFPage {
+  class PDFPage {
     /**
      * Creates a PDF page from the given image.
      * @param image The image to be converted to a PDF page.
@@ -5736,7 +5953,7 @@ declare global {
    * This class provides an interface for working with PDF documents.
    * It allows you to read, modify, and save PDF documents.
    */
-  declare class PDFDocument {
+  class PDFDocument {
     /**
      * Creates a PDF document from the given data.
      * @param data The data to be converted to a PDF document.
@@ -5921,7 +6138,7 @@ declare global {
    * You can also check if the date components represent a valid date in the current calendar.
    * The date components can be used to create a Date object, which represents a specific point in time.
    */
-  declare class DateComponents {
+  class DateComponents {
     constructor(options?: {
       calendar?: "current" | "autoupdatingCurrent" | "gregorian" | "buddhist" | "chinese" | "hebrew" | "islamic" | "japanese" | "persian" | "republicOfChina" | "indian" | "coptic" | "ethiopianAmeteMihret" | "ethiopianAmeteAlem" | "islamicCivil" | "islamicTabular" | "islamicUmmAlQura" | "iso8601" | "persianCivil" | null
       timeZone?: "current" | "autoupdatingCurrent" | "gmt" | string | null
@@ -6078,7 +6295,7 @@ declare global {
    * This class provides an interface for calendar notification triggers.
    * It allows you to create triggers that fire at specific dates and times, with options for repeating the notification.
    */
-  declare class CalendarNotificationTrigger {
+  class CalendarNotificationTrigger {
     constructor(options: {
       dateMatching: DateComponents
       repeats: boolean
@@ -6165,7 +6382,7 @@ declare global {
   /**
    * This class provides an interface for location-based notification triggers.
    */
-  declare class LocationNotificationTrigger {
+  class LocationNotificationTrigger {
     /**
      * Creates a location notification trigger.
      * @param options - An object containing the region and repeat options.
@@ -6210,7 +6427,7 @@ declare global {
    * The time interval is specified in seconds, and you can choose whether the notification should repeat at that interval.
    * The trigger can be used to schedule notifications that fire after a certain duration, such as reminders or alerts.
    */
-  declare class TimeIntervalNotificationTrigger {
+  class TimeIntervalNotificationTrigger {
     /**
      * Creates a time interval notification trigger.
      * @param options - An object containing the time interval and repeat options.
@@ -6504,7 +6721,7 @@ declare global {
    * This class provides an interface for health devices.
    * It allows you to access information about health devices, such as their unique identifier, manufacturer, model, hardware version, firmware version, software version, and user-facing name.
    */
-  declare class HealthDevice {
+  class HealthDevice {
     /**
      * A unique identifier for the health device.
      * This identifier is used to distinguish the device from other health devices.
@@ -6545,7 +6762,7 @@ declare global {
    * This class provides an interface for health sources.
    * It allows you to access information about health sources, such as the bundle identifier and name of the app that provides the health data.
    */
-  declare class HealthSource {
+  class HealthSource {
     /**
      * The bundle identifier of the health source.
      */
@@ -6560,7 +6777,7 @@ declare global {
     static forCurrentApp(): HealthSource
   }
 
-  declare class HealthSourceRevision {
+  class HealthSourceRevision {
     /**
      * The health source that this revision belongs to.
      * This is an instance of the HealthSource class, which provides information about the app that provides the health data.
@@ -6593,7 +6810,7 @@ declare global {
    * You can create units with specific prefixes, perform unit arithmetic (multiplication, division, exponentiation), and check for null units.
    * @see {@link https://developer.apple.com/documentation/healthkit/hkunit}
    */
-  declare class HealthUnit {
+  class HealthUnit {
 
     /**
      * The raw value of the health unit, which is a string representation of the unit.
@@ -6733,7 +6950,7 @@ declare global {
    * The statistics are based on a specific health quantity type and a date range.
    * You can use this class to analyze health data over a specified period, such as daily, weekly, or monthly statistics.
    */
-  declare class HealthStatistics {
+  class HealthStatistics {
     /**
      * The identifier for the health quantity type that this statistics object represents.
      */
@@ -6817,7 +7034,7 @@ declare global {
    * This class provides an interface for health statistics collections.
    * It allows you to access collections of health statistics, which can include multiple health sources and statistics for different health quantity types.
    */
-  declare class HealthStatisticsCollection {
+  class HealthStatisticsCollection {
     sources(): HealthSource[]
     statistics(): HealthStatistics[]
     statisticsFor(date: Date): HealthStatistics | null
@@ -6833,7 +7050,7 @@ declare global {
    * This class is useful for working with specific health data points, such as a single measurement of heart rate, step count, or any other health quantity type.
    * @see {@link https://developer.apple.com/documentation/healthkit/hkquantitysample}
    */
-  declare class HealthQuantitySample {
+  class HealthQuantitySample {
     readonly uuid: string
     readonly quantityType: HealthQuantityType
     readonly startDate: Date
@@ -6879,7 +7096,7 @@ declare global {
    * such as total steps taken, total distance traveled, or any other cumulative health quantity type.
    * @see {@link https://developer.apple.com/documentation/healthkit/hkcumulativequantitysample}
    */
-  declare class HealthCumulativeQuantitySample {
+  class HealthCumulativeQuantitySample {
     readonly uuid: string
     readonly quantityType: HealthQuantityType
     readonly startDate: Date
@@ -6907,7 +7124,7 @@ declare global {
    * such as individual heart rate measurements, step counts, or any other discrete health quantity type.
    * @see {@link https://developer.apple.com/documentation/healthkit/hkdiscretequantitysample}
    */
-  declare class HealthDiscreteQuantitySample {
+  class HealthDiscreteQuantitySample {
     readonly uuid: string
     readonly quantityType: HealthQuantityType
     readonly startDate: Date
@@ -6936,7 +7153,7 @@ declare global {
    * Each sample represents a specific health event or condition, allowing you to track and analyze health data over time.
    * @see {@link https://developer.apple.com/documentation/healthkit/hkcategorysample}
    */
-  declare class HealthCategorySample {
+  class HealthCategorySample {
     readonly uuid: string
     readonly categoryType: HealthCategoryType
     readonly startDate: Date
@@ -6979,7 +7196,7 @@ declare global {
    * Each correlation represents a relationship between different health data types, allowing you to analyze and understand health data in a more comprehensive way.
    * @see {@link https://developer.apple.com/documentation/healthkit/hkcorrelation}
    */
-  declare class HealthCorrelation {
+  class HealthCorrelation {
     readonly uuid: string
     readonly correlationType: HealthCorrelationType
     readonly startDate: Date
@@ -7130,7 +7347,7 @@ declare global {
    * Each event represents a specific action taken during a workout, allowing you to gain insights into workout performance and progress.
    * @see {@link https://developer.apple.com/documentation/healthkit/hkworkoutevent}
    */
-  declare class HealthWorkoutEvent {
+  class HealthWorkoutEvent {
     readonly type: HealthWorkoutEventType
     readonly dateInterval: HealthDateInterval
     readonly metadata: Record<string, any> | null
@@ -7147,7 +7364,7 @@ declare global {
    * Each workout represents a complete session of physical activity, allowing you to monitor fitness progress and performance over time.
    * @see {@link https://developer.apple.com/documentation/healthkit/hkworkout}
    */
-  declare class HealthWorkout {
+  class HealthWorkout {
     readonly uuid: string
     readonly workoutActivityType: HealthWorkoutActivityType
     readonly startDate: Date
@@ -7171,7 +7388,7 @@ declare global {
    * Each heartbeat series sample represents a collection of heart rate measurements, allowing you to monitor heart health and fitness over time.
    * @see {@link https://developer.apple.com/documentation/healthkit/hkheartbeatseriessample}
    */
-  declare class HealthHeartbeatSeriesSample {
+  class HealthHeartbeatSeriesSample {
     readonly uuid: string
     readonly sampleType: string
     readonly startDate: Date
@@ -7195,7 +7412,7 @@ declare global {
    * 
    * It allows you to access daily summaries of health activity, including active energy burned, exercise time, stand hours, and more.
    */
-  declare class HealthActivitySummary {
+  class HealthActivitySummary {
     readonly dateComponents: DateComponents
     readonly activityMoveMode: HealthActivityMoveMode
 
@@ -7351,7 +7568,7 @@ declare global {
     yes = 2,
   }
 
-  declare namespace Health {
+  namespace Health {
     /**
      * Indicates whether health data is available on the device.
      */
@@ -7676,7 +7893,7 @@ declare global {
    * It includes methods for translating individual texts as well as batches of texts.
    * Requires iOS 18.0 or later.
    */
-  declare class Translation {
+  class Translation {
 
     /**
      * The shared instance of the Translation class for convenient access to translation methods.
@@ -7691,7 +7908,7 @@ declare global {
      * console.log(translatedText) // "¡Hola, mundo!"
      * ```
      */
-    static const shared: Translation
+    static readonly shared: Translation
 
     /**
      * Translates a single text from the source language to the target language.
@@ -7727,7 +7944,7 @@ declare global {
   /**
    * This interface allows you to custom your own keyboard extension.
    */
-  declare namespace CustomKeyboard {
+  namespace CustomKeyboard {
 
     /**
      * Text input traits. You should use `useTraits()` to get the current traits instead of importing this type directly, the value will be updated when `textDidChange` or `selectionDidChange` event is emitted.
@@ -8234,7 +8451,7 @@ declare global {
   /**
    * This namespace provides functions for managing Bluetooth central operations, including scanning for peripherals, connecting to peripherals, and retrieving known or connected peripherals.
    */
-  declare namespace BluetoothCentralManager {
+  namespace BluetoothCentralManager {
 
     /**
      * A promise that resolves to a boolean indicating whether the BluetoothCentralManager is scanning for peripherals.
@@ -8371,7 +8588,7 @@ declare global {
     isNotifying: boolean
   }
 
-  declare namespace BluetoothPeripheralManager {
+  namespace BluetoothPeripheralManager {
 
     /**
      * For apps that opt-in to state preservation and restoration, this is the first method invoked when Scripting app is relaunched into the background to complete some Bluetooth-related task. Use this method to synchronize your script's state with the state of the Bluetooth system.
@@ -8601,7 +8818,7 @@ If the length of the value parameter exceeds the length of the `maximumUpdateVal
    * The Scripting App does not enable keep-alive automatically. Using this feature
    * may increase device power consumption, so please use it with care.
    */
-  declare namespace BackgroundKeeper {
+  namespace BackgroundKeeper {
     /**
      * A promise that resolves to a boolean value that indicates whether the keep-alive process is active.
      */
@@ -8643,7 +8860,7 @@ If the length of the value parameter exceeds the length of the `maximumUpdateVal
   /**
    * A URL session download task.
    */
-  declare class URLSessionDownloadTask {
+  class URLSessionDownloadTask {
     /**
      * The identifier of the download task.
      */
@@ -8731,7 +8948,7 @@ If the length of the value parameter exceeds the length of the `maximumUpdateVal
   /**
    * A URL session upload task.
    */
-  declare class URLSessionUploadTask {
+  class URLSessionUploadTask {
     /**
      * The identifier of the upload task.
      */
@@ -8799,7 +9016,7 @@ If the length of the value parameter exceeds the length of the `maximumUpdateVal
   /**
    * The background URL session manager.
    */
-  declare namespace BackgroundURLSession {
+  namespace BackgroundURLSession {
 
     /**
      * Starts a download task.
@@ -8869,7 +9086,7 @@ If the length of the value parameter exceeds the length of the `maximumUpdateVal
         success: string
         failure: string
       }
-    })
+    }): URLSessionUploadTask
 
     /**
      * Resumes an upload task.
@@ -8894,6 +9111,933 @@ If the length of the value parameter exceeds the length of the `maximumUpdateVal
      * @returns A promise that resolves to an array of URLSessionUploadTask objects.
      */
     function getUploadTasks(): Promise<URLSessionUploadTask[]>
+  }
+
+  class FileEntity {
+    /**
+     * The path of the file
+     */
+    readonly path: string
+
+    /**
+     * Seeks to the specified offset in the file.
+     * @param offset The offset to seek to
+     * @returns Whether the seek was successful
+     */
+    seek(offset: number): boolean
+
+    /**
+     * Reads the specified number of bytes from the file, starting from the current position.
+     * @param size The number of bytes to read
+     * @returns A Data object containing the read bytes
+     * @throws An error if the file cannot be read
+     */
+    read(size: number): Data
+
+    /**
+     * Writes the specified data to the file, starting from the current position.
+     * @param data The data to write
+     * @throws An error if the file cannot be written
+     */
+    write(data: Data): void
+
+    /**
+     * Closes the file.
+     */
+    close(): void
+
+    /**
+     * Opens a file for reading.
+     * @param path The path of the file
+     * @returns A FileEntity object
+     * @throws An error if the file cannot be opened
+     */
+    static openForReading(path: string): FileEntity
+
+    /**
+     * Opens a file for writing.
+     * @param path The path of the file
+     * @returns A FileEntity object
+     * @throws An error if the file cannot be opened
+     */
+    static openNewForWriting(path: string): FileEntity
+
+    /**
+     * Opens a file for reading and writing.
+     * @param path The path of the file
+     * @returns A FileEntity object
+     * @throws An error if the file cannot be opened
+     */
+    static openForWritingAndReading(path: string): FileEntity
+
+    /**
+     * Opens a file for the specified mode.
+     * @param path The path of the file
+     * @param mode The mode of the file, e.g. "r", "w", "a", "r+", "w+", "a+"
+     * @returns A FileEntity object
+     * @throws An error if the file cannot be opened
+     */
+    static openForMode(path: string, mode: string): FileEntity
+  }
+
+  /**
+   * The HTTP response body.
+   */
+  class HttpResponseBody {
+    /**
+     * Creates a text response body.
+     * @param text The text content of the response body.
+     */
+    static text(text: string): HttpResponseBody
+    /**
+     * Creates a data response body.
+     * @param data The data content of the response body.
+     */
+    static data(data: Data): HttpResponseBody
+    /**
+     * Creates an HTML response body.
+     * @param html The HTML content of the response body.
+     */
+    static html(html: string): HttpResponseBody
+    /**
+     * Creates an HTML response body.
+     * @param html The HTML body content of the response body.
+     */
+    static htmlBody(html: string): HttpResponseBody
+  }
+
+  /**
+   * The HTTP response.
+   */
+  class HttpResponse {
+    /**
+     * The status code of the response.
+     */
+    readonly statusCode: number
+    /**
+     * The reason phrase of the response.
+     */
+    readonly reasonPhrase: string
+
+    /**
+     * The headers of the response.
+     */
+    headers(): Record<string, string>
+
+    /**
+     * Creates an HTTP response with ok status code.
+     * @param body The body of the response.
+     * @returns A new HTTP response.
+     */
+    static ok(body: HttpResponseBody): HttpResponse
+    static created(): HttpResponse
+    static accepted(): HttpResponse
+    /**
+     * Creates a permanent redirect response.
+     * @param url The URL to redirect to.
+     */
+    static movedPermanently(url: string): HttpResponse
+    /**
+     * Creates a temporary redirect response.
+     * @param url The URL to redirect to.
+     */
+    static movedTemporarily(url: string): HttpResponse
+    /**
+     * Creates a bad request response.
+     * @param body The body of the response.
+     */
+    static badRequest(body?: HttpResponseBody | null): HttpResponse
+    static tooManyRequests(): HttpResponse
+    static unauthorized(): HttpResponse
+    static forbidden(): HttpResponse
+    static notFound(): HttpResponse
+    static notAcceptable(): HttpResponse
+    static internalServerError(): HttpResponse
+
+    /**
+     * Creates a raw HTTP response.
+     * @param statusCode The status code of the response.
+     * @param phrase The reason phrase of the response.
+     * @param options The options for the response.
+     * @param options.headers The headers of the response.
+     * @param options.body The body of the response, can be a Data object or a FileEntity object.
+     */
+    static raw(statusCode: number, phrase: string, options?: {
+      headers?: Record<string, string>
+      body?: Data | FileEntity
+    } | null): HttpResponse
+  }
+
+  /**
+   * The HTTP request.
+   */
+  class HttpRequest {
+    /**
+     * The path of the request.
+     */
+    readonly path: string
+    /**
+     * The method of the request.
+     */
+    readonly method: string
+    /**
+     * The headers of the request.
+     */
+    readonly headers: Record<string, string>
+    /**
+     * The body of the request.
+     */
+    readonly body: Data
+    /**
+     * The address of the request.
+     */
+    readonly address: string | null
+    /**
+     * The parameters of the request.
+     */
+    readonly params: Record<string, string>
+    /**
+     * The query parameters of the request.
+     */
+    readonly queryParams: Array<{ key: string; value: string }>
+
+    /**
+     * Checks if the request has a token for the specified header name.
+     * @param headerName The header name.
+     * @param token The token.
+     * @returns True if the request has a token for the specified header name, false otherwise.
+     */
+    hasTokenForHeader(headerName: string, token: string): boolean
+
+    /**
+     * Parses the URL-encoded form data of the request.
+     * @returns An array of key-value pairs.
+     */
+    parseUrlencodedForm(): Array<{ key: string; value: string }>
+
+    /**
+     * Parses the multi-part form data of the request.
+     * @returns An array of multi-part form data.
+     */
+    parseMultiPartFormData(): Array<{
+      name: string | null
+      filename: string | null
+      headers: Record<string, string>
+      data: Data
+    }>
+  }
+
+  /**
+   * The WebSocket session.
+   */
+  class WebSocketSession {
+    /**
+     * Writes text to the session.
+     * @param text The text to write.
+     */
+    writeText(text: string): void
+    /**
+     * Writes binary data to the session.
+     * @param data The data to write.
+     */
+    writeData(data: Data): void
+    /**
+     * Closes the session.
+     */
+    close(): void
+  }
+
+  /**
+   * The HTTP server state.
+   */
+  type HttpServerState = "starting" | "running" | "stopping" | "stopped"
+
+  /**
+   * The HTTP server.
+   */
+  class HttpServer {
+    /**
+     * The state of the HTTP server.
+     */
+    readonly state: HttpServerState
+    /**
+     * The port of the HTTP server. If the server is not running, this is null.
+     */
+    readonly port: number | null
+    /**
+     * True if the server is listening on IPv4, false otherwise.
+     */
+    readonly isIPv4: boolean
+
+    /**
+     * String representation of the IPv4 address to receive requests from. It’s only used when the server is started with `forceIPv4` option set to true. Otherwise, `listenAddressIPv6` will be used.
+     */
+    listenAddressIPv4: string | null
+    /**
+     * String representation of the IPv6 address to receive requests from. It’s only used when the server is started with `forceIPv6` option set to true. Otherwise, `listenAddressIPv4` will be used.
+     */
+    listenAddressIPv6: string | null
+
+    /**
+     * Registers a handler for the specified path.
+     * @param path The path to register the handler for.
+     * @param handler The handler function. The handler function takes a request as an argument and returns a response.
+     */
+    registerHandler(path: string, handler: (request: HttpRequest) => HttpResponse): void
+
+    /**
+     * Register a static file for the specified path.
+     * @param path 
+     * @param filePath 
+     * @example
+     * ```ts
+     * server.registerFile("/readme", Path.join(Script.directory, "README.md"))
+     * ```
+     */
+    registerFile(path: string, filePath: string): void
+
+    /**
+     * Register the files of the specified directory for the specified path.
+     * @param path The path to register the files for.
+     * @param directory The directory to register the files from.
+     * @param options The options for the directory.
+     * @param options.defaults The default files to serve if no file is specified, defaults to ["index.html", "default.html"]
+     * @example
+     * ```ts
+     * server.registerFilesFromDirectory("/static/:file", Path.join(Script.directory, "html"), {
+     *   defaults: ["index.html", "index.htm"]
+     * })
+     * ```
+     */
+    registerFilesFromDirectory(path: string, directory: string, options?: {
+      defaults?: string[]
+    }): void
+
+    /**
+     * Registers a websocket handler for the specified path.
+     * @param path The path to register the websocket handler for.
+     * @param handlers The websocket handlers.
+     * @param handlers.onPong The function to call when a ping is received.
+     * @param handlers.onConnected The function to call when a connection is established.
+     * @param handlers.onDisconnected The function to call when a connection is disconnected.
+     * @param handlers.handleText The function to call when a text message is received.
+     * @param handlers.handleBinary The function to call when a binary message is received.
+     * @example
+     * ```ts
+     * server.registerWebsocket("/ws", {
+     *   onPong: (session) => {
+     *     session.writeText("received pong")
+     *   },
+     *   onConnected: (session) => {
+     *     connectedSessions.push(session)
+     *   },
+     *   onDisconnected: (session) => {
+     *     connectedSessions.splice(connectedSessions.indexOf(session), 1)
+     *   },
+     *   handleText: (session, text) => {
+     *     // receive text
+     *     session.writeText("some response text")
+     *   },
+     *   handleBinary: (session, data) => {
+     *     // receive binary
+     *   }
+     * })
+     * ```
+     */
+    registerWebsocket(path: string, handlers: {
+      onPong?: (session: WebSocketSession) => void
+      onConnected?: (session: WebSocketSession) => void
+      onDisconnected?: (session: WebSocketSession) => void
+      handleText?: (session: WebSocketSession, text: string) => void
+      handleBinary?: (session: WebSocketSession, data: Data) => void
+    }): void
+
+    /**
+     * Starts the HTTP server.
+     * @param options The options for the HTTP server.
+     * @param options.port The port to listen on. Defaults to 8080, if specified 0, the server will listen on a random port.
+     * @param options.forceIPv4 Whether to force the server to listen on IPv4. Defaults to false.
+     * @returns An error message if the server fails to start, or null if the server starts successfully.
+     */
+    start(options?: {
+      port?: number
+      forceIPv4?: boolean
+    }): string | null
+
+    /**
+     * Stops the HTTP server.
+     */
+    stop(): void
+  }
+
+  interface ArchiveEntry {
+    /**
+     * The path of the entry.
+     */
+    readonly path: string
+    /**
+     * The type of the entry.
+     */
+    readonly type: "file" | "directory" | "symlink"
+    /**
+     * Whether the entry is compressed.
+     */
+    readonly isCompressed: boolean
+    /**
+     * The compressed size of the entry.
+     */
+    readonly compressedSize: number
+    /**
+     * The uncompressed size of the entry.
+     */
+    readonly uncompressedSize: number
+    /**
+     * The attributes of the entry.
+     */
+    readonly fileAttributes: {
+      posixPermissions?: number
+      modificationDate?: Date
+    }
+  }
+
+  class Archive {
+    /**
+     * Opens an archive for specifed path and accessMode.
+     * @param path The path of the archive
+     * @param accessMode The access mode of the archive, e.g. "update", "read"
+     * @param options The options for the archive
+     * @param options.pathEncoding The encoding to use for the path, defaults to "utf-8"
+     * @returns An Archive object
+     * @throws An error if the archive cannot be opened
+     */
+    static openForMode(
+      path: string,
+      accessMode: "update" | "read",
+      options?: {
+        pathEncoding?: Encoding
+      }
+    ): Archive
+
+    /**
+     * The path of the archive.
+     */
+    readonly path: string
+
+    /**
+     * The data of the archive.
+     */
+    readonly data: Data | null
+
+    /**
+     * The entries of the archive.
+     * @param pathEncoding The encoding to use for the path, defaults to "utf-8"
+     * @returns The entries
+     */
+    entries(pathEncoding?: Encoding): ArchiveEntry[]
+
+    /**
+     * The entry paths of the archive.
+     * @param encoding The encoding to use for the path, defaults to "utf-8"
+     */
+    getEntryPaths(encoding?: Encoding): string[]
+
+    /**
+     * The entry of the archive.
+     * @param path The path of the entry
+     * @returns The entry, or null if the entry does not exist
+     */
+    getEntry(path: string): ArchiveEntry | null
+
+    /**
+     * Checks if the archive contains the specified path.
+     * @param path The path to check
+     */
+    contains(path: string): boolean
+
+    /**
+     * Add an entry to the archive.
+     * @param path The source path
+     * @param toPath The destination path
+     * @param options The options for the entry
+     * @param options.compressionMethod The compression method to use, defaults to "none"
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @returns A promise that resolves when the entry has been added, or rejects with an error.
+     */
+    addEntry(path: string, toPath: string, options?: {
+      compressionMethod?: "deflate" | "none"
+      bufferSize?: number
+    }): Promise<void>
+
+    /**
+     * Add an entry to the archive, this is a synchronous version of addEntry.
+     * @param path The source path
+     * @param toPath The destination path
+     * @param options The options for the entry
+     * @param options.compressionMethod The compression method to use, defaults to "none"
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @throws An error if the entry cannot be added
+     */
+    addEntrySync(path: string, toPath: string, options?: {
+      compressionMethod?: "deflate" | "none"
+      bufferSize?: number
+    }): void
+
+    /**
+     * Add a file entry to the archive.
+     * @param path The path of the file to add
+     * @param uncompressedSize The uncompressed size of the file
+     * @param provider The function that provides the file data
+     * @param options The options for the entry
+     * @param options.compressionMethod The compression method to use, defaults to "none"
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @returns A promise that resolves when the entry has been added, or rejects with an error.
+     * @example
+     * ```ts
+     * archive.addFileEntry(
+     *   "file.txt",
+     *   1024,
+     *   (offset, length) => {
+     *     // provide file data
+     *   }
+     * )
+     * ```
+     */
+    addFileEntry(
+      path: string,
+      uncompressedSize: number,
+      provider: (offset: number, length: number) => Data,
+      options?: {
+        modificationDate?: Date
+        compressionMethod?: "deflate" | "none"
+        bufferSize?: number
+      }
+    ): Promise<void>
+
+    /**
+     * Add a file entry to the archive, this is a synchronous version of addFileEntry.
+     * @param path The path of the file to add
+     * @param uncompressedSize The uncompressed size of the file
+     * @param provider The function that provides the file data
+     * @param options The options for the entry
+     * @param options.compressionMethod The compression method to use, defaults to "none"
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @throws An error if the entry cannot be added
+     */
+    addFileEntrySync(
+      path: string,
+      uncompressedSize: number,
+      provider: (offset: number, length: number) => Data,
+      options?: {
+        modificationDate?: Date
+        compressionMethod?: "deflate" | "none"
+        bufferSize?: number
+      }
+    ): void
+
+    /**
+     * Add a directory entry to the archive.
+     * @param path The path of the directory to add
+     * @param options The options for the entry
+     * @param options.modificationDate The modification date of the directory
+     * @param options.compressionMethod The compression method to use, defaults to "none"
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @returns A promise that resolves when the entry has been added, or rejects with an error.
+     */
+    addDirectoryEntry(
+      path: string,
+      options?: {
+        modificationDate?: Date
+        compressionMethod?: "deflate" | "none"
+        bufferSize?: number
+      }
+    ): Promise<void>
+
+    /**
+     * Add a directory entry to the archive, this is a synchronous version of addDirectoryEntry.
+     * @param path The path of the directory to add
+     * @param options The options for the entry
+     * @param options.modificationDate The modification date of the directory
+     * @param options.compressionMethod The compression method to use, defaults to "none"
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @throws An error if the entry cannot be added
+     */
+    addDirectoryEntrySync(
+      path: string,
+      options?: {
+        modificationDate?: Date
+        compressionMethod?: "deflate" | "none"
+        bufferSize?: number
+      }
+    ): void
+
+    /**
+     * Remove an entry from the archive.
+     * @param path The path of the entry to remove
+     * @param options The options for the entry
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @returns A promise that resolves when the entry has been removed, or rejects with an error.
+     */
+    removeEntry(path: string, options?: {
+      bufferSize?: number
+    }): Promise<void>
+
+    /**
+     * Remove an entry from the archive, this is a synchronous version of removeEntry.
+     * @param path The path of the entry to remove
+     * @param options The options for the entry
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @throws An error if the entry cannot be removed
+     */
+    removeEntrySync(path: string, options?: {
+      bufferSize?: number
+    }): void
+
+    /**
+     * Extract an entry from the archive.
+     * @param path The path of the entry to extract
+     * @param consumer The consumer to receive the data
+     * @param options The options for the entry
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @returns A promise that resolves when the entry has been extracted, or rejects with an error.
+     */
+    extract(path: string, consumer: (data: Data) => void, options?: {
+      bufferSize?: number
+    }): Promise<void>
+
+    /**
+     * Extract an entry from the archive, this is a synchronous version of extract.
+     * @param path The path of the entry to extract
+     * @param consumer The consumer to receive the data
+     * @param options The options for the entry
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @throws An error if the entry cannot be extracted
+     */
+    extractSync(path: string, consumer: (data: Data) => void, options?: {
+      bufferSize?: number
+    }): void
+
+    /**
+     * Extract an entry from the archive.
+     * @param path The path of the entry to extract
+     * @param to The path to extract to
+     * @param options The options for the entry
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @param options.allowUncontainedSymlinks Whether to allow uncontained symlinks, defaults to false
+     * @returns A promise that resolves when the entry has been extracted, or rejects with an error.
+     */
+    extractTo(path: string, to: string, options?: {
+      bufferSize?: number
+      allowUncontainedSymlinks?: boolean
+    }): Promise<void>
+
+    /**
+     * Extract an entry from the archive, this is a synchronous version of extractTo.
+     * @param path The path of the entry to extract
+     * @param to The path to extract to
+     * @param options The options for the entry
+     * @param options.bufferSize The buffer size to use, defaults to 16*1024
+     * @param options.allowUncontainedSymlinks Whether to allow uncontained symlinks, defaults to false
+     * @throws An error if the entry cannot be extracted
+     */
+    extractToSync(path: string, to: string, options?: {
+      bufferSize?: number
+      allowUncontainedSymlinks?: boolean
+    }): void
+  }
+
+  /**
+   * Represents an animation.
+   */
+  class Animation {
+    /**
+     * Delay the animation by the given time.
+     * @param time The time to delay in seconds.
+     * @returns A new animation.
+     */
+    delay(time: DurationInSeconds): Animation
+    /**
+     * Repeat the animation the given number of times.
+     * @param count The number of times to repeat the animation.
+     * @param autoreverses Whether to reverse the animation after each repeat. Defaults to true.
+     * @returns A new animation.
+     */
+    repeatCount(count: number, autoreverses?: boolean): Animation
+    /**
+     * Repeat the animation indefinitely.
+     * @param autoreverses Whether to reverse the animation after each repeat. Defaults to true.
+     * @returns A new animation.
+     */
+    repeatForever(autoreverses?: boolean): Animation
+    // /**
+    //  * Set the speed of the animation.
+    //  * @param value The speed of the animation.
+    //  * @returns A new animation.
+    //  */
+    // speed(value: number): Animation
+
+    /**
+     * Create a default animation.
+     */
+    static default(): Animation
+    /**
+     * Create a linear animation.
+     * @param duration The duration of the animation in seconds.
+     */
+    static linear(duration?: DurationInSeconds | null): Animation
+    /**
+     * Create an ease-in animation.
+     * @param duration The duration of the animation in seconds.
+     */
+    static easeIn(duration?: DurationInSeconds | null): Animation
+    /**
+     * Create an ease-out animation.
+     * @param duration The duration of the animation in seconds.
+     */
+    static easeOut(duration?: DurationInSeconds | null): Animation
+    /**
+     * Create an bounce animation.
+     * @param options The options for the animation
+     * @param options.duration The duration of the animation in seconds.
+     * @param options.extraBounce The extra bounce of the animation. 
+     */
+    static bouncy(options?: {
+      duration?: DurationInSeconds
+      extraBounce?: number
+    }): Animation
+    /**
+     * Create a smooth animation.
+     * @param options The options for the animation
+     * @param options.duration The duration of the animation in seconds.
+     * @param options.extraBounce The extra bounce of the animation. 
+     */
+    static smooth(options?: {
+      duration?: DurationInSeconds
+      extraBounce?: number
+    }): Animation
+    /**
+     * Create a snappy animation.
+     * @param options The options for the animation
+     * @param options.duration The duration of the animation in seconds.
+     * @param options.extraBounce The extra bounce of the animation. 
+     */
+    static snappy(options?: {
+      duration?: DurationInSeconds
+      extraBounce?: number
+    }): Animation
+    /**
+     * Create a spring animation.
+     * @param options The options for the animation, the options can be either a duration or a response and damping fraction.
+     *  - Duration options
+     *    - duration: The duration of the animation in seconds.
+     *    - bounce: The bounce of the animation.
+     *  - Response options
+     *    - response: The response of the animation.
+     *    - dampingFraction: The damping fraction of the animation.
+     * @param options.blendDuration The duration of the animation in seconds.
+     */
+    static spring(options?: {
+      blendDuration?: number
+    } & ({
+      duration?: DurationInSeconds
+      bounce?: number
+      response?: never
+      dampingFraction?: never
+    } | {
+      response?: number
+      dampingFraction?: number
+      duration?: never
+      bounce?: never
+    })): Animation
+    /**
+     * Create an interactive spring animation.
+     * @param options The options for the animation
+     * @param options.response The response of the animation.
+     * @param options.dampingFraction The damping fraction of the animation.
+     * @param options.blendDuration The duration of the animation in seconds.
+     */
+    static interactiveSpring(options?: {
+      response?: number
+      dampingFraction?: number
+      blendDuration?: number
+    }): Animation
+    /**
+     * Create an interpolating spring animation.
+     * @param options The options for the animation, the options can be either a duration or a mass, stiffness, damping and initial velocity.
+     *  - Duration options
+     *    - duration: The duration of the animation in seconds.
+     *    - bounce: The bounce of the animation.
+     *    - initialVelocity: The initial velocity of the animation.
+     *  - Mass options
+     *    - mass: The mass of the animation.
+     *    - stiffness: The stiffness of the animation.
+     *    - damping: The damping of the animation.
+     *    - initialVelocity: The initial velocity of the animation.
+     */
+    static interpolatingSpring(options?: {
+      mass?: number
+      stiffness: number
+      damping: number
+      initialVelocity?: number
+    } | {
+      duration?: DurationInSeconds
+      bounce?: number
+      initialVelocity?: number
+      mass?: never
+      stiffness?: never
+      damping?: never
+    }): Animation
+  }
+
+  /**
+   * Represents a transition.
+   */
+  class Transition {
+    animation(animation?: Animation): Transition
+    combined(other: Transition): Transition
+
+    /**
+     * Create an identity transition.
+     */
+    static identity(): Transition
+
+    /**
+     * Create a move transition.
+     * @param edge The edge of the view to move
+     */
+    static move(edge: Edge): Transition
+
+    /**
+     * Create an offset transition.
+     * @param position The position of the view, default is { x: 0, y: 0 }
+     */
+    static offset(position?: Point): Transition
+
+    /**
+     * Create a push transition.
+     * @param edge The edge of the view to push
+     */
+    static pushFrom(edge: Edge): Transition
+
+    /**
+     * Create an opacity transition.
+     */
+    static opacity(): Transition
+
+    /**
+     * Create a scale transition.
+     * @param scale The scale of the view, default is 1
+     * @param anchor The anchor of the scale, default is "center"
+     */
+    static scale(scale?: number, anchor?: Point | KeywordPoint): Transition
+
+    /**
+     * Create a slide transition.
+     */
+    static slide(): Transition
+
+    /**
+     * Create a fade transition.
+     * @param duration The duration of the animation in seconds.
+     */
+    static fade(duration?: DurationInSeconds): Transition
+
+    /**
+     * Create a flip transition from the left.
+     * @param duration The duration of the animation in seconds.
+     */
+    static flipFromLeft(duration?: DurationInSeconds): Transition
+
+    /**
+     * Create a flip transition from the bottom.
+     * @param duration The duration of the animation in seconds.
+     */
+    static flipFromBottom(duration?: DurationInSeconds): Transition
+
+    /**
+     * Create a flip transition from the right.
+     * @param duration The duration of the animation in seconds.
+     */
+    static flipFromRight(duration?: DurationInSeconds): Transition
+
+    /**
+     * Create a flip transition from the top.
+     * @param duration The duration of the animation in seconds.
+     */
+    static flipFromTop(duration?: DurationInSeconds): Transition
+
+    /**
+     * Create an asymmetric transition.
+     * @param insertion The transition to use for insertion.
+     * @param removal The transition to use for removal.
+     */
+    static asymmetric(insertion: Transition, removal: Transition): Transition
+  }
+
+  class Observable<T> {
+    constructor(initialValue: T)
+    value: T
+    setValue: (value: T) => void
+    subscribe: (callback: (value: T, oldValue: T) => void) => void
+    unsubscribe: (callback: (value: T, oldValue: T) => void) => void
+    dispose(): void
+  }
+
+  function withAnimation(body: () => void): Promise<void>
+  function withAnimation(animation: Animation, body: () => void): Promise<void>
+  function withAnimation(animation: Animation, completionCriteria: "logicallyComplete" | "removed", body: () => void): Promise<void>
+
+  namespace Thread {
+
+    /**
+     * Whether the current thread is the main thread
+     */
+    const isMainThread: boolean
+
+    /**
+     * Runs a function in the main thread, it's useful when you want to update the UI, it can't switch back to the current thread.
+     * @param execute The function to run
+     */
+    function runInMain(execute: () => void): void
+
+    /**
+     * Runs a function in the background thread, it's useful when you want to do some background work, it will switch back to the current thread and return the result.
+     * @param execute The function to run, it can return a promise or a value
+     * @returns The result of the function
+     */
+    function runInBackground<T>(execute: () => Promise<T> | T): Promise<T>
+  }
+
+  class EditMode {
+
+    readonly value: "active" | "inactive" | "transient" | "unknown"
+    readonly isEditing: boolean
+
+    static active(): EditMode
+    static inactive(): EditMode
+    static transient(): EditMode
+  }
+
+  /**
+   * Represents the result of an open URL action.
+   * This is used in the `openURL` view modifier.
+   */
+  class OpenURLActionResult {
+
+    type: string
+
+    static handled(): OpenURLActionResult
+    static discarded(): OpenURLActionResult
+
+    /**
+     * The handler asks the system to open the modified URL.
+     * @param options 
+     * @param options.url The URL that the handler asks the system to open.
+     * @param options.prefersInApp Whether the handler prefers to open the URL in the app.
+     */
+    static systemAction(options?: {
+      url?: string
+      prefersInApp: boolean
+    }): OpenURLActionResult
   }
 }
 

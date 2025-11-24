@@ -15,19 +15,19 @@ import { login, getSubscribe, formatFlow, BigMeSettings, SubscribeResponse } fro
 
 const SETTINGS_KEY = "bigMeSettings";
 
-// 配色主题
+// 配色主题 - Catppuccin Mocha (Dark) / Latte (Light)
 const theme = {
-  primary: { light: "#007AFF", dark: "#64B5FF" } as DynamicShapeStyle,
-  cardBackground: { light: "#FAFAFA", dark: "#1C1C1E" } as DynamicShapeStyle, // 浅色模式：米白色，深色模式：深灰
-  cardItemBackground: { light: "#F5F5F5", dark: "#2C2C2E" } as DynamicShapeStyle,
-  textPrimary: { light: "#484951", dark: "#F5F5F5" } as DynamicShapeStyle, // 浅色模式：深灰（非纯黑），深色模式：米白色（非纯白）
-  textSecondary: { light: "#666666", dark: "#999999" } as DynamicShapeStyle,
-  textValue: { light: "#007AFF", dark: "#64B5FF" } as DynamicShapeStyle,
-  upload: { light: "#34C759", dark: "#30D158" } as DynamicShapeStyle, // 上传 - 绿色
-  download: { light: "#FF9500", dark: "#FF9F0A" } as DynamicShapeStyle, // 下载 - 橙色
-  remaining: { light: "#007AFF", dark: "#64B5FF" } as DynamicShapeStyle, // 剩余流量 - 蓝色
-  used: { light: "#FF3B30", dark: "#FF453A" } as DynamicShapeStyle, // 已用流量 - 红色
-  total: { light: "#AF52DE", dark: "#BF5AF2" } as DynamicShapeStyle, // 总流量 - 紫色
+  primary: { light: "#1e66f5", dark: "#8caaee" } as DynamicShapeStyle, // Blue
+  cardBackground: { light: "#eff1f5", dark: "#303446" } as DynamicShapeStyle, // Base
+  cardItemBackground: { light: "#e6e9ef", dark: "#414559" } as DynamicShapeStyle, // Surface0
+  textPrimary: { light: "#4c4f69", dark: "#c6d0f5" } as DynamicShapeStyle, // Text
+  textSecondary: { light: "#6c6f85", dark: "#b5bfe2" } as DynamicShapeStyle, // Subtext1
+  textValue: { light: "#1e66f5", dark: "#8caaee" } as DynamicShapeStyle, // Blue
+  upload: { light: "#40a02b", dark: "#a6d189" } as DynamicShapeStyle, // Green
+  download: { light: "#df8e1d", dark: "#ef9f76" } as DynamicShapeStyle, // Peach
+  remaining: { light: "#04a5e5", dark: "#99d1db" } as DynamicShapeStyle, // Sky
+  used: { light: "#d20f39", dark: "#e78284" } as DynamicShapeStyle, // Red
+  total: { light: "#8839ef", dark: "#ca9ee6" } as DynamicShapeStyle, // Mauve
 };
 
 function InfoCardItem({ 
@@ -137,7 +137,7 @@ function MediumWidgetView1({ data }: { data: ReturnType<typeof getSubscribe> ext
               maxHeight: progressBarHeight 
             }}
             widgetBackground={{
-              style: { light: "#E5E5EA", dark: "#3A3A3C" } as DynamicShapeStyle,
+              style: { light: "#dce0e8", dark: "#51576d" } as DynamicShapeStyle, // Surface1
               shape: {
                 type: "rect",
                 cornerRadius: 5,
