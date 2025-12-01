@@ -177,7 +177,7 @@ function DataCard({
         <VStack alignment="center">
           <Spacer />
           <Image 
-            imageUrl="https://raw.githubusercontent.com/Enjoyee/Scriptable/v2/img/ic_logo_10010.png" 
+            imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10000.png" 
             frame={{ width: 32, height: 32 }} 
             resizable 
           />
@@ -230,7 +230,7 @@ function SmallDataCard({
         <HStack alignment="center" frame={{ width: 20, height: 20 }}>
           {useLogoAsIcon ? (
             <Image 
-              imageUrl="https://raw.githubusercontent.com/Enjoyee/Scriptable/v2/img/ic_logo_10010.png" 
+              imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10000.png" 
               frame={{ width: 16, height: 16 }} 
               resizable 
             />
