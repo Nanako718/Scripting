@@ -10,6 +10,7 @@ import {
   WidgetReloadPolicy,
   ZStack,
   Gauge,
+  fetch,
 } from "scripting";
 import { getSettings, queryImportantData } from "./telecomApi";
 
@@ -21,6 +22,44 @@ type ChinaTelecomSettings = {
 };
 
 const SETTINGS_KEY = "chinaTelecomSettings";
+const LOGO_URL = "https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10000.png";
+const LOGO_CACHE_KEY = "chinaTelecom_logo_path";
+
+// 下载并缓存 Logo 图片
+async function getLogoPath(): Promise<string | null> {
+  try {
+    // 检查缓存
+    const cachedPath = Storage.get<string>(LOGO_CACHE_KEY);
+    if (cachedPath) {
+      // 验证文件是否存在
+      if (FileManager.existsSync(cachedPath)) {
+        return cachedPath;
+      }
+    }
+
+    // 下载图片
+    const response = await fetch(LOGO_URL);
+    if (!response.ok) {
+      console.error("下载 Logo 失败:", response.status);
+      return null;
+    }
+
+    const imageData = await response.arrayBuffer();
+    const fileName = "chinaTelecom_logo.png";
+    const tempDir = FileManager.temporaryDirectory;
+    const filePath = `${tempDir}/${fileName}`;
+    
+    // 将 ArrayBuffer 转换为 Uint8Array
+    const uint8Array = new Uint8Array(imageData);
+    FileManager.writeAsBytesSync(filePath, uint8Array);
+    Storage.set(LOGO_CACHE_KEY, filePath);
+    
+    return filePath;
+  } catch (error) {
+    console.error("获取 Logo 失败:", error);
+    return null;
+  }
+}
 
 // 组件数据结构
 type TelecomData = {
@@ -87,7 +126,8 @@ function DataCard({
   descStyle,
   showLogo,
   progressUsed,
-  progressTotal
+  progressTotal,
+  logoPath
 }: {
   title: string;
   value: string;
@@ -98,6 +138,7 @@ function DataCard({
   showLogo?: boolean;
   progressUsed?: number;
   progressTotal?: number;
+  logoPath?: string | null;
 }) {
   const showProgress = progressUsed !== undefined && progressTotal !== undefined && progressTotal > 0;
   const progressPercentage = showProgress ? progressUsed / progressTotal! : 0;
@@ -173,11 +214,11 @@ function DataCard({
           <Spacer />
         </VStack>
       ) : null}
-      {showLogo ? (
+      {showLogo && logoPath ? (
         <VStack alignment="center">
           <Spacer />
           <Image 
-            imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10000.png" 
+            filePath={logoPath} 
             frame={{ width: 32, height: 32 }} 
             resizable 
           />
@@ -197,7 +238,8 @@ function SmallDataCard({
   titleStyle,
   descStyle,
   showLogo,
-  useLogoAsIcon
+  useLogoAsIcon,
+  logoPath
 }: {
   title: string;
   value: string;
@@ -207,6 +249,7 @@ function SmallDataCard({
   descStyle: DynamicShapeStyle;
   showLogo?: boolean;
   useLogoAsIcon?: boolean;
+  logoPath?: string | null;
 }) {
   const cardTitleStyle = theme.titleColor || titleStyle;
   const cardDescStyle = theme.descColor || descStyle;
@@ -228,9 +271,9 @@ function SmallDataCard({
         }}
       >
         <HStack alignment="center" frame={{ width: 20, height: 20 }}>
-          {useLogoAsIcon ? (
+          {useLogoAsIcon && logoPath ? (
             <Image 
-              imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10000.png" 
+              filePath={logoPath} 
               frame={{ width: 16, height: 16 }} 
               resizable 
             />
@@ -263,10 +306,10 @@ function SmallDataCard({
             {`${value}${unit}`}
           </Text>
         </VStack>
-        {showLogo && !useLogoAsIcon ? (
+        {showLogo && !useLogoAsIcon && logoPath ? (
           <HStack alignment="center" frame={{ width: 20, height: 20 }}>
             <Image 
-              imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10000.png" 
+              filePath={logoPath} 
               frame={{ width: 16, height: 16 }} 
               resizable 
             />
@@ -278,10 +321,11 @@ function SmallDataCard({
 }
 
 // 小尺寸组件视图
-function SmallWidgetView({ data, titleStyle, descStyle }: { 
+function SmallWidgetView({ data, titleStyle, descStyle, logoPath }: { 
   data: TelecomData;
   titleStyle: DynamicShapeStyle;
   descStyle: DynamicShapeStyle;
+  logoPath?: string | null;
 }) {
   // 计算总流量剩余（通用流量 + 其他流量）
   const flowRemain = (data.flow?.total && data.flow?.used !== undefined) 
@@ -300,6 +344,7 @@ function SmallWidgetView({ data, titleStyle, descStyle }: {
         titleStyle={titleStyle}
         descStyle={descStyle}
         useLogoAsIcon={true}
+        logoPath={logoPath}
       />
       <SmallDataCard
         title="剩余总流量"
@@ -332,12 +377,12 @@ const defaultDescStyle: DynamicShapeStyle = {
   dark: "#FFFFFF",
 };
 
-function WidgetView({ data }: { data: TelecomData }) {
+function WidgetView({ data, logoPath }: { data: TelecomData; logoPath?: string | null }) {
   const titleStyle = defaultTitleStyle;
   const descStyle = defaultDescStyle;
 
   if (Widget.family === "systemSmall") {
-    return <SmallWidgetView data={data} titleStyle={titleStyle} descStyle={descStyle} />;
+    return <SmallWidgetView data={data} titleStyle={titleStyle} descStyle={descStyle} logoPath={logoPath} />;
   }
 
   return (
@@ -351,6 +396,7 @@ function WidgetView({ data }: { data: TelecomData }) {
           titleStyle={titleStyle}
           descStyle={descStyle}
           showLogo={true}
+          logoPath={logoPath}
         />
         <DataCard
           title={data.voice.title}
@@ -511,9 +557,12 @@ async function render() {
   }
 
   try {
+    // 先下载 Logo 图片
+    const logoPath = await getLogoPath();
+    
     const apiData = await queryImportantData();
     const telecomData = convertToTelecomData(apiData);
-    Widget.present(<WidgetView data={telecomData} />, reloadPolicy);
+    Widget.present(<WidgetView data={telecomData} logoPath={logoPath} />, reloadPolicy);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("渲染失败:", errorMessage);
