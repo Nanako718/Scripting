@@ -266,7 +266,7 @@ function SmallDataCard({
         {showLogo && !useLogoAsIcon ? (
           <HStack alignment="center" frame={{ width: 20, height: 20 }}>
             <Image 
-              imageUrl="https://raw.githubusercontent.com/anker1209/icon/main/zgdx.png" 
+              imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10000.png" 
               frame={{ width: 16, height: 16 }} 
               resizable 
             />

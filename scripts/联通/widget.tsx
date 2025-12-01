@@ -387,7 +387,7 @@ function DataCard({
         <VStack alignment="center">
           <Spacer />
           <Image 
-            imageUrl="https://raw.githubusercontent.com/Enjoyee/Scriptable/v2/img/ic_logo_10010.png" 
+            imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10010.png" 
             frame={{ width: 32, height: 32 }} 
             resizable 
           />
