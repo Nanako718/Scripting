@@ -1,0 +1,22 @@
+{
+  "localizedDescriptions" : null,
+  "runInApp" : false,
+  "localizedNames" : null,
+  "description" : null,
+  "color" : "rgba(102, 196, 235,1)",
+  "intentInputTypes" : [
+
+  ],
+  "remoteResource" : null,
+  "icon" : "square.2.layers.3d.fill",
+  "name" : "中国电信",
+  "author" : {
+    "email" : "2753086015@qq.com",
+    "name" : "DTZSGHNR",
+    "homepage" : null
+  },
+  "contributors" : [
+
+  ],
+  "version" : "1.0.0"
+}

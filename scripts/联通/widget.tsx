@@ -223,7 +223,7 @@ function extractVoiceAndFlowData(detailData: DetailApiResponse): {
         total: voiceTotal,
       },
       flow: {
-        title: "剩余流量",
+        title: "通用流量",
         balance: flowFormatted.balance,
         unit: flowFormatted.unit,
         used: flowUsedMB,
