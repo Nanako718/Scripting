@@ -1,31 +1,288 @@
 import { fetch } from "scripting";
+import JSEncrypt from "./module/jsencrypt";
 
 // 设置结构
 export type ChinaTelecomSettings = {
-  apiUrl: string;
   mobile: string;
   password: string;
 };
 
 const SETTINGS_KEY = "chinaTelecomSettings";
 
-// 日期格式化函数
-function formatDate(format: string, date?: Date | string): string {
-  const d = date ? new Date(typeof date === 'string' ? date.replace(/-/g, '/') : date) : new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hour = String(d.getHours()).padStart(2, '0');
-  const minute = String(d.getMinutes()).padStart(2, '0');
-  const second = String(d.getSeconds()).padStart(2, '0');
+type StorageProps = {
+  phonenum: string;
+  password: string;
+  token: string;
+  provinceCode: string;
+  cityCode: string;
+};
 
-  return format
-    .replace('yyyy', String(year))
-    .replace('MM', month)
-    .replace('dd', day)
-    .replace('HH', hour)
-    .replace('mm', minute)
-    .replace('ss', second);
+class Telecom {
+  private KEY = "telecom";
+
+  phonenum = "";
+  password = "";
+  private cityCode = "";
+  private provinceCode = "";
+  private token = "";
+
+  private client_type = "#12.2.0#channel50#iPhone 14 Pro#";
+  private headers = { "Content-Type": "application/json; charset=UTF-8" };
+
+  constructor() {
+    const settings = Storage.get<ChinaTelecomSettings>(SETTINGS_KEY);
+    if (settings) {
+      this.phonenum = settings.mobile || "";
+      this.password = settings.password || "";
+    }
+    
+    const stored = Storage.get(this.KEY) as StorageProps;
+    if (stored) {
+      Object.assign(this, stored);
+    }
+  }
+
+  // --- Endpoint --- //
+
+  private async login() {
+    const uuid = String(Math.floor(Math.random() * 9e15 + 1e15));
+    const ts = this.getBeijingTimestamp();
+    
+    const loginBody = {
+      content: {
+        fieldData: {
+          accountType: "",
+          authentication: this.transNumber(this.password),
+          deviceUid: uuid.slice(0, 16),
+          isChinatelecom: "",
+          loginAuthCipherAsymmertric: this.encrypt(
+            `iPhone 15 13.2.${uuid.slice(0, 12)}${this.phonenum}${ts}${this.password}0$$$0.`
+          ),
+          loginType: "4",
+          phoneNum: this.transNumber(this.phonenum),
+          systemVersion: "13.2.3",
+        },
+        attach: "test",
+      },
+      headerInfos: {
+        code: "userLoginNormal",
+        clientType: "#12.2.0#channel50#iPhone 14 Pro#",
+        timestamp: ts,
+        shopId: "20002",
+        source: "110003",
+        sourcePassword: "Sid98s",
+        token: "",
+        userLoginName: this.transNumber(this.phonenum),
+      },
+    };
+
+    try {
+      const response = await fetch("https://appgologin.189.cn:9031/login/client/userLoginNormal", {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify(loginBody),
+      });
+
+      const responseText = await response.text();
+      const data = JSON.parse(responseText);
+      
+      if (data.responseData?.resultCode !== "0000") {
+        const errMsg = data.responseData?.resultDesc || "登录失败";
+        console.error("登录失败:", errMsg);
+        throw new Error(errMsg);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("登录异常:", error);
+      throw error;
+    }
+  }
+
+  private async fetch_important_data() {
+    const ts = this.getBeijingTimestamp();
+    
+    const queryBody = {
+      content: {
+        fieldData: {
+          provinceCode: this.provinceCode,
+          cityCode: this.cityCode,
+          shopId: "20002",
+          isChinatelecom: "0",
+          account: this.transNumber(this.phonenum),
+        },
+        attach: "test",
+      },
+      headerInfos: {
+        code: "userFluxPackage",
+        clientType: this.client_type,
+        timestamp: ts,
+        shopId: "20002",
+        source: "110003",
+        sourcePassword: "Sid98s",
+        userLoginName: this.transNumber(this.phonenum),
+        token: this.token,
+      },
+    };
+
+    try {
+      const response = await fetch("https://appfuwu.189.cn:9021/query/qryImportantData", {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify(queryBody),
+      });
+
+      const responseText = await response.text();
+      const data = JSON.parse(responseText);
+      return data;
+    } catch (error) {
+      console.error("查询异常:", error);
+      throw error;
+    }
+  }
+
+  // --- util --- //
+
+  async fetch_data() {
+    const body = await this.fetch_important_data();
+    if (body.responseData) {
+      this.formatAndLogData(body);
+      return body;
+    }
+
+    // 刷新 Token
+    const data = await this.login();
+    if (data.responseData.resultCode !== "0000") {
+      throw new Error(data.responseData.resultDesc);
+    }
+    ({
+      token: this.token,
+      cityCode: this.cityCode,
+      provinceCode: this.provinceCode,
+    } = data.responseData.data.loginSuccessResult);
+    this.save();
+
+    // 重新查询
+    const newBody = await this.fetch_important_data();
+    if (!newBody.responseData) {
+      console.error("查询失败:", JSON.stringify(newBody));
+      throw new Error(JSON.stringify(newBody));
+    }
+    this.formatAndLogData(newBody);
+    return newBody;
+  }
+
+  private formatAndLogData(data: any) {
+    const responseData = data.responseData?.data;
+    if (!responseData) return;
+
+    // 余额信息
+    const balanceInfo = responseData.balanceInfo;
+    const indexBalanceDataInfo = balanceInfo?.indexBalanceDataInfo;
+    let balance = parseFloat(indexBalanceDataInfo?.balance || "0");
+    const arrear = parseFloat(indexBalanceDataInfo?.arrear || "0");
+    if (arrear > 0) {
+      balance = balance - arrear;
+    }
+
+    // 语音信息
+    const voiceInfo = responseData.voiceInfo;
+    const voiceDataInfo = voiceInfo?.voiceDataInfo;
+    const voiceBalance = parseFloat(voiceDataInfo?.balance || "0");
+    const voiceUsed = parseFloat(voiceDataInfo?.used || "0");
+    const voiceTotal = parseFloat(voiceDataInfo?.total || "0") || (voiceUsed + voiceBalance);
+
+    // 流量信息
+    const flowInfo = responseData.flowInfo;
+    const commonFlow = flowInfo?.commonFlow;
+    const commonBalanceBytes = parseFloat(commonFlow?.balance || "0");
+    const commonUsedBytes = parseFloat(commonFlow?.used || "0");
+    const commonBalanceMB = commonBalanceBytes / 1024;
+    const commonUsedMB = commonUsedBytes / 1024;
+    const commonTotalMB = commonBalanceMB + commonUsedMB;
+
+    const specialAmount = flowInfo?.specialAmount;
+    const specialBalanceBytes = parseFloat(specialAmount?.balance || "0");
+    const specialUsedBytes = parseFloat(specialAmount?.used || "0");
+    const specialBalanceMB = specialBalanceBytes / 1024;
+    const specialUsedMB = specialUsedBytes / 1024;
+    const specialTotalMB = specialBalanceMB + specialUsedMB;
+
+    const totalFlowMB = commonTotalMB + specialTotalMB;
+    const totalFlowUsedMB = commonUsedMB + specialUsedMB;
+    const totalFlowBalanceMB = commonBalanceMB + specialBalanceMB;
+
+    // 格式化输出
+    console.log("=".repeat(50));
+    console.log("余额信息:");
+    console.log("  账户余额:", balance.toFixed(2), "元");
+    if (arrear > 0) {
+      console.log("  欠费金额:", arrear.toFixed(2), "元");
+    }
+    console.log("");
+    console.log("语音信息:");
+    console.log("  剩余:", voiceBalance.toFixed(0), "分钟");
+    console.log("  已用:", voiceUsed.toFixed(0), "分钟");
+    console.log("  总计:", voiceTotal.toFixed(0), "分钟");
+    console.log("");
+    console.log("流量信息:");
+    if (commonTotalMB > 0) {
+      console.log("  通用流量:");
+      console.log("    剩余:", commonBalanceMB > 1024 ? (commonBalanceMB / 1024).toFixed(2) + " GB" : commonBalanceMB.toFixed(2) + " MB");
+      console.log("    已用:", commonUsedMB > 1024 ? (commonUsedMB / 1024).toFixed(2) + " GB" : commonUsedMB.toFixed(2) + " MB");
+      console.log("    总计:", commonTotalMB > 1024 ? (commonTotalMB / 1024).toFixed(2) + " GB" : commonTotalMB.toFixed(2) + " MB");
+    }
+    if (specialTotalMB > 0) {
+      console.log("  其他流量:");
+      console.log("    剩余:", specialBalanceMB > 1024 ? (specialBalanceMB / 1024).toFixed(2) + " GB" : specialBalanceMB.toFixed(2) + " MB");
+      console.log("    已用:", specialUsedMB > 1024 ? (specialUsedMB / 1024).toFixed(2) + " GB" : specialUsedMB.toFixed(2) + " MB");
+      console.log("    总计:", specialTotalMB > 1024 ? (specialTotalMB / 1024).toFixed(2) + " GB" : specialTotalMB.toFixed(2) + " MB");
+    }
+    console.log("  总流量:");
+    console.log("    剩余:", totalFlowBalanceMB > 1024 ? (totalFlowBalanceMB / 1024).toFixed(2) + " GB" : totalFlowBalanceMB.toFixed(2) + " MB");
+    console.log("    已用:", totalFlowUsedMB > 1024 ? (totalFlowUsedMB / 1024).toFixed(2) + " GB" : totalFlowUsedMB.toFixed(2) + " MB");
+    console.log("    总计:", totalFlowMB > 1024 ? (totalFlowMB / 1024).toFixed(2) + " GB" : totalFlowMB.toFixed(2) + " MB");
+    console.log("=".repeat(50));
+  }
+
+  save() {
+    Storage.set(this.KEY, {
+      phonenum: this.phonenum,
+      password: this.password,
+      token: this.token,
+      provinceCode: this.provinceCode,
+      cityCode: this.cityCode,
+    } as StorageProps);
+  }
+
+  private getBeijingTimestamp() {
+    // 北京时间
+    const bjDate = new Date(Date.now() + 8 * 3600 * 1000);
+    const yyyy = String(bjDate.getFullYear());
+    const MM = String(bjDate.getMonth() + 1).padStart(2, "0");
+    const dd = String(bjDate.getDate()).padStart(2, "0");
+    const HH = String(bjDate.getHours()).padStart(2, "0");
+    const mm = String(bjDate.getMinutes()).padStart(2, "0");
+    const ss = String(bjDate.getSeconds()).padStart(2, "0");
+    return `${yyyy}${MM}${dd}${HH}${mm}${ss}`;
+  }
+
+  private transNumber(str: string, encode = true) {
+    return [...str]
+      .map((c) => String.fromCharCode((c.charCodeAt(0) + (encode ? 2 : -2)) & 0xffff))
+      .join("");
+  }
+
+  private encrypt(str: string) {
+    const encryptor = new JSEncrypt();
+    encryptor.setPublicKey(`-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDBkLT15ThVgz6/NOl6s8GNPofd
+WzWbCkWnkaAm7O2LjkM1H7dMvzkiqdxU02jamGRHLX/ZNMCXHnPcW/sDhiFCBN18
+qFvy8g6VYb9QtroI09e176s+ZCtiv7hbin2cCTj99iUpnEloZm19lwHyo69u5UMi
+PMpq0/XKBO8lYhN/gwIDAQAB
+-----END PUBLIC KEY-----`);
+    return encryptor.encrypt(str);
+  }
 }
 
 // 从 Storage 读取设置
@@ -33,15 +290,11 @@ export function getSettings(): ChinaTelecomSettings | null {
   return Storage.get<ChinaTelecomSettings>(SETTINGS_KEY);
 }
 
-// 查询重要数据接口（直接使用配置的 API）
+// 查询重要数据接口（使用官方接口）
 export async function queryImportantData(): Promise<any> {
   const settings = getSettings();
   if (!settings) {
-    throw new Error("未找到配置，请在设置中配置接口、账号、密码");
-  }
-
-  if (!settings.apiUrl) {
-    throw new Error("未配置接口地址(apiUrl)，请在设置中配置");
+    throw new Error("未找到配置，请在设置中配置手机号和密码");
   }
 
   if (!settings.mobile) {
@@ -52,175 +305,7 @@ export async function queryImportantData(): Promise<any> {
     throw new Error("未配置密码(password)，请在设置中配置");
   }
 
-  let baseUrl = settings.apiUrl.trim();
-  baseUrl = baseUrl.replace(/\/$/, '');
-  const apiUrl = `${baseUrl}/qryImportantData`;
-  const mobile = settings.mobile.trim();
-  const password = settings.password.trim();
-
-  console.log("查询数据:", apiUrl, mobile);
-
-  const body = {
-    phonenum: mobile,
-    password: password
-  };
-
-  const headers = {
-    "Content-Type": "application/json",
-  };
-
-  try {
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      throw new Error(`查询请求失败: HTTP ${response.status}`);
-    }
-
-    const data = JSON.parse(await response.text());
-
-    if (data.headerInfos?.code === '0000' && data.responseData?.resultCode === '0000') {
-      console.log("查询成功");
-      return data;
-    } else {
-      const errMsg = data.responseData?.resultDesc || data.headerInfos?.reason || "未知错误";
-      console.error("查询失败:", errMsg);
-      throw new Error("查询失败: " + errMsg);
-    }
-  } catch (error) {
-    console.error("查询异常:", error);
-    throw error;
-  }
-}
-
-// 处理查询结果并保存（已废弃，不再使用）
-export function processQueryResult(res: any): any {
-  if (!res || !res.responseData || !res.responseData.data) {
-    throw new Error("查询数据失败：响应数据格式不正确");
-  }
-
-  const old_obj_str = Storage.get<string>("vvv_flow", { shared: true });
-  let old_obj = null;
-  try {
-    if (old_obj_str) {
-      old_obj = JSON.parse(old_obj_str);
-    }
-  } catch (error) {
-    console.warn("⚠️ 解析旧数据失败:", error);
-  }
-
-  // 接口返回的数据格式：
-  // flowTotal: 总流量（字节）
-  // commonTotal: 通用流量总计（字节）
-  // commonUse: 通用流量已用（字节）
-  // specialTotal: 专用流量总计（字节）
-  // specialUse: 专用流量已用（字节）
-
-  // 通用流量（收费流量）- 单位是字节，需要转换为 MB
-  const commonTotal = parseFloat(String(res.commonTotal || "0"));
-  const commonUse = parseFloat(String(res.commonUse || "0"));
-  const commonBalance = commonTotal - commonUse;
-  
-  let limitbalancetotal = commonBalance / 1024; // 转换为 MB
-  let limitusagetotal = commonUse / 1024; // 转换为 MB
-  let limitratabletotal = commonTotal / 1024; // 转换为 MB
-
-  // 专用流量（免费流量）- 单位是字节，需要转换为 MB
-  const specialTotal = parseFloat(String(res.specialTotal || "0"));
-  const specialUse = parseFloat(String(res.specialUse || "0"));
-  const specialBalance = specialTotal - specialUse;
-  
-  let unlimitbalancetotal = specialBalance / 1024; // 转换为 MB
-  let unlimitusagetotal = specialUse / 1024; // 转换为 MB
-  let unlimitratabletotal = specialTotal / 1024; // 转换为 MB
-
-  const now = new Date();
-  const time = formatDate('yyyy-MM-dd HH:mm:ss', now);
-  const query_date = formatDate('yyyy-MM-dd', now);
-
-  const fee_used_flow = Number(limitusagetotal.toFixed(2));
-  const fee_remain_flow = Number(limitbalancetotal.toFixed(2));
-  const fee_all_flow = Number(limitratabletotal.toFixed(2));
-
-  const free_used_flow = Number(unlimitusagetotal.toFixed(2));
-  const used_flow = Number((limitusagetotal + unlimitusagetotal).toFixed(2));
-  const sum_top_flow = Number((unlimitratabletotal + limitratabletotal).toFixed(2));
-  const remain_top_flow = Number((limitbalancetotal + unlimitbalancetotal).toFixed(2));
-
-  const second = old_obj ? parseFloat(((new Date(time.replace(/-/g, '/')).getTime() - new Date(old_obj.query_date_time.replace(/-/g, '/')).getTime()) / 1000).toFixed(2)) : 0;
-  const second_flow = (old_obj && old_obj.fee_used_flow < fee_used_flow) ? parseFloat((fee_used_flow - old_obj.fee_used_flow).toFixed(2)) : 0;
-
-  const last_day_fee_flow = (old_obj && old_obj.last_day_fee_flow >= 0) ? old_obj.last_day_fee_flow : fee_used_flow;
-  const offset_fee = parseFloat((fee_used_flow - last_day_fee_flow).toFixed(2));
-  const one_day_fee_flow = offset_fee >= 0 ? offset_fee : (old_obj?.one_day_fee_flow || 0);
-
-  const last_day_free_flow = (old_obj && old_obj.last_day_free_flow >= 0) ? old_obj.last_day_free_flow : free_used_flow;
-  const offset_free = parseFloat((free_used_flow - last_day_free_flow).toFixed(2));
-  const one_day_free_flow = (offset_free >= 0 ? offset_free : (old_obj?.one_day_free_flow || 0));
-
-  const last_day_flow = (old_obj && old_obj.last_day_flow >= 0) ? old_obj.last_day_flow : used_flow;
-  const offset_flow = parseFloat((used_flow - last_day_flow).toFixed(2));
-  const one_day_flow = (offset_flow >= 0 ? offset_flow : (old_obj?.one_day_flow || 0));
-
-  // 计算每日可用流量限制
-  const dd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate() + 1;
-  const fee_flow_limit = parseInt((fee_remain_flow / dd).toFixed(0));
-
-  const obj = {
-    'query_date_time': time,
-    'query_date': query_date,
-    'fee_used_flow': fee_used_flow,
-    'fee_remain_flow': fee_remain_flow,
-    'fee_all_flow': fee_all_flow,
-    'free_used_flow': free_used_flow,
-    'used_flow': used_flow,
-    'sum_top_flow': sum_top_flow,
-    'remain_top_flow': remain_top_flow,
-    'last_day_fee_flow': last_day_fee_flow,
-    'one_day_fee_flow': one_day_fee_flow,
-    'last_day_free_flow': last_day_free_flow,
-    'one_day_free_flow': one_day_free_flow,
-    'last_day_flow': last_day_flow,
-    'one_day_flow': one_day_flow,
-    'second': second,
-    'second_flow': second_flow,
-    'fee_flow_limit': fee_flow_limit,
-  };
-
-  console.log("=".repeat(50));
-  console.log("📊 流量统计结果:");
-  console.log("  - 查询时间:", obj.query_date_time);
-  console.log("  - 收费流量已用:", obj.fee_used_flow, "MB");
-  console.log("  - 收费流量剩余:", obj.fee_remain_flow, "MB");
-  console.log("  - 免费流量已用:", obj.free_used_flow, "MB");
-  console.log("  - 总流量已用:", obj.used_flow, "MB");
-  console.log("  - 总流量剩余:", obj.remain_top_flow, "MB");
-  console.log("  - 今日已用收费流量:", obj.one_day_fee_flow, "MB");
-  console.log("  - 今日可用流量:", obj.fee_flow_limit, "MB");
-  console.log("=".repeat(50));
-
-  // 保存结果
-  const objstr = JSON.stringify(obj);
-  Storage.set("vvv_flow", objstr, { shared: true });
-
-  return obj;
-}
-
-// 主查询函数（直接查询）
-export async function handleQuery(): Promise<any> {
-  console.log("=".repeat(50));
-  console.log("🚀 开始处理查询请求");
-  console.log("=".repeat(50));
-
-  const res = await queryImportantData();
-
-  if (!res) {
-    throw new Error("查询失败");
-  }
-
-  return processQueryResult(res);
+  const telecom = new Telecom();
+  return await telecom.fetch_data();
 }
 
