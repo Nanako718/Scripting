@@ -66,9 +66,6 @@ function convertToMobileData(parsed: any): MobileData {
 // 从 REWRITE_URL API 读取数据（通过 Quantumult X 重写规则）
 async function loadFromRewriteApi(): Promise<any> {
   try {
-    console.log("📡 [中国移动] 开始从 REWRITE_URL API 读取数据")
-    console.log("📍 [中国移动] API URL:", REWRITE_URL)
-    
     const response = await fetch(REWRITE_URL, {
       method: "POST",
       headers: {
@@ -78,22 +75,13 @@ async function loadFromRewriteApi(): Promise<any> {
     })
     
     if (response.ok) {
-      console.log("✅ [中国移动] API 请求成功，状态码:", response.status)
       const res = await response.json()
-      console.log("📦 [中国移动] 收到原始数据:", JSON.stringify(res).substring(0, 200) + "...")
-      
       if (res && res.fee) {
-        console.log("✅ [中国移动] 检测到数据格式（包含 fee 字段）")
         return res
       }
-      
-      console.log("⚠️ [中国移动] 返回数据格式异常，无 fee 字段")
-      return res
-    } else {
-      console.error("❌ [中国移动] API 请求失败，状态码:", response.status)
     }
   } catch (error) {
-    console.error("🚨 [中国移动] API 请求异常:", error)
+    console.error("[中国移动] API 请求失败:", error)
   }
   return null
 }
@@ -101,22 +89,18 @@ async function loadFromRewriteApi(): Promise<any> {
 // 从缓存读取（使用 FileManager，与原代码一致）
 function loadFromCache(): any {
   try {
-    console.log("💾 [中国移动] 尝试从缓存读取数据")
     const path = FileManager.appGroupDocumentsDirectory + "/" + CACHE_FILE
     if (FileManager.existsSync(path)) {
       try {
         const data = FileManager.readAsStringSync(path)
-        const parsed = JSON.parse(data)
-        console.log("✅ [中国移动] 成功读取缓存数据")
-        return parsed
+        return JSON.parse(data)
       } catch (e) {
-        console.error("❌ [中国移动] 解析缓存数据失败:", e)
+        console.error("[中国移动] 解析缓存失败")
         return null
       }
     }
-    console.log("⚠️ [中国移动] 缓存文件不存在")
   } catch (e) {
-    console.error("❌ [中国移动] 读取缓存失败:", e)
+    console.error("[中国移动] 读取缓存失败")
   }
   return null
 }
@@ -124,7 +108,6 @@ function loadFromCache(): any {
 // 保存到缓存（使用 FileManager，与原代码一致）
 function saveToCache(data: any) {
   try {
-    console.log("💾 [中国移动] 开始保存数据到缓存")
     const path = FileManager.appGroupDocumentsDirectory + "/" + CACHE_FILE
     // 添加更新时间（如果没有）
     if (!data.updateTime) {
@@ -132,9 +115,8 @@ function saveToCache(data: any) {
       data.updateTime = `${now.getHours()}:${now.getMinutes() < 10 ? "0" + now.getMinutes() : now.getMinutes()}`
     }
     FileManager.writeAsStringSync(path, JSON.stringify(data))
-    console.log("✅ [中国移动] 缓存保存成功")
   } catch (e) {
-    console.error("❌ [中国移动] 保存缓存失败:", e)
+    console.error("[中国移动] 保存缓存失败")
   }
 }
 
@@ -152,7 +134,6 @@ function parseData(res: any): {
   user_boxjs_url?: string
 } | null {
   try {
-    console.log("🔍 [中国移动] 开始解析数据")
     let fee = "0"
     let planFee = "0"
     if (res.fee) {
@@ -161,7 +142,6 @@ function parseData(res: any): {
       
       if (res.fee.realFee !== undefined) planFee = res.fee.realFee
       else if (res.fee.curFeeTotal !== undefined) planFee = res.fee.curFeeTotal
-      console.log("💰 [中国移动] 话费数据:", fee, "元，套餐:", planFee, "元")
     }
     
     let flowGen = { total: "0", used: "0", remain: "0", unit: "MB" }
@@ -215,8 +195,6 @@ function parseData(res: any): {
         used: (buckets.dir.u / dirDiv).toFixed(dirDiv === 1 ? 0 : 2),
         unit: dirFmt.unit
       }
-      console.log("📊 [中国移动] 通用流量:", flowGen.remain, flowGen.unit, "已用:", flowGen.used, "总计:", flowGen.total)
-      console.log("📺 [中国移动] 定向流量:", flowDir.remain, flowDir.unit, "已用:", flowDir.used, "总计:", flowDir.total)
     }
 
     if (res.plan && res.plan.planRemianVoiceListRes) {
@@ -235,11 +213,9 @@ function parseData(res: any): {
           remain: Math.floor(r).toString(),
           unit: "分"
         }
-        console.log("📞 [中国移动] 语音数据: 剩余", voiceVal.remain, "分，已用", voiceVal.used, "分，总计", voiceVal.total, "分")
       }
     } else if (res.voice && res.voice.val) {
       voiceVal.remain = res.voice.val
-      console.log("📞 [中国移动] 语音数据（简化）: 剩余", voiceVal.remain, "分")
     }
     
     // 按照原代码返回格式
@@ -250,10 +226,9 @@ function parseData(res: any): {
       flowDir: flowDir,
       voice: voiceVal,
     }
-    console.log("✅ [中国移动] 数据解析完成")
     return result
   } catch (e) {
-    console.error("❌ [中国移动] 数据解析错误:", e)
+    console.error("[中国移动] 数据解析错误")
     return {
       ok: false,
       fee: { val: "0", unit: "元", plan: "0" },
@@ -632,28 +607,21 @@ function WidgetView({ data }: { data: MobileData }) {
 }
 
 async function render() {
-  console.log("🚀 [中国移动] 开始渲染小组件")
   const oldCache = loadFromCache() || {}
   const settings = Storage.get<ChinaMobileSettings>(SETTINGS_KEY)
   const currentInterval = oldCache.refreshInterval || settings?.refreshInterval || 60
-  
-  console.log("⚙️ [中国移动] 当前设置:", JSON.stringify(settings))
-  console.log("⏰ [中国移动] 刷新间隔:", currentInterval, "分钟")
   
   const nextUpdate = new Date(Date.now() + currentInterval * 60 * 1000)
   const reloadPolicy: WidgetReloadPolicy = {
     policy: "after",
     date: nextUpdate
   }
-  console.log("⏰ [中国移动] 下次更新:", nextUpdate.toISOString())
 
   // 1. 优先尝试从 REWRITE_URL API 读取（通过 Quantumult X 重写规则）
   try {
-    console.log("📡 [中国移动] 开始从 REWRITE_URL API 获取数据")
     const apiData = await loadFromRewriteApi()
     
     if (apiData && apiData.fee) {
-      console.log("✅ [中国移动] API 数据获取成功，开始解析")
       const pData = parseData(apiData)
       
       if (pData && pData.ok) {
@@ -666,21 +634,17 @@ async function render() {
         saveToCache(pData)
         
         const mobileData = convertToMobileData(pData)
-        console.log("🎨 [中国移动] 开始渲染 UI")
         Widget.present(<WidgetView data={mobileData} />, reloadPolicy)
-        console.log("✅ [中国移动] 小组件渲染完成")
         return
       }
     }
   } catch (e) {
-    console.error("❌ [中国移动] API 读取失败:", e)
+    console.error("[中国移动] API 读取失败")
   }
 
   // 2. 如果 API 失败，尝试使用缓存
-  console.warn("⚠️ [中国移动] API 数据获取失败，尝试使用缓存")
   const cache = loadFromCache()
   if (cache && cache.ok && cache.fee) {
-    console.log("✅ [中国移动] 使用缓存数据")
     cache.usingCache = true
     cache.source = "Cache"
     const mobileData = convertToMobileData(cache)
@@ -689,7 +653,7 @@ async function render() {
   }
 
   // 3. 最后返回错误信息
-  console.error("❌ [中国移动] 所有数据源都失败")
+  console.error("[中国移动] 获取数据失败")
   Widget.present(
     <VStack spacing={8} padding={16} alignment="center">
       <Text font="headline">获取数据失败</Text>

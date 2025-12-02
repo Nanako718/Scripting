@@ -2,9 +2,7 @@ import {
   Navigation,
   Form,
   Section,
-  TextField,
   Button,
-  useState,
   Text,
   VStack,
   Spacer,
@@ -12,46 +10,27 @@ import {
   Link,
 } from "scripting"
 
-// Define the settings structure
-type ChinaMobileSettings = {
-  refreshInterval: number
-}
-
-const SETTINGS_KEY = "chinaMobileSettings"
 const VERSION = "1.0.0"
-const REWRITE_RULE_URL = "https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/Quantumult%20X/scripting.sgmodule"
-
-// Default settings
-const defaultSettings: ChinaMobileSettings = {
-  refreshInterval: 60,
-}
+const REWRITE_RULE_URL = "https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/Quantumult%20X/scripting.qx.conf"
 
 function SettingsPage() {
   const dismiss = Navigation.useDismiss()
-  const initialSettings = Storage.get<ChinaMobileSettings>(SETTINGS_KEY) ?? defaultSettings
-
-  // State for the form fields
-  const [refreshInterval, setRefreshInterval] = useState(initialSettings.refreshInterval)
-
-  const handleSave = () => {
-    const newSettings: ChinaMobileSettings = {
-      refreshInterval,
-    }
-    Storage.set(SETTINGS_KEY, newSettings)
-    dismiss()
-  }
-
-  // Quantumult X URL Scheme - 直接添加重写规则
-  // 使用 Quantumult X 的 URL Scheme 来添加远程资源
-  const qxRewriteUrl = `quantumult-x:///update-configuration?remote-resource=${encodeURIComponent(REWRITE_RULE_URL)}`
   
-  // 复制重写规则 URL 到剪贴板并打开 Quantumult X
+  // 复制链接并打开 Quantumult X
   const handleInstallRewrite = async () => {
-    // 先复制到剪贴板（备用方案）
+    // 复制重写规则链接到剪贴板
     await Pasteboard.setString(REWRITE_RULE_URL)
     
-    // 打开 Quantumult X 并尝试添加重写规则
-    await Safari.openURL(qxRewriteUrl)
+    // 打开 Quantumult X
+    const qxAppUrl = "quantumult-x:///"
+    await Safari.openURL(qxAppUrl)
+    
+    // 显示提示
+    await Dialog.alert({
+      title: "链接已复制",
+      message: "重写规则链接已复制到剪贴板，请在 Quantumult X 中手动添加：\n设置 → 重写 → + → 从 URL 添加",
+      buttonLabel: "确定"
+    })
   }
 
   return (
@@ -66,9 +45,9 @@ function SettingsPage() {
             action={handleInstallRewrite}
           />
           <Text font="caption2" foregroundStyle="secondaryLabel" padding={{ top: 8 }}>
-            • 点击按钮将自动复制重写规则地址并打开 Quantumult X{'\n'}
-            • 如果未自动添加，请在 Quantumult X 中手动添加：设置 → 重写 → + → 从 URL 添加{'\n'}
-            • 重写规则地址已复制到剪贴板，可直接粘贴{'\n'}
+            • 点击按钮将复制重写规则链接并打开 Quantumult X{'\n'}
+            • 请在 Quantumult X 中手动添加：设置 → 重写 → + → 从 URL 添加{'\n'}
+            • 链接已复制到剪贴板，可直接粘贴{'\n'}
             • 确保已启用 MitM 并安装证书
           </Text>
           <Text 
@@ -80,7 +59,40 @@ function SettingsPage() {
           </Text>
         </Section>
 
-        <Button title="保存设置" action={handleSave} />
+        <Section title="缓存管理">
+          <Button 
+            title="🗑️ 清除缓存" 
+            action={async () => {
+              try {
+                const path = FileManager.appGroupDocumentsDirectory + "/cm_data_cache.json"
+                if (FileManager.existsSync(path)) {
+                  FileManager.removeSync(path)
+                  // 显示成功提示
+                  await Dialog.alert({
+                    title: "清除成功",
+                    message: "缓存已清除",
+                    buttonLabel: "确定"
+                  })
+                } else {
+                  await Dialog.alert({
+                    title: "提示",
+                    message: "缓存文件不存在",
+                    buttonLabel: "确定"
+                  })
+                }
+              } catch (e) {
+                await Dialog.alert({
+                  title: "清除失败",
+                  message: String(e),
+                  buttonLabel: "确定"
+                })
+              }
+            }}
+          />
+          <Text font="caption2" foregroundStyle="secondaryLabel" padding={{ top: 4 }}>
+            清除缓存数据，下次将重新获取最新数据。
+          </Text>
+        </Section>
       </Form>
       <Spacer />
       <VStack alignment="center" spacing={4} padding={{ bottom: 10 }}>
