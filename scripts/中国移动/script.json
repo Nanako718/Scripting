@@ -1,0 +1,18 @@
+{
+  "runInApp" : false,
+  "description" : null,
+  "version" : "1.0.0",
+  "localizedNames" : null,
+  "icon" : "square.2.layers.3d.fill",
+  "remoteResource" : null,
+  "color" : "rgba(128, 138, 148,1)",
+  "contributors" : [
+
+  ],
+  "localizedDescriptions" : null,
+  "name" : "中国移动",
+  "intentInputTypes" : [
+
+  ],
+  "author" : null
+}

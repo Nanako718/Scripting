@@ -21,6 +21,7 @@ type ChinaMobileSettings = {
 
 const SETTINGS_KEY = "chinaMobileSettings"
 const DEFAULT_BOXJS_URL = "http://127.0.0.1:9999"
+const REWRITE_URL = "https://api.example.com/10086/query"
 const CACHE_FILE = "cm_data_cache.json"
 
 // 组件数据结构（用于 UI 显示）
@@ -77,7 +78,8 @@ async function loadFromBoxJs(): Promise<any> {
       return null
     }
     
-    const url = baseUrl + (baseUrl.includes("?") ? "&key=cm_data" : "/query/boxdata?key=cm_data")
+    // 统一使用 /query/boxdata?key=cm_data 路径
+    const url = baseUrl.replace(/\/$/, "") + "/query/boxdata?key=cm_data"
     console.log("📡 [中国移动] 开始从 BoxJS 读取数据")
     console.log("📍 [中国移动] BoxJS URL:", url)
     
@@ -89,21 +91,73 @@ async function loadFromBoxJs(): Promise<any> {
     
     if (response.ok) {
       console.log("✅ [中国移动] BoxJS 请求成功，状态码:", response.status)
-      const data = await response.json()
-      console.log("📦 [中国移动] 收到原始数据:", JSON.stringify(data).substring(0, 200) + "...")
+      const res = await response.json()
+      console.log("📦 [中国移动] 收到原始数据:", JSON.stringify(res).substring(0, 500) + "...")
+      if (res.datas) {
+        console.log("📋 [中国移动] datas 中的 keys:", Object.keys(res.datas))
+        if (res.datas.cm_data) {
+          console.log("✅ [中国移动] 找到 cm_data 在 datas 中")
+        } else {
+          console.log("⚠️ [中国移动] datas 中没有 cm_data，可用的 keys:", Object.keys(res.datas))
+        }
+      }
       
-      if (data && data.value) {
+      // 处理 BoxJS 返回的数据格式
+      // 格式1: {"value": "..."} - 单个 key 的查询结果
+      if (res && res.value) {
         try {
-          const parsed = JSON.parse(data.value)
-          console.log("✅ [中国移动] 成功解析 JSON 数据")
+          const parsed = JSON.parse(res.value)
+          console.log("✅ [中国移动] 成功解析 JSON 数据 (value 格式)")
           return parsed
         } catch(e) {
           console.log("⚠️ [中国移动] JSON 解析失败，返回原始 value:", e)
-          return data.value
+          return res.value
         }
       }
-      console.log("📋 [中国移动] 返回原始数据对象")
-      return data
+      
+      // 格式2: {"datas": {"cm_data": "..."}} - 多个 key 的查询结果
+      if (res && res.datas) {
+        console.log("📋 [中国移动] 检测到 datas 对象，keys:", Object.keys(res.datas))
+        // 尝试从 datas 中查找 cm_data
+        if (res.datas.cm_data) {
+          try {
+            const parsed = typeof res.datas.cm_data === 'string' 
+              ? JSON.parse(res.datas.cm_data) 
+              : res.datas.cm_data
+            console.log("✅ [中国移动] 成功解析 JSON 数据 (datas.cm_data 格式)")
+            return parsed
+          } catch(e) {
+            console.log("⚠️ [中国移动] JSON 解析失败，返回原始 cm_data:", e)
+            return res.datas.cm_data
+          }
+        }
+        // 如果 datas 中没有 cm_data，尝试查找其他可能的 key
+        const possibleKeys = Object.keys(res.datas).filter(k => k.includes('data') || k.includes('cm'))
+        if (possibleKeys.length > 0) {
+          console.log("🔍 [中国移动] 在 datas 中找到可能的 key:", possibleKeys)
+          const firstKey = possibleKeys[0]
+          try {
+            const parsed = typeof res.datas[firstKey] === 'string' 
+              ? JSON.parse(res.datas[firstKey]) 
+              : res.datas[firstKey]
+            console.log(`✅ [中国移动] 成功解析 JSON 数据 (datas.${firstKey} 格式)`)
+            return parsed
+          } catch(e) {
+            console.log(`⚠️ [中国移动] JSON 解析失败，返回原始 ${firstKey}:`, e)
+            return res.datas[firstKey]
+          }
+        }
+      }
+      
+      // 格式3: 直接返回数据对象（可能已经是解析后的数据，或者是从 REWRITE_URL 返回的）
+      // 检查是否包含 fee 字段，如果有则可能是直接的数据
+      if (res && res.fee) {
+        console.log("✅ [中国移动] 检测到直接数据格式（包含 fee 字段）")
+        return res
+      }
+      
+      console.log("📋 [中国移动] 返回原始数据对象（无 value、datas 或 fee）")
+      return res
     } else {
       console.error("❌ [中国移动] BoxJS 请求失败，状态码:", response.status)
     }
@@ -113,27 +167,40 @@ async function loadFromBoxJs(): Promise<any> {
   return null
 }
 
-// 从缓存读取
+// 从缓存读取（使用 FileManager，与原代码一致）
 function loadFromCache(): any {
   try {
     console.log("💾 [中国移动] 尝试从缓存读取数据")
-    const data = Storage.get(CACHE_FILE)
-    if (data) {
-      console.log("✅ [中国移动] 成功读取缓存数据")
-      return data
+    const path = FileManager.appGroupDocumentsDirectory + "/" + CACHE_FILE
+    if (FileManager.existsSync(path)) {
+      try {
+        const data = FileManager.readAsStringSync(path)
+        const parsed = JSON.parse(data)
+        console.log("✅ [中国移动] 成功读取缓存数据")
+        return parsed
+      } catch (e) {
+        console.error("❌ [中国移动] 解析缓存数据失败:", e)
+        return null
+      }
     }
-    console.log("⚠️ [中国移动] 缓存文件不存在或为空")
+    console.log("⚠️ [中国移动] 缓存文件不存在")
   } catch (e) {
     console.error("❌ [中国移动] 读取缓存失败:", e)
   }
   return null
 }
 
-// 保存到缓存
+// 保存到缓存（使用 FileManager，与原代码一致）
 function saveToCache(data: any) {
   try {
     console.log("💾 [中国移动] 开始保存数据到缓存")
-    Storage.set(CACHE_FILE, data)
+    const path = FileManager.appGroupDocumentsDirectory + "/" + CACHE_FILE
+    // 添加更新时间（如果没有）
+    if (!data.updateTime) {
+      const now = new Date()
+      data.updateTime = `${now.getHours()}:${now.getMinutes() < 10 ? "0" + now.getMinutes() : now.getMinutes()}`
+    }
+    FileManager.writeAsStringSync(path, JSON.stringify(data))
     console.log("✅ [中国移动] 缓存保存成功")
   } catch (e) {
     console.error("❌ [中国移动] 保存缓存失败:", e)
@@ -680,7 +747,52 @@ async function render() {
     console.error("❌ [中国移动] BoxJS 读取失败:", e)
   }
 
-  // 2. 如果 BoxJS 失败，尝试使用缓存（完全按照原代码逻辑）
+  // 2. 如果 BoxJS 失败，尝试 REWRITE_URL API（完全按照原代码逻辑）
+  try {
+    console.log("📡 [中国移动] BoxJS 失败，尝试从 REWRITE_URL API 获取数据")
+    const response = await fetch(REWRITE_URL, {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({})
+    })
+    
+    if (response.ok) {
+      console.log("✅ [中国移动] REWRITE_URL API 请求成功，状态码:", response.status)
+      const res = await response.json()
+      console.log("📦 [中国移动] REWRITE_URL 返回数据:", JSON.stringify(res).substring(0, 200) + "...")
+      
+      if (res && res.fee) {
+        console.log("✅ [中国移动] REWRITE_URL 数据获取成功，开始解析")
+        const pData = parseData(res)
+        
+        if (pData && pData.ok) {
+          pData.source = "API"
+          pData.refreshInterval = currentInterval
+          // 保留缓存中的样式配置
+          if (oldCache.small_style) pData.small_style = oldCache.small_style
+          if (oldCache.medium_style) pData.medium_style = oldCache.medium_style
+          if (oldCache.user_boxjs_url) pData.user_boxjs_url = oldCache.user_boxjs_url
+          else if (settings?.boxJsUrl) pData.user_boxjs_url = settings.boxJsUrl
+          
+          saveToCache(pData)
+          
+          const mobileData = convertToMobileData(pData)
+          console.log("🎨 [中国移动] 开始渲染 UI")
+          Widget.present(<WidgetView data={mobileData} />, reloadPolicy)
+          console.log("✅ [中国移动] 小组件渲染完成")
+          return
+        }
+      }
+    } else {
+      console.error("❌ [中国移动] REWRITE_URL API 请求失败，状态码:", response.status)
+    }
+  } catch (e) {
+    console.error("❌ [中国移动] REWRITE_URL API 读取失败:", e)
+  }
+
+  // 3. 如果 BoxJS 和 API 都失败，尝试使用缓存（完全按照原代码逻辑）
   console.warn("⚠️ [中国移动] BoxJS 数据获取失败，尝试使用缓存")
   const cache = loadFromCache()
   if (cache && cache.ok && cache.fee) {
