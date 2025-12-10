@@ -1,0 +1,18 @@
+{
+  "color" : "rgba(28, 140, 255,1)",
+  "author" : null,
+  "localizedNames" : null,
+  "remoteResource" : null,
+  "name" : "交管12123",
+  "version" : "1.0.0",
+  "intentInputTypes" : [
+
+  ],
+  "runInApp" : false,
+  "contributors" : [
+
+  ],
+  "description" : null,
+  "localizedDescriptions" : null,
+  "icon" : "car.fill"
+}

@@ -1,4 +1,4 @@
-import { Color, ColorScheme, Size, VirtualNode, KeyboardType, Edge, Point, KeywordPoint } from "scripting"
+import { Color, ColorScheme, Size, VirtualNode, KeyboardType, Edge, Point, KeywordPoint, Visibility } from "scripting"
 
 declare global {
 
@@ -3962,6 +3962,63 @@ declare global {
   }
 
   /**
+   * Represents an SFTP file.
+   */
+  class SFTPFile {
+    /**
+     * True if the file is still open, false otherwise.
+     */
+    readonly isActive: boolean
+
+    /**
+     * Reads the attributes of the file.
+     * @returns A promise that resolves to an object containing the attributes of the file. Throws an error if the operation fails.
+     */
+    readAttributes(): Promise<{
+      size?: number
+      userId?: number
+      groupId?: number
+      accessTime?: Date
+      modificationTime?: Date
+      permissions?: number
+    }>
+
+    /**
+     * Reads data from the file.
+     * @param options An object containing options for reading the file.
+     * @param options.from The offset to start reading from. Defaults to 0.
+     * @param options.length The number of bytes to read. Defaults to the end of the file.
+     * @returns A promise that resolves to the data read from the file. Throws an error if the operation fails.
+     */
+    read(options?: {
+      from?: number
+      length?: number
+    }): Promise<Data>
+
+    /**
+     * Reads all data from the file.
+     * @returns A promise that resolves to the data read from the file. Throws an error if the operation fails.
+     */
+    readAll(): Promise<Data>
+    /**
+     * Writes data to the file.
+     * @param data The data to write to the file.
+     * @param at The offset to start writing at.
+     * @returns A promise that resolves when the data has been written. Throws an error if the operation fails.
+     */
+    write(data: Data, at?: number): Promise<void>
+    /**
+     * Closes the file.
+     */
+    close(): Promise<void>
+  }
+
+  /**
+   * Represents a set of flags that can be used when opening an SFTP file.
+   */
+  type SFTPOpenFileFlags = "write" | "append" | "create" | "truncate" | "read" | "forceCreate"
+
+  /**
    * Represents an SFTP client that allows you to interact with an SFTP server.
    * This class provides methods to perform various file operations such as reading directories, creating directories, reading and writing files, and more.
    */
@@ -4031,28 +4088,19 @@ declare global {
     }>
 
     /**
-     * Sets the attributes of a file or directory at the specified path.
-     * @param atPath The path to the file or directory whose attributes are to be set.
-     * @param attributes An object containing the attributes to set, such as size, flag, userId, groupId, accessTime, modificationTime, and permissions.
-     * @returns A promise that resolves when the attributes are successfully set, or rejects with an error if the operation fails.
+     * Opens a file at the specified path with the specified flags.
+     * @param filePath The path to the file to open.
+     * @param flags The flags to use when opening the file.
+     * @returns A promise that resolves to an SFTPFile object representing the opened file. Or rejects with an error if the file cannot be opened.
      */
-    readFile(atPath: string): Promise<string>
+    openFile(filePath: string, flags: SFTPOpenFileFlags | SFTPOpenFileFlags[]): Promise<SFTPFile>
 
     /**
-     * Writes content to a file at the specified path.
-     * @param atPath The path where the file should be written.
-     * @param content The content to write to the file.
-     * @returns A promise that resolves when the file is successfully written, or rejects with an error if the write operation fails.
+     * Removes a file at the specified path.
+     * @param atPath The path of the file to remove.
+     * @returns A promise that resolves when the file is successfully removed, or rejects with an error if the file removal fails.
      */
-    writeFile(atPath: string, content: string): Promise<void>
-
-    /**
-     * Appends content to a file at the specified path.
-     * @param atPath The path where the file should be appended.
-     * @param content The content to append to the file.
-     * @returns A promise that resolves when the content is successfully appended, or rejects with an error if the append operation fails.
-     */
-    removeFile(atPath: string): Promise<void>
+    remove(atPath: string): Promise<void>
 
     /**
      * Removes a file at the specified path.
@@ -10038,6 +10086,122 @@ If the length of the value parameter exceeds the length of the `maximumUpdateVal
       url?: string
       prefersInApp: boolean
     }): OpenURLActionResult
+  }
+
+  namespace IntentMemoryStorage {
+    function get<T>(key: string, options?: {
+      shared?: boolean
+    }): T | null
+    function set(key: string, value: any, options?: {
+      shared?: boolean
+    }): void
+    function remove(key: string, options?: {
+      shared?: boolean
+    }): void
+    function contains(key: string, options?: {
+      shared?: boolean
+    }): boolean
+    function clear(): void
+    function keys(): string[]
+  }
+
+  /**
+   * Represents the customizations of a tab view section.
+   * @available iOS 18.4+
+   */
+  class TabViewCustomizationSection {
+    readonly tabOrder: string[] | null
+    resetTabOrder(): void
+  }
+
+  /**
+   * Represents the customizations of a tab view tab.
+   * @available iOS 18.4+
+   */
+  class TabViewCustomizationTab {
+    readonly tabBarVisibility: Visibility
+    sidebarVisibility: Visibility
+  }
+
+  /**
+   * Represents the customizations of a tab view.
+   * This is used in the `tabViewCustomization` view modifier.
+   * @available iOS 18.0+
+   */
+  class TabViewCustomization {
+    /**
+     * Create a TabViewCustomization from data.
+     * @param data The data to create the TabViewCustomization from, use the `toData` method to create the data.
+     * @returns The TabViewCustomization or null if the data is invalid.
+     */
+    static fromData(data: Data): TabViewCustomization | null
+
+    /**
+     * Get the section with the given id.
+     * @param id The id of the section.
+     * @returns The section or null if the section is not found.
+     * @available iOS 18.4+
+     */
+    getSection(id: string): TabViewCustomizationSection | null
+
+    /**
+     * Get the tab with the given id.
+     * @param id The id of the tab.
+     * @returns The tab or null if the tab is not found.
+     * @available iOS 18.4+
+     */
+    getTab(id: string): TabViewCustomizationTab | null
+
+    /**
+     * Reset the section order.
+     */
+    resetSectionOrder(): void
+
+    /**
+     * Reset the tab visibility.
+     */
+    resetVisibility(): void
+
+    /**
+     * Convert the TabViewCustomization to data. You can use this to save the customization to a file or the Storage.
+     * @returns The data or null if the TabViewCustomization is invalid.
+     */
+    toData(): Data | null
+  }
+
+  /**
+   * Represents the ID of a namespace. You cannot create a NamespaceID instance, it is created by the `NamespaceReader` view.
+   */
+  abstract class NamespaceID {
+    readonly hasValue: number
+  }
+
+  /**
+   * A class that defines the configuration of the Liquid Glass material.
+   * @available iOS 26.0+
+   */
+  class UIGlass {
+    /**
+     * Returns a new instance configured to be interactive. Defaults to true.
+     */
+    interactive(value?: boolean): UIGlass
+    /**
+     * Returns a new instance with a configured tint color.
+     */
+    tint(color: Color): UIGlass
+
+    /**
+     * The clear variant of glass.
+     */
+    static clear(): UIGlass
+    /**
+     * The identity variant of glass. When applied, your content remains unaffected as if no glass effect was applied.
+     */
+    static regular(): UIGlass
+    /**
+     * The regular variant of the Liquid Glass material.
+     */
+    static identity(): UIGlass
   }
 }
 

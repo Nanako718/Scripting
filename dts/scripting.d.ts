@@ -639,9 +639,12 @@ type EdgeInsets = {
     trailing: number;
 };
 type Edge = 'top' | 'leading' | 'trailing' | 'bottom';
-type EdgeSet = 'top' | 'leading' | 'trailing' | 'bottom' | 'all' | 'horizontal' | 'vertical';
-type VerticalEdgeSet = 'all' | 'top' | 'bottom';
-type HorizontalEdgeSet = 'all' | 'leading' | 'bottom';
+type EdgeSetOption = 'top' | 'leading' | 'trailing' | 'bottom' | 'horizontal' | 'vertical';
+type EdgeSet = 'all' | EdgeSetOption | EdgeSetOption[];
+type VerticalEdge = 'top' | 'bottom';
+type VerticalEdgeSet = 'all' | VerticalEdge;
+type HorizontalEdge = 'leading' | 'trailing';
+type HorizontalEdgeSet = 'all' | HorizontalEdge;
 /**
  * Defines the shape of a rounded rectangle’s corners.
  *  - `circular`: Quarter-circle rounded rect corners.
@@ -778,14 +781,14 @@ type AnimatedImageProps = ({
  */
 declare const AnimatedImage: FunctionComponent<AnimatedImageProps>;
 
-type AppIntent<T> = {
+type AppIntent<T, R, P> = {
     script: string;
     name: string;
-    protocol: AppIntentProtocol;
+    protocol: P;
     params: T;
 };
-type AppIntentFactory<T> = (params: T) => AppIntent<T>;
-type AppIntentPerform<T> = (params: T) => Promise<void>;
+type AppIntentFactory<T, R, P = AppIntentProtocol> = (params: T) => AppIntent<T, R, P>;
+type AppIntentPerform<T, R = void> = (params: T) => Promise<R>;
 declare enum AppIntentProtocol {
     AppIntent = 0,
     /**
@@ -801,7 +804,11 @@ declare enum AppIntentProtocol {
     /**
      * An intent that starts, pauses, or otherwise modifies a Live Activity when it runs.
      */
-    LiveActivityIntent = 3
+    LiveActivityIntent = 3,
+    /**
+     * An intent that returns a snippet when it runs.
+     */
+    SnippetIntent = 4
 }
 /**
  * Use this interface to register a specified protocol AppIntent, and this AppIntent could be use for `Button` and `Toggle` controls in `Widget` or `LiveActivity`.
@@ -811,24 +818,20 @@ declare class AppIntentManager {
      * Register an AppIntent with specified protocol. Provides a unique `name` for the AppIntent, the `perform` function will be call when an action trigger by a control view.
      * @returns An AppIntent factory function.
      */
-    static register<T = undefined>(options: {
-        /**
-         * The name of the AppIntent.
-         */
+    static register<T, R = void>(options: {
         name: string;
-        /**
-         * The protocol of AppIntent to implement.
-         */
-        protocol: AppIntentProtocol;
-        /**
-         * Performs the intent after resolving the provided parameters.
-         */
-        perform: AppIntentPerform<T>;
-    }): AppIntentFactory<T>;
+        protocol: AppIntentProtocol.AppIntent | AppIntentProtocol.AudioPlaybackIntent | AppIntentProtocol.AudioRecordingIntent | AppIntentProtocol.LiveActivityIntent;
+        perform: AppIntentPerform<T, R>;
+    }): AppIntentFactory<T, R>;
+    static register<T>(options: {
+        name: string;
+        protocol: AppIntentProtocol.SnippetIntent;
+        perform: AppIntentPerform<T, VirtualNode>;
+    }): AppIntentFactory<T, RangeError, AppIntentProtocol.SnippetIntent>;
     private static perform;
 }
 
-type ButtonRole = 'destructive' | 'cancel';
+type ButtonRole = 'destructive' | 'cancel' | 'close' | 'confirm';
 type ButtonProps = ({
     title: string;
     systemImage?: string;
@@ -846,7 +849,7 @@ type ButtonProps = ({
     /**
      * The AppIntent to execute. AppIntent is only available for `Widget` or `LiveActivity`.
      */
-    intent: AppIntent<any>;
+    intent: AppIntent<any, any, AppIntentProtocol>;
 } | {
     /**
      * The action to perform when the user triggers the button.
@@ -1026,6 +1029,7 @@ type ColorWithGradientOrOpacity = {
  *  - `symbolEffectReplace`: An effect that replaces the layers of one symbol-based image with those of another.
  */
 type ContentTransition = "identity" | "interpolate" | "opacity" | "symbolEffect" | "numericText" | "numericTextCountsDown" | "numericTextCountsUp" | "symbolEffectAutomatic" | "symbolEffectReplace" | "symbolEffectAppear" | "symbolEffectDisappear" | "symbolEffectScale";
+type MatchedGeometryProperties = 'frame' | 'position' | 'size';
 
 type GradientStop = {
     color: Color;
@@ -1439,6 +1443,68 @@ type DynamicShapeStyle = {
     dark: ShapeStyle;
 };
 
+type EdgeCornerStyle = {
+    style: "fixed";
+    radius: number;
+} | {
+    style: "concentric";
+    minimum: number;
+} | "concentric";
+type ConcentricRectangleShape = ({
+    corners: EdgeCornerStyle;
+    /**
+     * Should the corner style on each corner be applied individually or uniformly. Defaults to false.
+     */
+    isUniform?: boolean;
+} | {
+    topLeadingCorner?: EdgeCornerStyle;
+    topTrailingCorner?: EdgeCornerStyle;
+    bottomLeadingCorner?: EdgeCornerStyle;
+    bottomTrailingCorner?: EdgeCornerStyle;
+} | {
+    uniformBottomCorners?: EdgeCornerStyle;
+    topLeadingCorner?: EdgeCornerStyle;
+    topTrailingCorner?: EdgeCornerStyle;
+} | {
+    uniformTopCorners?: EdgeCornerStyle;
+    bottomLeadingCorner?: EdgeCornerStyle;
+    bottomTrailingCorner?: EdgeCornerStyle;
+} | {
+    uniformTopCorners?: EdgeCornerStyle;
+    uniformBottomCorners?: EdgeCornerStyle;
+} | {
+    uniformLeadingCorners?: EdgeCornerStyle;
+    topTrailingCorner?: EdgeCornerStyle;
+    bottomTrailingCorner?: EdgeCornerStyle;
+} | {
+    uniformTrailingCorners?: EdgeCornerStyle;
+    topLeadingCorner?: EdgeCornerStyle;
+    bottomLeadingCorner?: EdgeCornerStyle;
+} | {
+    uniformLeadingCorners?: EdgeCornerStyle;
+    uniformTrailingCorners?: EdgeCornerStyle;
+});
+type RectWithCornerRadius = {
+    type: 'rect';
+    /**
+     * A rectangular shape with rounded corners, aligned inside the frame of the view containing it.
+     */
+    cornerRadius: number;
+    style?: RoundedCornerStyle;
+};
+type RectWithCornerSize = {
+    type: 'rect';
+    cornerSize: {
+        width: number;
+        height: number;
+    };
+    style?: RoundedCornerStyle;
+};
+type RectWithCornerRadii = {
+    type: 'rect';
+    cornerRadii: RectCornerRadii;
+    style?: RoundedCornerStyle;
+};
 /**
  *  - `rect`: A rectangular shape with rounded corners with different values, aligned inside the frame of the view containing it.
  *  - `circle`: A circle centered on the frame of the view containing it. The circle’s radius equals half the length of the frame rectangle’s smallest edge.
@@ -1450,25 +1516,7 @@ type DynamicShapeStyle = {
 type Shape = 'rect' | 'circle' | 'capsule' | 'ellipse' | 'buttonBorder' | 'containerRelative' | {
     type: 'capsule';
     style: RoundedCornerStyle;
-} | {
-    type: 'rect';
-    /**
-     * A rectangular shape with rounded corners, aligned inside the frame of the view containing it.
-     */
-    cornerRadius: number;
-    style?: RoundedCornerStyle;
-} | {
-    type: 'rect';
-    cornerSize: {
-        width: number;
-        height: number;
-    };
-    style?: RoundedCornerStyle;
-} | {
-    type: 'rect';
-    cornerRadii: RectCornerRadii;
-    style?: RoundedCornerStyle;
-};
+} | RectWithCornerRadius | RectWithCornerSize | RectWithCornerRadii;
 /**
  * The type with the drawing methods on Shape to apply multiple fills and/or strokes to a shape.
  */
@@ -1606,7 +1654,10 @@ type SubmitTriggers = "search" | "text";
  *  - `topBarLeading`: Places the item in the leading edge of the top bar.
  *  - `topBarTrailing`: Places the item in the trailing edge of the top bar.
  */
-type ToolbarItemPlacement = 'automatic' | 'bottomBar' | 'cancellationAction' | 'confirmationAction' | 'destructiveAction' | 'keyboard' | 'navigation' | 'primaryAction' | 'principal' | 'secondaryAction' | 'status' | 'topBarLeading' | 'topBarTrailing';
+/**
+ * The placement of the toolbar item.
+ */
+type ToolbarItemPlacement = 'automatic' | 'bottomBar' | 'cancellationAction' | 'confirmationAction' | 'destructiveAction' | 'keyboard' | 'navigation' | 'primaryAction' | 'principal' | 'topBarLeading' | 'topBarTrailing' | 'secondaryAction' | 'status' | 'largeSubtitle' | 'largeTitle' | 'subtitle' | 'title';
 /**
  *  - `automatic`: The system places the item automatically, depending on many factors including the platform, size class, or presence of other items.
  *  - `bottomBar`: Places the item in the bottom toolbar.
@@ -1637,6 +1688,13 @@ type ToolBarProps = {
  */
 type ToolbarTitleDisplayMode = 'automatic' | 'inline' | 'inlineLarge' | 'large';
 type ToolbarPlacement = "automatic" | "tabBar" | "bottomBar" | "navigationBar";
+/**
+ * Defines the implementation of all IndexView instances within a view hierarchy.
+ */
+type IndexViewStyle = 'page' | 'pageBackgroundAutomaticDisplay' | 'pageBackgroundAlwaysDisplay' | 'pageBackgroundNeverDisplay' | 'pageBackgroundInteractiveDisplay';
+type AdaptableTabBarPlacement = 'automatic' | 'tabBar' | 'sidebar';
+type TabPlacement = 'automatic' | 'pinned' | 'sidebarOnly';
+type TabCustomizationBehavior = 'automatic' | 'disabled' | 'reorderable';
 
 type ToggleStyle = 'automatic' | 'switch' | 'button';
 type ButtonBorderShape = 'automatic' | 'capsule' | 'circle' | 'roundedRectangle' | 'buttonBorder' | {
@@ -1705,7 +1763,7 @@ type ControlGroupStyle = 'automatic' | 'compactMenu' | 'menu' | 'navigation' | '
  *  - `borderless`: A button style that doesn’t apply a border.
  *  - `plain`: A button style that doesn’t style or decorate its content while idle, but may apply a visual effect to indicate the pressed, focused, or enabled state of the button.
  */
-type ButtonStyle = 'automatic' | 'bordered' | 'borderless' | 'borderedProminent' | 'plain';
+type ButtonStyle = 'automatic' | 'bordered' | 'borderless' | 'borderedProminent' | 'plain' | 'glass' | 'glassProminent';
 /**
  *  - `automatic`: The default tab view style.
  *  - `page`: A TabViewStyle that displays a paged scrolling TabView.
@@ -1791,7 +1849,9 @@ type ChartMarkProps = {
     /**
      * Sets a clip shape for the chart content.
      */
-    clipShape?: Shape;
+    clipShape?: Shape | 'concentricRect' | ({
+        type: 'concentricRect';
+    } & ConcentricRectangleShape);
     /**
      * A chart content that adds a shadow to this chart content.
      */
@@ -2856,11 +2916,18 @@ type ForeAndBackgroundProps = {
      */
     background?: ShapeStyle | DynamicShapeStyle | {
         style: ShapeStyle | DynamicShapeStyle;
-        shape: Shape;
+        shape: Shape | 'concentricRect' | ({
+            type: 'concentricRect';
+        } & ConcentricRectangleShape);
     } | VirtualNode | {
         content: VirtualNode;
         alignment: Alignment;
     };
+    /**
+     * Adds the background extension effect to the view. The view will be duplicated into mirrored copies which will be placed around the view on any edge with available safe area. Additionally, a blur effect will be applied on top to blur out the copies.
+     * @available iOS 26.0+
+     */
+    backgroundExtensionEffect?: boolean;
 };
 
 type PaddingAndBorderProps = {
@@ -3031,6 +3098,15 @@ type ViewStyleProps = {
      * Sets the menu indicator visibility for controls within this view.
      */
     menuIndicator?: Visibility;
+    /**
+     * Set the width reserved for icons in labels.
+     * Requires iOS 26+.
+     */
+    labelReservedIconWidth?: number;
+    /**
+     * Set the spacing between the icon and title in labels.
+     */
+    labelIconToTitleSpacing?: number;
 };
 
 type TextFieldViewProps = {
@@ -3180,18 +3256,26 @@ type TextViewProps = {
 
 type ShapeViewProps = {
     /**
+     * Sets the container shape to use for any container relative shape within this view.
+     */
+    containerShape?: Shape;
+    /**
      * The resolved shape of the content to which this shape can apply.
      *
      * For example, if this shape applies an effect to a button, the `contentShape` might represent the bounding shape of that button’s background. You typically size a dynamic shape relative to the bounding rectangle of the `contentShape`.
      */
     contentShape?: Shape | {
         kind: ContentShapeKinds;
-        shape: Shape;
+        shape: Shape | 'concentricRect' | ({
+            type: 'concentricRect';
+        } & ConcentricRectangleShape);
     };
     /**
      * The clipping shape to use for this view. The shape fills the view’s frame, while maintaining its aspect ratio.
      */
-    clipShape?: Shape;
+    clipShape?: Shape | 'concentricRect' | ({
+        type: 'concentricRect';
+    } & ConcentricRectangleShape);
     /**
      * Clips this view to its bounding rectangular frame. If specify `null` or `undefined`, this modifier will be ignored. Specify a boolean value that indicates whether the rendering system applies smoothing to the edges of the clipping rectangle.
      */
@@ -3319,10 +3403,30 @@ type ChartViewProps = {
     chartScrollPositionY?: number | string | Date | ChartScrollPosition<string> | ChartScrollPosition<number> | ChartScrollPosition<Date> | Observable<number> | Observable<string> | Observable<Date>;
 };
 
+/**
+ * A kind of toolbar item a View adds by default.
+ *  - `sidebarToggle`: The sidebar toggle toolbar item a NavigationSplitView adds by default.
+ *  - `search`: The search item added by a `searchable` modifier.
+ *  - `title`: The title and subtitle shown in title bar / navigation bar.
+ */
+type ToolbarDefaultItemKind = "sidebarToggle" | "search" | "title";
+type DefaultToolbarItemProps = {
+    kind: ToolbarDefaultItemKind;
+    /**
+     * Defaults to `automatic`.
+     */
+    placement?: ToolbarItemPlacement;
+    /**
+     * Controls the visibility of the glass background effect on items in the toolbar. In certain contexts, such as the navigation bar on iOS and the window toolbar on macOS, toolbar items will be given a glass background effect that is shared with other items in the same logical grouping.
+     */
+    sharedBackgroundVisibility?: Visibility;
+};
+declare const DefaultToolbarItem: FunctionComponent<DefaultToolbarItemProps>;
+
 type ToolbarsProps = {
     /**
-       * Controls the visibility of bottom bar.
-       */
+     * Controls the visibility of bottom bar.
+     */
     bottomBarVisibility?: Visibility;
     /**
      * Controls the visibility of navigation bar.
@@ -3334,8 +3438,25 @@ type ToolbarsProps = {
     tabBarVisibility?: Visibility;
     /**
      * Populates the toolbar or navigation bar with the specified items.
+     * @example
+     * ```tsx
+     * <List
+     *   toolbar={<Toolbar>
+     *     <ToolbarItem
+     *       placement="topBarLeading"
+     *     >
+     *       <Button
+     *         title="Close"
+     *         action={dismiss}
+     *       />
+     *     </ToolbarItem>
+     *   </Toolbar>}
+     * >
+     *  ...
+     * </List>
+     * ```
      */
-    toolbar?: ToolBarProps;
+    toolbar?: ToolBarProps | VirtualNode;
     /**
      * This will construct a menu that can be presented by tapping the navigation title in the app’s navigation bar.
      */
@@ -3377,8 +3498,62 @@ type ToolbarsProps = {
      * Configures the toolbar title display mode for this view.
      */
     toolbarTitleDisplayMode?: ToolbarTitleDisplayMode;
+    /**
+     * Remove the specified toolbar items present by default.
+     */
+    toolbarRemoving?: {
+        [K in ToolbarDefaultItemKind]?: boolean;
+    };
+    /**
+     * Configures the semantic role for the content populating the toolbar.
+     */
+    toolbarRole?: 'automatic' | 'browser' | 'editor' | 'navigationStack';
+    /**
+     * Sets the behavior for tab bar minimization.
+     * @available iOS 26.0+
+     */
+    tabBarMinimizeBehavior?: 'automatic' | 'never' | 'onScrollDown' | 'onScrollUp';
+    /**
+     * Places a view as the bottom accessory of the tab view.
+     * @available iOS 26.0+
+     */
+    tabViewBottomAccessory?: VirtualNode;
+    /**
+     * Configures the activation and deactivation behavior of search in the search tab.
+     * @available iOS 26.0+
+     */
+    tabViewSearchActivation?: 'automatic' | 'searchTabSelection';
+    /**
+     * Specifies the customizations to apply to the sidebar representation of the tab view.
+     * @available iOS 18.0+
+     */
+    tabViewCustomization?: Observable<TabViewCustomization>;
+    /**
+     * Places a view as the header of the sidebar tab view.
+     * @available iOS 18.0+
+     */
+    tabViewSidebarHeader?: VirtualNode;
+    /**
+     * Places a view as the footer of the sidebar tab view.
+     * @available iOS 18.0+
+     */
+    tabViewSidebarFooter?: VirtualNode;
+    /**
+     * Places a view as the bottom bar of the sidebar tab view.
+     * @available iOS 18.0+
+     */
+    tabViewSidebarBottomBar?: VirtualNode;
+    /**
+     * Sets the style for the index view within the current environment.
+     */
+    indexViewStyle?: IndexViewStyle;
 };
 
+/**
+ * - `hard`: A scroll edge effect with a hard cutoff and dividing line.
+ * - `soft`: A scroll edge effect with a soft edge.
+ */
+type ScrollEdgeEffectStyle = "automatic" | "hard" | "soft";
 type ScrollProps = {
     /**
      * Marks this view as refreshable. An asynchronous handler that framework executes when the user requests a refresh. Use this handler to initiate an update of model data displayed in the modified view. Use await in front of any asynchronous calls inside the handler.
@@ -3425,6 +3600,22 @@ type ScrollProps = {
      * Specifies the visibility of the background for scrollable views within this view.
      */
     scrollContentBackground?: Visibility;
+    /**
+     * Configures the scroll edge effect style for scroll views within this hierarchy.
+     * @available iOS 26.0+
+     */
+    scrollEdgeEffectStyle?: EdgeSet | ScrollEdgeEffectStyle | {
+        style: ScrollEdgeEffectStyle;
+        edges: EdgeSet;
+    };
+    /**
+     * Hides any scroll edge effects for scroll views within this hierarchy.
+     * @available iOS 26.0+
+     */
+    scrollEdgeEffectHidden?: boolean | EdgeSet | {
+        edges: EdgeSet;
+        hidden: boolean;
+    };
 };
 
 type SafeAreaProps = {
@@ -3514,6 +3705,21 @@ type SafeAreaProps = {
          */
         edges?: EdgeSet;
     };
+    /**
+     * Shows the specified content as a custom bar beside the modified view.
+     * @available iOS 26.0+
+     */
+    safeAreaBar?: {
+        edge: HorizontalEdge;
+        alignment?: VerticalAlignment;
+        spacing?: number | null;
+        content: VirtualNode;
+    } | {
+        edge: VerticalEdge;
+        alignment?: HorizontalAlignment;
+        spacing?: number | null;
+        content: VirtualNode;
+    };
 };
 
 type WidgetProps = {
@@ -3549,7 +3755,9 @@ type WidgetProps = {
      */
     widgetBackground?: ShapeStyle | DynamicShapeStyle | {
         style: ShapeStyle | DynamicShapeStyle;
-        shape: Shape;
+        shape: Shape | 'concentricRect' | ({
+            type: 'concentricRect';
+        } & ConcentricRectangleShape);
     };
 };
 
@@ -3878,6 +4086,11 @@ type NavigationProps = {
      */
     navigationTitle?: string;
     /**
+     * Configures the view’s subtitle for purposes of navigation.
+     * @available iOS 26.0+
+     */
+    navigationSubtitle?: string;
+    /**
      * The style to use for displaying the title.
      */
     navigationBarTitleDisplayMode?: NavigationBarTitleDisplayMode;
@@ -3885,6 +4098,15 @@ type NavigationProps = {
      * Hides the navigation bar back button for the view.
      */
     navigationBarBackButtonHidden?: boolean;
+    /**
+     * Sets the navigation transition style for this view.
+     * @available iOS 18.0+
+     */
+    navigationTransition?: 'automatic' | {
+        type: 'zoom';
+        sourceID: string | number;
+        namespace: NamespaceID;
+    };
     /**
      * Sets the tab bar item associated with this view.
      */
@@ -3989,6 +4211,32 @@ type ListViewProps = {
          */
         placement?: ContentMarginPlacement;
     };
+    /**
+     * Sets the visibility of the list section index.
+     * @available iOS 26.0+.
+     */
+    listSectionIndexVisibility?: Visibility;
+    /**
+     * Set the section margins for the specific edges.
+     * The default section margins are based on the list style, list section spacing and content margins of the list. Using this modifier overrides these default values completely.
+     *
+     * For sections that have headers or footers, the section margins are applied around these.
+     * @available iOS 26.0+.
+     */
+    listSectionMargins?: number | EdgeSet | {
+        edges: EdgeSet;
+        length: number;
+    };
+    /**
+     * Sets the label that is used in a section index to point to this section, typically only a single character long.
+     * @available iOS 26.0+.
+     */
+    sectionIndexLabel?: string;
+    /**
+     * Adds custom actions to a section.
+     * @available iOS 18.0+
+     */
+    sectionActions?: VirtualNode;
 };
 
 type EditActionsProps = {
@@ -4056,6 +4304,33 @@ type TransitionProps = {
      * The transition to apply when animating the view.
      */
     transition?: Transition;
+    /**
+     * Isolates the geometry (e.g. position and size) of the view from its parent view.
+     */
+    geometryGroup?: boolean;
+    /**
+     * Identifies this view as the source of a navigation transition, such as a zoom transition.
+     * @available iOS 18.0+
+     */
+    matchedTransitionSource?: {
+        id: string | number;
+        namespace: NamespaceID;
+    };
+    /**
+     * Defines a group of views with synchronized geometry using an identifier and namespace that you provide.
+     *  - `id`: The identifier, often derived from the identifier of the data being displayed by the view.
+     *  - `namespace`: The namespace in which defines the id. New namespaces are created by `NamespaceReader` views.
+     *  - `properties`: The properties to copy from the source view. Defaults to 'frame'.
+     *  - `anchor`: The relative location in the view used to produce its shared position value. Defaults to 'center'.
+     *  - `isSource`: True if the view should be used as the source of geometry for other views in the group. Defaults to true.
+     */
+    matchedGeometryEffect?: {
+        id: string | number;
+        namespace: NamespaceID;
+        properties?: MatchedGeometryProperties;
+        anchor?: Point | KeywordPoint;
+        isSource?: boolean;
+    };
 };
 
 /**
@@ -4235,6 +4510,11 @@ type SearchableProps = {
      * Associates a fully formed string with the value of this view when used as a search suggestion.
      */
     searchCompletion?: string;
+    /**
+     * Configures the behavior for search in the toolbar.
+     * - `minimize`: A search toolbar behavior that prefers rendering a search field as a button-like control.
+     */
+    searchToolbarBehavior?: 'automatic' | 'minimize';
 };
 
 type ViewAnimationProps = {
@@ -4308,7 +4588,48 @@ type EnvironmentsProps = {
     };
 };
 
-type CommonViewProps = DialogProps & GesturesProps & FrameSizeProps & ForeAndBackgroundProps & PaddingAndBorderProps & ViewVisibilityProps & ImageViewProps & ViewStyleProps & TextFieldViewProps & TextViewProps & ShapeViewProps & ChartViewProps & ScrollProps & ToolbarsProps & SafeAreaProps & WidgetProps & ExtensionProps & ViewAppearProps & GridViewProps & ModalPresentationViewProps & TransformAndEffectProps & NavigationProps & ListViewProps & EditActionsProps & SymbolProps & TransitionProps & SearchableProps & ViewAnimationProps & LiveActivityProps & EnvironmentsProps & {
+/**
+ * - `identify`: The identity transition specifying no changes.
+ * - `materialize`: The materialize glass effect transition which will fade in content and animate in or out the glass material but will not attempt to match the geometry of any other glass effects.
+ * - `matchedGeometry`: The matched geometry transition allows the geometries of glass shapes during an appearance or disappearance phase of a transition to be derived from the geometry of a nearby shape within the glass container.
+ */
+type GlassEffectTransition = 'identity' | 'materialize' | 'matchedGeometry';
+/**
+ * @available iOS 26.0+
+ */
+type GlassProps = {
+    /**
+     * Applies the Liquid Glass effect to a view.
+     * @available iOS 26.0+
+     */
+    glassEffect?: boolean | UIGlass | Shape | {
+        glass: UIGlass;
+        shape: Shape;
+    };
+    /**
+     * Associates a glass effect transition with any glass effects defined within this view.
+     * @available iOS 26.0+
+     */
+    glassEffectTransition?: GlassEffectTransition;
+    /**
+     * Associates an identity value to Liquid Glass effects defined within this view.
+     * @available iOS 26.0+
+     */
+    glassEffectID?: {
+        id: string | number;
+        namespace: NamespaceID;
+    };
+    /**
+     * Associates any Liquid Glass effects defined within this view to a union with the provided identifier.
+     * @available iOS 26.0+
+     */
+    glassEffectUnion?: {
+        id: string | number;
+        namespace: NamespaceID;
+    };
+};
+
+type CommonViewProps = DialogProps & GesturesProps & FrameSizeProps & ForeAndBackgroundProps & PaddingAndBorderProps & ViewVisibilityProps & ImageViewProps & ViewStyleProps & TextFieldViewProps & TextViewProps & ShapeViewProps & ChartViewProps & ScrollProps & ToolbarsProps & SafeAreaProps & WidgetProps & ExtensionProps & ViewAppearProps & GridViewProps & ModalPresentationViewProps & TransformAndEffectProps & NavigationProps & ListViewProps & EditActionsProps & SymbolProps & TransitionProps & SearchableProps & ViewAnimationProps & LiveActivityProps & EnvironmentsProps & GlassProps & {
     disabled?: boolean;
     /**
      * A value that indicates the visibility of the non-transient system views overlaying the app.
@@ -4573,8 +4894,10 @@ declare class ViewModifiers {
     navigationSplitViewStyle(value: CommonViewProps["navigationSplitViewStyle"]): this;
     navigationDestination(value: CommonViewProps["navigationDestination"]): this;
     navigationTitle(value: CommonViewProps["navigationTitle"]): this;
+    navigationSubtitle(value: CommonViewProps["navigationSubtitle"]): this;
     navigationBarTitleDisplayMode(value: CommonViewProps["navigationBarTitleDisplayMode"]): this;
     navigationBarBackButtonHidden(value?: CommonViewProps["navigationBarBackButtonHidden"]): this;
+    navigationTransition(value: CommonViewProps["navigationTransition"]): this;
     redacted(value: CommonViewProps["redacted"]): this;
     unredacted(value?: CommonViewProps["unredacted"]): this;
     translationHost(value: CommonViewProps["translationHost"]): this;
@@ -4585,9 +4908,37 @@ declare class ViewModifiers {
     defersSystemGestures(value: CommonViewProps["defersSystemGestures"]): this;
     animation(value: CommonViewProps["animation"]): this;
     transition(value: CommonViewProps["transition"]): this;
+    matchedTransitionSource(value: CommonViewProps["matchedTransitionSource"]): this;
+    matchedGeometryEffect(value: CommonViewProps["matchedGeometryEffect"]): this;
     activityBackgroundTint(value: CommonViewProps['activityBackgroundTint']): this;
     activitySystemActionForegroundColor(value: CommonViewProps['activitySystemActionForegroundColor']): this;
     environments(value: CommonViewProps["environments"]): this;
+    toolbarRemoving(value: CommonViewProps["toolbarRemoving"]): this;
+    toolbarRole(value: CommonViewProps["toolbarRole"]): this;
+    tabBarMinimizeBehavior(value: CommonViewProps["tabBarMinimizeBehavior"]): this;
+    tabViewBottomAccessory(value: CommonViewProps["tabViewBottomAccessory"]): this;
+    tabViewSearchActivation(value: CommonViewProps["tabViewSearchActivation"]): this;
+    tabViewCustomization(value: CommonViewProps["tabViewCustomization"]): this;
+    tabViewSidebarHeader(value: CommonViewProps["tabViewSidebarHeader"]): this;
+    tabViewSidebarFooter(value: CommonViewProps["tabViewSidebarFooter"]): this;
+    tabViewSidebarBottomBar(value: CommonViewProps["tabViewSidebarBottomBar"]): this;
+    indexViewStyle(value: CommonViewProps["indexViewStyle"]): this;
+    labelReservedIconWidth(value: CommonViewProps["labelReservedIconWidth"]): this;
+    labelIconToTitleSpacing(value: CommonViewProps["labelIconToTitleSpacing"]): this;
+    containerShape(value: CommonViewProps["containerShape"]): this;
+    searchToolbarBehavior(value: CommonViewProps["searchToolbarBehavior"]): this;
+    listSectionIndexVisibility(value: CommonViewProps["listSectionIndexVisibility"]): this;
+    listSectionMargins(value: CommonViewProps["listSectionMargins"]): this;
+    sectionIndexLabel(value: CommonViewProps["sectionIndexLabel"]): this;
+    sectionActions(value: CommonViewProps["sectionActions"]): this;
+    scrollEdgeEffectStyle(value: CommonViewProps["scrollEdgeEffectStyle"]): this;
+    scrollEdgeEffectHidden(value?: CommonViewProps["scrollEdgeEffectHidden"]): this;
+    safeAreaBar(value: CommonViewProps["safeAreaBar"]): this;
+    backgroundExtensionEffect(value?: CommonViewProps["backgroundExtensionEffect"]): this;
+    glassEffect(value?: CommonViewProps["glassEffect"]): this;
+    glassEffectTransition(value: CommonViewProps["glassEffectTransition"]): this;
+    glassEffectID(value: CommonViewProps["glassEffectID"]): this;
+    glassEffectUnion(value: CommonViewProps["glassEffectUnion"]): this;
 }
 
 type EnvironmentValues = {
@@ -4603,6 +4954,11 @@ type EnvironmentValues = {
     showsWidgetContainerBackground: boolean;
     isSearching: boolean;
     isPresented: boolean;
+    /**
+     * The placement of the bottom accessory view in tab view.
+     * @available iOS 26.0+
+     */
+    tabViewBottomAccessoryPlacement: 'expanded' | 'inline';
 };
 type EnvironmentValuesReaderProps = {
     /**
@@ -4774,6 +5130,16 @@ type GaugeProps = {
  *
  */
 declare const Gauge: FunctionComponent<GaugeProps>;
+
+type GlassEffectContainerProps = {
+    spacing?: number;
+    children: (VirtualNode | boolean | undefined | null | (VirtualNode | undefined | null | boolean)[])[] | VirtualNode | null | boolean | undefined;
+};
+/**
+ * A view that combines multiple Liquid Glass shapes into a single shape that can morph individual shapes into one another.
+ * @available iOS 26.0+
+ */
+declare const GlassEffectContainer: FunctionComponent<GlassEffectContainerProps>;
 
 type GridProps = {
     /**
@@ -5315,6 +5681,11 @@ declare const MultiColumnsPicker: FunctionComponent<MultiColumnsPickerProps>;
  */
 declare const MultiPicker: FunctionComponent<MultiColumnsPickerProps>;
 
+type NamespaceReaderProps = {
+    children: (namespace: NamespaceID) => VirtualNode;
+};
+declare const NamespaceReader: FunctionComponent<NamespaceReaderProps>;
+
 type NavigationLinkProps = {
     /**
      * A view for the navigation link to present.
@@ -5687,8 +6058,30 @@ type UnevenRoundedRectangleProps = ShapeProps & {
  *
  */
 declare const UnevenRoundedRectangle: FunctionComponent<UnevenRoundedRectangleProps>;
+type ConcentricRectangleProps = ShapeProps & ConcentricRectangleShape;
+/**
+ * A concentric rectangle aligned inside the frame of the view containing it.
+ * @available iOS 26+.
+ */
+declare const ConcentricRectangle: FunctionComponent<ConcentricRectangleProps>;
 
-type SliderWithRangeValueLabelProps = {
+type SliderWithRangeValueLabelsProps = {
+    /**
+     * The minimum available value.
+     */
+    min: number;
+    /**
+     * The maximum available value.
+     */
+    max: number;
+    /**
+     * A callback for when editing begins and ends.
+     */
+    onEditingChanged?: (value: boolean) => void;
+    /**
+     * The distance between each valid value. Defaults to 1.
+     */
+    step?: number;
     /**
      * A View that describes the purpose of the instance. Not all slider styles show the label, but even in those cases, system uses the label for accessibility. For example, VoiceOver uses the label to identify the purpose of the slider.
      */
@@ -5702,7 +6095,7 @@ type SliderWithRangeValueLabelProps = {
      */
     maxValueLabel: VirtualNode;
 };
-type SliderProps = {
+type SliderWithLabelProps = {
     /**
      * The minimum available value.
      */
@@ -5712,18 +6105,50 @@ type SliderProps = {
      */
     max: number;
     /**
-     * The distance between each valid value.
+     * A callback for when editing begins and ends.
+     */
+    onEditingChanged?: (value: boolean) => void;
+    /**
+     * The distance between each valid value. Defaults to 1.
      */
     step?: number;
+    /**
+     * A View that describes the purpose of the instance. Not all slider styles show the label, but even in those cases, system uses the label for accessibility. For example, VoiceOver uses the label to identify the purpose of the slider.
+     */
+    label: VirtualNode;
+    minValueLabel?: never;
+    /**
+     * A view that describes the `max` value.
+     */
+    maxValueLabel?: never;
+};
+type SliderWithTicksProps = {
+    /**
+     * The minimum available value.
+     */
+    min: number;
+    /**
+     * The maximum available value.
+     */
+    max: number;
     /**
      * A callback for when editing begins and ends.
      */
     onEditingChanged?: (value: boolean) => void;
-} & (SliderWithRangeValueLabelProps | {
-    label?: VirtualNode;
+    label: VirtualNode;
+    /**
+     * @available iOS 26.0+
+     */
+    ticks?: number[];
+    /**
+     * @available iOS 26.0+
+     */
+    currentValueLabel?: VirtualNode;
+    step?: never;
     minValueLabel?: never;
     maxValueLabel?: never;
-}) & ({
+};
+type SliderProps = (SliderWithRangeValueLabelsProps | SliderWithLabelProps | SliderWithTicksProps) & ({
     /**
      * The selected value within bounds.
      */
@@ -5842,6 +6267,30 @@ type SVGProps = (SVGURLSourceProps | SVGFilePathSourceProps | SVGCodeSourceProps
  */
 declare const SVG: FunctionComponent<SVGProps>;
 
+type TabRole = 'search';
+type TabProps = {
+    title: string;
+    systemImage: string;
+    value?: number | string;
+    role?: TabRole;
+    tabPlacement?: TabPlacement;
+    sectionActions?: VirtualNode;
+    defaultVisibility?: {
+        placements: AdaptableTabBarPlacement[];
+        visibility: Visibility;
+    };
+    customizationID?: string;
+    customizationBehavior?: TabCustomizationBehavior;
+    draggable?: string;
+    dropDestination?: (items: string[]) => void;
+    children: VirtualNode;
+};
+/**
+ * A view that represents a tab in a tab view.
+ * @available iOS 18.0+
+ */
+declare const Tab: FunctionComponent<TabProps>;
+
 type TabViewProps<T extends string | number> = {
     children: (VirtualNode | boolean | undefined | null | (VirtualNode | undefined | null | boolean)[])[] | VirtualNode;
 } & ({
@@ -5905,6 +6354,31 @@ declare const TabView: FunctionComponent<({
     tabIndex?: never;
     onTabIndexChanged?: never;
 })>;
+
+type TabSectionProps = {
+    tabPlacement?: TabPlacement;
+    sectionActions?: VirtualNode;
+    defaultVisibility?: {
+        placements: AdaptableTabBarPlacement[];
+        visibility: Visibility;
+    };
+    customizationID?: string;
+    customizationBehavior?: TabCustomizationBehavior;
+    draggable?: string;
+    dropDestination?: (items: string[]) => void;
+    children: (VirtualNode | boolean | undefined | null | (VirtualNode | undefined | null | boolean)[])[] | VirtualNode | null | boolean;
+} & ({
+    title?: string;
+    header?: never;
+} | {
+    title?: never;
+    header?: VirtualNode;
+});
+/**
+ * Use TabSection to organize tab content into separate sections. Each section has custom tab content that you provide on a per-instance basis. You can also provide a header for each section.
+ * @available iOS 18.0+
+ */
+declare const TabSection: FunctionComponent<TabSectionProps>;
 
 type TextProps = {
     children: null | string | number | boolean | Array<string | number | boolean | undefined | null>;
@@ -5993,7 +6467,7 @@ type ToggleProps = ({
     /**
      * The AppIntent to execute. AppIntent is only available for `Widget` or `LiveActivity`.
      */
-    intent: AppIntent<any>;
+    intent: AppIntent<any, any, AppIntentProtocol>;
     onChanged?: never;
 } | {
     value: Observable<boolean>;
@@ -6024,6 +6498,60 @@ type ToggleProps = ({
  * A view control that toggles between on and off states.
  */
 declare const Toggle: FunctionComponent<ToggleProps>;
+
+declare function Toolbar({ children }: {
+    children: (VirtualNode | boolean | undefined | null | (VirtualNode | undefined | null | boolean)[])[] | VirtualNode | null | boolean | undefined;
+}): JSX.Element;
+
+type ToolbarItemProps = {
+    placement?: ToolbarItemPlacement;
+    /**
+     * Controls the visibility of the glass background effect on items in the toolbar. In certain contexts, such as the navigation bar on iOS and the window toolbar on macOS, toolbar items will be given a glass background effect that is shared with other items in the same logical grouping.
+     */
+    sharedBackgroundVisibility?: Visibility;
+    children: VirtualNode;
+};
+/**
+ * The toolbar item places in the specified position.
+ */
+declare const ToolbarItem: FunctionComponent<ToolbarItemProps>;
+
+type ToolbarItemGroupProps = {
+    placement?: ToolbarItemPlacement;
+    /**
+     * Controls the visibility of the glass background effect on items in the toolbar. In certain contexts, such as the navigation bar on iOS and the window toolbar on macOS, toolbar items will be given a glass background effect that is shared with other items in the same logical grouping.
+     */
+    sharedBackgroundVisibility?: Visibility;
+    children: (VirtualNode | boolean | undefined | null | (VirtualNode | undefined | null | boolean)[])[] | VirtualNode | null | boolean | undefined;
+};
+/**
+ * The toolbar item places in the specified position.
+ */
+declare const ToolbarItemGroup: FunctionComponent<ToolbarItemGroupProps>;
+
+/**
+ * A type which defines how spacers should size themselves.
+ */
+type ToolbarSpacerSizing = 'fixed' | 'flexible';
+type ToolbarSpacerProps = {
+    /**
+     * The sizing behavior of the spacer. Defaults to flexible.
+     */
+    sizing?: ToolbarSpacerSizing;
+    /**
+     * The placement of the toolbar item. Defaults to automatic.
+     */
+    placement?: ToolbarItemPlacement;
+    /**
+     * Controls the visibility of the glass background effect on items in the toolbar. In certain contexts, such as the navigation bar on iOS and the window toolbar on macOS, toolbar items will be given a glass background effect that is shared with other items in the same logical grouping.
+     */
+    sharedBackgroundVisibility?: Visibility;
+};
+/**
+ * A standard space item in toolbars.
+ * @available iOS 26.0+
+ */
+declare const ToolbarSpacer: FunctionComponent<ToolbarSpacerProps>;
 
 type VideoPlayerProps = {
     /**
@@ -6366,7 +6894,7 @@ type ControlWidgetButtonProps = {
     /**
      * The intent to execute when the button is tapped.
      */
-    intent: AppIntent<any>;
+    intent: AppIntent<any, any, AppIntentProtocol>;
     /**
      * The label of the button.
      */
@@ -6398,7 +6926,7 @@ type ControlWidgetToggleProps<T extends {
     /**
      * The intent to execute when the toggle is tapped. The `AppIntentProtocol` will force to be `SetValueIntent` in this case, so you can set any protocol you want. The parameter type of the intent must extends `{ value: boolean }`.
      */
-    intent: AppIntent<T>;
+    intent: AppIntent<T, any, AppIntentProtocol>;
     /**
      * The label of the toggle.
      */
@@ -6605,6 +7133,34 @@ declare class IntentFileURLValue extends IntentValue<'fileURL', string> {
      */
     value: string, type?: "fileURL");
 }
+declare class IntentSnippetIntentValue extends IntentValue<'SnippetIntent', {
+    value?: IntentAttributedTextValue | IntentFileURLValue | IntentJsonValue | IntentTextValue | IntentURLValue | IntentFileValue | null;
+    snippetIntent: AppIntent<any, VirtualNode, AppIntentProtocol.SnippetIntent>;
+}> {
+    value: {
+        value?: IntentAttributedTextValue | IntentFileURLValue | IntentJsonValue | IntentTextValue | IntentURLValue | IntentFileValue | null;
+        snippetIntent: AppIntent<any, VirtualNode, AppIntentProtocol.SnippetIntent>;
+    };
+    type: "SnippetIntent";
+    constructor(value: {
+        value?: IntentAttributedTextValue | IntentFileURLValue | IntentJsonValue | IntentTextValue | IntentURLValue | IntentFileValue | null;
+        snippetIntent: AppIntent<any, VirtualNode, AppIntentProtocol.SnippetIntent>;
+    }, type?: "SnippetIntent");
+}
+declare class IntentRequestConfirmationValue extends IntentValue<'RequestConfirmation', {
+    actionName: string;
+    snippetIntent: AppIntent<any, VirtualNode, AppIntentProtocol.SnippetIntent>;
+}> {
+    value: {
+        actionName: string;
+        snippetIntent: AppIntent<any, VirtualNode, AppIntentProtocol.SnippetIntent>;
+    };
+    type: "RequestConfirmation";
+    constructor(value: {
+        actionName: string;
+        snippetIntent: AppIntent<any, VirtualNode, AppIntentProtocol.SnippetIntent>;
+    }, type?: "RequestConfirmation");
+}
 /**
  * A user request for your service to fulfill.
  *
@@ -6676,6 +7232,53 @@ declare namespace Intent {
      * @param filePath A file path pointing to a file stored in iCloud or App Group Documents folder.
      */
     function fileURL(filePath: string): IntentFileURLValue;
+    /**
+     * Wrap a `value` and `snippetIntent` value for intent result.
+     * @param intent A SnippetIntent to perform and return a snippet view and a value.
+     */
+    function snippetIntent(options: {
+        value?: IntentAttributedTextValue | IntentFileURLValue | IntentJsonValue | IntentTextValue | IntentURLValue | IntentFileValue | null;
+        snippetIntent: AppIntent<any, VirtualNode, AppIntentProtocol.SnippetIntent>;
+    }): IntentSnippetIntentValue;
+    type ConfirmationActionName = "add" | "addData" | "book" | "buy" | "call" | "checkIn" | "continue" | "create" | "do" | "download" | "filter" | "find" | "get" | "go" | "log" | "open" | "order" | "pay" | "play" | "playSound" | "post" | "request" | "run" | "search" | "send" | "set" | "share" | "start" | "startNavigation" | "toggle" | "turnOff" | "turnOn" | "view";
+    /**
+     * The text you want the system to display, or speak, when requesting a value, asking for disambiguation, or confirming an action.
+     *  - `full`: a standalone message that fully describes the output
+     *  - `supporting`: a message that may be used in conjunction with visual output
+     *  - `systemImageName`: an SF Symbol that may be be used to represent the result
+     */
+    type Dialog = string | {
+        full: string;
+        supporting: string;
+    } | {
+        full: string;
+        supporting: string;
+        systemImageName: string;
+    } | {
+        full: string;
+        systemImageName: string;
+    };
+    /**
+     * Request the user to confirm an action. If the user cancels the action, the script will be terminated.
+     * @param actionName The name of the action
+     * @param snippetIntent An SnippetIntent to display
+     * @param options The dialog options
+     * @param options.dialog The dialog to display
+     * @param options.showDialogAsPrompt Whether to show the dialog as a prompt, defaults to `true`.
+     */
+    function requestConfirmation(actionName: ConfirmationActionName, snippetIntent: AppIntent<any, VirtualNode, AppIntentProtocol.SnippetIntent>, options?: {
+        dialog?: Dialog;
+        showDialogAsPrompt?: boolean;
+    }): Promise<void>;
+    /**
+     * Request the user to continue in the foreground. If the user cancels the action, the script will be terminated.
+     * @param dialog The dialog to display
+     * @param options The dialog options
+     * @param options.alwaysConfirm Whether to always confirm, defaults to `false`.
+     */
+    function continueInForeground(dialog?: Dialog | null, options?: {
+        alwaysConfirm?: boolean;
+    }): Promise<void>;
 }
 
 type ImageRenderOptions = {
@@ -7065,6 +7668,13 @@ declare namespace Notification {
      */
     const current: NotificationInfo | null;
     /**
+     * Represents an icon that uses a system image with specific color.
+     */
+    type SystemImageIcon = {
+        systemImage: string;
+        color: Color;
+    };
+    /**
      * Schedules the delivery of a local notification.
      * When the user directly taps on the notification, the Scripting app will be opened and the script that invokes the notification will be run. You can access the notification information through `Notification.current` when the script starts.
      *
@@ -7078,7 +7688,7 @@ declare namespace Notification {
      * @param options.body The body of the notification.
      * @param options.badge The badge count for the app icon.
      * @param options.silent If true, the notification will be delivered silently without sound. Defaults to false.
-     * @param options.iconImageData The custom notification icon image data, you can use it to replace the default icon.
+     * @param options.iconImageData The custom notification icon image data, you can use it to replace the default icon, or use `SystemImageIcon` to use a system image with specific color.
      * @param options.interruptionLevel The importance and delivery timing of the notification.
      * @param options.userInfo Custom information associated with the notification.
      * @param options.threadIdentifier A string to group related notifications.
@@ -7097,7 +7707,7 @@ declare namespace Notification {
         body?: string;
         badge?: number;
         silent?: boolean;
-        iconImageData?: Data | null;
+        iconImageData?: Data | SystemImageIcon | null;
         interruptionLevel?: NotificationInterruptionLevel;
         userInfo?: Record<string, any>;
         threadIdentifier?: string;
@@ -7622,6 +8232,28 @@ declare class Request {
 declare function fetch(url: string, init?: RequestInit): Promise<Response>;
 declare function fetch(request: Request): Promise<Response>;
 
+type ScriptDeveloper = {
+    name: string;
+    email: string;
+    homepage?: string;
+};
+type ScriptMetadata = {
+    name: string;
+    icon: string;
+    color: Color;
+    localizedName: string;
+    localizedNames?: Record<string, string>;
+    description?: string;
+    localizedDescription: string;
+    localizedDescriptions?: Record<string, string>;
+    version: string;
+    author?: ScriptDeveloper;
+    contributors?: ScriptDeveloper[];
+    remoteResource?: {
+        url: string;
+        autoUpdateInterval?: number | null;
+    };
+};
 /**
  * Access information about the script, and provides convenient methods to control the scripts.
  *
@@ -7665,31 +8297,7 @@ declare namespace Script {
      *    - `url`: The URL of the remote resource, it can be a zip file or a git repository.
      *    - `autoUpdateInterval`: The interval for auto-updating the remote resource, in seconds. If not specified, the remote resource will not be auto-updated.
      */
-    const metadata: {
-        name: string;
-        icon: string;
-        color: string;
-        localizedName: string;
-        localizedNames?: Record<string, string>;
-        description?: string;
-        localizedDescription: string;
-        localizedDescriptions?: Record<string, string>;
-        version: string;
-        author?: {
-            name: string;
-            email: string;
-            homepage?: string;
-        };
-        contributors?: {
-            name: string;
-            email: string;
-            homepage?: string;
-        }[];
-        remoteResource?: {
-            url: string;
-            autoUpdateInterval?: number | null;
-        };
-    };
+    const metadata: ScriptMetadata;
     /**
      * The directory path of the current script.
      */
@@ -8011,4 +8619,4 @@ declare global {
     }
 }
 
-export { AbortController, AbortError, AbortEvent, type AbortEventListener, AbortSignal, AccessoryWidgetBackground, type Alignment, type Angle, type AngleValue, type AngularGradient, AnimatedFrames, type AnimatedFramesProps, AnimatedGif, type AnimatedGifProps, AnimatedImage, type AnimatedImageProps, type AnnotationOverflowResolution, type AnnotationOverflowResolutionStrategy, type AnnotationPosition, AppEventListenerManager, AppEvents, type AppIntent, type AppIntentFactory, AppIntentManager, type AppIntentPerform, AppIntentProtocol, AreaChart, AreaStackChart, type Axis, type AxisSet, type BadgeProminence, Bar1DChart, BarChart, type BarChartProps, BarGanttChart, type BarGanttChartProps, BarStackChart, Button, type ButtonBorderShape, type ButtonProps, type ButtonRole, type ButtonStyle, type CalendarComponent, CancelError, type CancelEventListener, CancelToken, type CancelTokenHook, Capsule, Chart, type ChartAxisScaleType, type ChartInterpolationMethod, type ChartMarkProps, type ChartMarkStackingMethod, type ChartNumberSelection, type ChartScrollPosition, type ChartSelection, type ChartStringSelection, type ChartSymbolShape, Circle, type ClockHandRotationEffectPeriod, type ClosedRange, type Color, ColorPicker, type ColorPickerProps, type ColorScheme, type ColorSchemeContrast, type ColorStringHex, type ColorStringRGBA, type ColorWithGradientOrOpacity, type CommonViewProps, type ComponentCallback, type ComponentEffect, type ComponentEffectEvent, type ComponentMemo, type ComponentProps, type Consumer, type ConsumerProps, type ContentAvailableViewProps, type ContentAvailableViewWithLabelProps, type ContentAvailableViewWithTitleProps, type ContentMarginPlacement, type ContentMode, type ContentShapeKinds, type ContentTransition, ContentUnavailableView, type Context, ControlGroup, type ControlGroupProps, type ControlGroupStyle, type ControlSize, ControlWidget, ControlWidgetButton, type ControlWidgetButtonProps, type ControlWidgetLabel, ControlWidgetToggle, type ControlWidgetToggleProps, type Cookie, DateIntervalLabel, type DateIntervalLabelProps, DateLabel, type DateLabelProps, DatePicker, type DatePickerComponents, type DatePickerProps, type DatePickerStyle, DateRangeLabel, type DateRangeLabelProps, Device, DisclosureGroup, type DisclosureGroupProps, type DiscreteSymbolEffect, type Dispatch, Divider, DonutChart, DragGesture, type DragGestureDetails, type DragGestureOptions, type DurationInMilliseconds, type DynamicImageSource, type DynamicShapeStyle, type Edge, type EdgeInsets, type EdgeSet, EditButton, Editor, type EditorProps, type EffectDestructor, type EffectSetup, Ellipse, EmptyView, type EnvironmentValues, EnvironmentValuesReader, type EnvironmentValuesReaderProps, type FileImageProps, FlowLayout, type FlowLayoutProps, type Font, type FontDesign, type FontWeight, type FontWidth, ForEach, type ForEachComponent, type ForEachDeprecatedProps, type ForEachProps, Form, FormData, type FormProps, type FormStyle, type FunctionComponent, Gauge, type GaugeProps, type GaugeStyle, type GeometryProxy, GeometryReader, type GeometryReaderProps, type Gesture, GestureInfo, type Gradient, type GradientStop, Grid, type GridItem, type GridProps, GridRow, type GridRowProps, type GridSize, Group, GroupBox, type GroupBoxProps, type GroupProps, HStack, type HStackProps, Headers, type HeadersInit, HeatMapChart, type HorizontalAlignment, type HorizontalEdgeSet, type IdProps, Image, type ImageInterpolation, type ImageProps, type ImageRenderOptions, ImageRenderer, type ImageRenderingBehaviorProps, type ImageRenderingMode, type ImageResizable, type ImageResizingMode, type ImageScale, Intent, IntentAttributedTextValue, IntentFileURLValue, IntentFileValue, IntentJsonValue, IntentTextValue, IntentURLValue, IntentValue, type InternalWidgetRender, type KeyboardType, type KeywordPoint, type KeywordsColor, Label, type LabelProps, type LabelStyle, LazyHGrid, type LazyHGridProps, LazyHStack, type LazyHStackProps, LazyVGrid, type LazyVGridProps, LazyVStack, type LazyVStackProps, LineCategoryChart, LineChart, type LineStylePattern, type LinearGradient, Link, type LinkProps, List, type ListProps, type ListSectionSpacing, type ListStyle, LiveActivity, type LiveActivityActivitiesEnabledListener, type LiveActivityActivityUpdateListener, type LiveActivityDetail, type LiveActivityEndOptions, type LiveActivityOptions, type LiveActivityState, LiveActivityUI, type LiveActivityUIBuilder, LiveActivityUIExpandedBottom, LiveActivityUIExpandedCenter, LiveActivityUIExpandedLeading, LiveActivityUIExpandedTrailing, type LiveActivityUIExpandedViewProps, type LiveActivityUIProps, type LiveActivityUpdateOptions, LongPressGesture, type LongPressGestureOptions, MagnifyGesture, type MagnifyGestureValue, type MarkDimension, Markdown, type MarkdownProps, type Material, Menu, type MenuProps, type MenuStyle, type MeshGradient, type ModalPresentation, type ModalPresentationStyle, MultiColumnsPicker, type MultiColumnsPickerProps, MultiPicker, type MutableRefObject, Navigation, type NavigationBarTitleDisplayMode, NavigationLink, type NavigationLinkProps, NavigationSplitView, type NavigationSplitViewColumn, type NavigationSplitViewProps, type NavigationSplitViewStyle, type NavigationSplitViewVisibility, NavigationStack, type NavigationStackProps, type NetworkImageProps, type NormalProgressViewProps, Notification, type NotificationAction, type NotificationInfo, type NotificationInterruptionLevel, type NotificationRequest, Path, Picker, type PickerProps, type PickerStyle, type PickerValue, PieChart, type PinnedScrollViews, type Point, Point1DChart, PointCategoryChart, PointChart, type PopoverPresentation, type PresentationAdaptation, type PresentationBackgroundInteraction, type PresentationContentInteraction, type PresentationDetent, ProgressView, type ProgressViewProps, type ProgressViewStyle, type Prominence, type Provider, type ProviderProps, QRImage, type QRImageProps, type RadialGradient, RangeAreaChart, ReadableStream, ReadableStreamDefaultController, ReadableStreamDefaultReader, RectAreaChart, RectChart, type RectCornerRadii, Rectangle, type Reducer, type ReducerAction, type ReducerState, type RefObject, type RenderNode, Request, type RequestInit, Response, type ResponseInit, RotateGesture, type RotateGestureValue, type RoundedCornerStyle, RoundedRectangle, type RoundedRectangleProps, RuleChart, RuleLineForLabelChart, RuleLineForValueChart, SVG, type SVGCodeSourceProps, type SVGFilePathSourceProps, type SVGProps, type SVGURLSourceProps, type SafeAreaRegions, type ScenePhase, Script, type ScriptingDeviceInfo, type ScrollDismissesKeyboardMode, type ScrollScrollIndicatorVisibility, type ScrollTargetBehavior, ScrollView, type ScrollViewProps, type ScrollViewProxy, ScrollViewReader, type ScrollViewReaderProps, type SearchFieldPlacement, type SearchSuggestionsPlacementSet, Section, type SectionProps, SecureField, type SecureFieldProps, type SensoryFeedback, type SetStateAction, type Shape, type ShapeProps, type ShapeStyle, type ShortcutFileURLParameter, type ShortcutJsonParameter, type ShortcutParameter, type ShortcutTextParameter, type Size, Slider, type SliderProps, type SliderWithRangeValueLabelProps, Spacer, type StateInitializer, Stepper, type StepperProps, type StrokeStyle, type StyledText, type SubmitTriggers, type SwingAnimation, type SymbolEffect, type SymbolRenderingMode, type SymbolVariants, type SystemImageProps, TabView, type TabViewProps, type TabViewStyle, TapGesture, Text, type TextAlignment, TextField, type TextFieldProps, type TextFieldStyle, type TextInputAutocapitalization, type TextProps, TimerIntervalLabel, type TimerIntervalLabelProps, type TimerIntervalProgressViewProps, Toggle, type ToggleProps, type ToggleStyle, type ToolBarProps, type ToolbarItemPlacement, type ToolbarPlacement, type ToolbarTitleDisplayMode, type TruncationMode, type UIImageProps, type UnderlineStyle, type UnderlyingSource, UnevenRoundedRectangle, type UnevenRoundedRectangleProps, type UserInterfaceSizeClass, VStack, type VStackProps, type VerticalAlignment, type VerticalEdgeSet, VideoPlayer, type VideoPlayerProps, ViewModifiers, type VirtualNode, type Visibility, WebView, type WebViewProps, Widget, type WidgetAccentedRenderingMode, type WidgetDisplaySize, type WidgetFamily, type WidgetReloadPolicy, type WidgetRenderingMode, ZStack, type ZStackProps, createContext, fetch, formDataToJson, gradient, modifiers, useCallback, useCancelToken, useColorScheme, useContext, useEffect, useEffectEvent, useKeyboardVisible, useMemo, useObservable, useReducer, useRef, useSelector, useState };
+export { AbortController, AbortError, AbortEvent, type AbortEventListener, AbortSignal, AccessoryWidgetBackground, type AdaptableTabBarPlacement, type Alignment, type Angle, type AngleValue, type AngularGradient, AnimatedFrames, type AnimatedFramesProps, AnimatedGif, type AnimatedGifProps, AnimatedImage, type AnimatedImageProps, type AnnotationOverflowResolution, type AnnotationOverflowResolutionStrategy, type AnnotationPosition, AppEventListenerManager, AppEvents, type AppIntent, type AppIntentFactory, AppIntentManager, type AppIntentPerform, AppIntentProtocol, AreaChart, AreaStackChart, type Axis, type AxisSet, type BadgeProminence, Bar1DChart, BarChart, type BarChartProps, BarGanttChart, type BarGanttChartProps, BarStackChart, Button, type ButtonBorderShape, type ButtonProps, type ButtonRole, type ButtonStyle, type CalendarComponent, CancelError, type CancelEventListener, CancelToken, type CancelTokenHook, Capsule, Chart, type ChartAxisScaleType, type ChartInterpolationMethod, type ChartMarkProps, type ChartMarkStackingMethod, type ChartNumberSelection, type ChartScrollPosition, type ChartSelection, type ChartStringSelection, type ChartSymbolShape, Circle, type ClockHandRotationEffectPeriod, type ClosedRange, type Color, ColorPicker, type ColorPickerProps, type ColorScheme, type ColorSchemeContrast, type ColorStringHex, type ColorStringRGBA, type ColorWithGradientOrOpacity, type CommonViewProps, type ComponentCallback, type ComponentEffect, type ComponentEffectEvent, type ComponentMemo, type ComponentProps, ConcentricRectangle, type ConcentricRectangleProps, type ConcentricRectangleShape, type Consumer, type ConsumerProps, type ContentAvailableViewProps, type ContentAvailableViewWithLabelProps, type ContentAvailableViewWithTitleProps, type ContentMarginPlacement, type ContentMode, type ContentShapeKinds, type ContentTransition, ContentUnavailableView, type Context, ControlGroup, type ControlGroupProps, type ControlGroupStyle, type ControlSize, ControlWidget, ControlWidgetButton, type ControlWidgetButtonProps, type ControlWidgetLabel, ControlWidgetToggle, type ControlWidgetToggleProps, type Cookie, DateIntervalLabel, type DateIntervalLabelProps, DateLabel, type DateLabelProps, DatePicker, type DatePickerComponents, type DatePickerProps, type DatePickerStyle, DateRangeLabel, type DateRangeLabelProps, DefaultToolbarItem, type DefaultToolbarItemProps, Device, DisclosureGroup, type DisclosureGroupProps, type DiscreteSymbolEffect, type Dispatch, Divider, DonutChart, DragGesture, type DragGestureDetails, type DragGestureOptions, type DurationInMilliseconds, type DynamicImageSource, type DynamicShapeStyle, type Edge, type EdgeCornerStyle, type EdgeInsets, type EdgeSet, type EdgeSetOption, EditButton, Editor, type EditorProps, type EffectDestructor, type EffectSetup, Ellipse, EmptyView, type EnvironmentValues, EnvironmentValuesReader, type EnvironmentValuesReaderProps, type FileImageProps, FlowLayout, type FlowLayoutProps, type Font, type FontDesign, type FontWeight, type FontWidth, ForEach, type ForEachComponent, type ForEachDeprecatedProps, type ForEachProps, Form, FormData, type FormProps, type FormStyle, type FunctionComponent, Gauge, type GaugeProps, type GaugeStyle, type GeometryProxy, GeometryReader, type GeometryReaderProps, type Gesture, GestureInfo, GlassEffectContainer, type GlassEffectContainerProps, type Gradient, type GradientStop, Grid, type GridItem, type GridProps, GridRow, type GridRowProps, type GridSize, Group, GroupBox, type GroupBoxProps, type GroupProps, HStack, type HStackProps, Headers, type HeadersInit, HeatMapChart, type HorizontalAlignment, type HorizontalEdge, type HorizontalEdgeSet, type IdProps, Image, type ImageInterpolation, type ImageProps, type ImageRenderOptions, ImageRenderer, type ImageRenderingBehaviorProps, type ImageRenderingMode, type ImageResizable, type ImageResizingMode, type ImageScale, type IndexViewStyle, Intent, IntentAttributedTextValue, IntentFileURLValue, IntentFileValue, IntentJsonValue, IntentRequestConfirmationValue, IntentSnippetIntentValue, IntentTextValue, IntentURLValue, IntentValue, type InternalWidgetRender, type KeyboardType, type KeywordPoint, type KeywordsColor, Label, type LabelProps, type LabelStyle, LazyHGrid, type LazyHGridProps, LazyHStack, type LazyHStackProps, LazyVGrid, type LazyVGridProps, LazyVStack, type LazyVStackProps, LineCategoryChart, LineChart, type LineStylePattern, type LinearGradient, Link, type LinkProps, List, type ListProps, type ListSectionSpacing, type ListStyle, LiveActivity, type LiveActivityActivitiesEnabledListener, type LiveActivityActivityUpdateListener, type LiveActivityDetail, type LiveActivityEndOptions, type LiveActivityOptions, type LiveActivityState, LiveActivityUI, type LiveActivityUIBuilder, LiveActivityUIExpandedBottom, LiveActivityUIExpandedCenter, LiveActivityUIExpandedLeading, LiveActivityUIExpandedTrailing, type LiveActivityUIExpandedViewProps, type LiveActivityUIProps, type LiveActivityUpdateOptions, LongPressGesture, type LongPressGestureOptions, MagnifyGesture, type MagnifyGestureValue, type MarkDimension, Markdown, type MarkdownProps, type MatchedGeometryProperties, type Material, Menu, type MenuProps, type MenuStyle, type MeshGradient, type ModalPresentation, type ModalPresentationStyle, MultiColumnsPicker, type MultiColumnsPickerProps, MultiPicker, type MutableRefObject, NamespaceReader, type NamespaceReaderProps, Navigation, type NavigationBarTitleDisplayMode, NavigationLink, type NavigationLinkProps, NavigationSplitView, type NavigationSplitViewColumn, type NavigationSplitViewProps, type NavigationSplitViewStyle, type NavigationSplitViewVisibility, NavigationStack, type NavigationStackProps, type NetworkImageProps, type NormalProgressViewProps, Notification, type NotificationAction, type NotificationInfo, type NotificationInterruptionLevel, type NotificationRequest, Path, Picker, type PickerProps, type PickerStyle, type PickerValue, PieChart, type PinnedScrollViews, type Point, Point1DChart, PointCategoryChart, PointChart, type PopoverPresentation, type PresentationAdaptation, type PresentationBackgroundInteraction, type PresentationContentInteraction, type PresentationDetent, ProgressView, type ProgressViewProps, type ProgressViewStyle, type Prominence, type Provider, type ProviderProps, QRImage, type QRImageProps, type RadialGradient, RangeAreaChart, ReadableStream, ReadableStreamDefaultController, ReadableStreamDefaultReader, RectAreaChart, RectChart, type RectCornerRadii, type RectWithCornerRadii, type RectWithCornerRadius, type RectWithCornerSize, Rectangle, type Reducer, type ReducerAction, type ReducerState, type RefObject, type RenderNode, Request, type RequestInit, Response, type ResponseInit, RotateGesture, type RotateGestureValue, type RoundedCornerStyle, RoundedRectangle, type RoundedRectangleProps, RuleChart, RuleLineForLabelChart, RuleLineForValueChart, SVG, type SVGCodeSourceProps, type SVGFilePathSourceProps, type SVGProps, type SVGURLSourceProps, type SafeAreaRegions, type ScenePhase, Script, type ScriptDeveloper, type ScriptMetadata, type ScriptingDeviceInfo, type ScrollDismissesKeyboardMode, type ScrollScrollIndicatorVisibility, type ScrollTargetBehavior, ScrollView, type ScrollViewProps, type ScrollViewProxy, ScrollViewReader, type ScrollViewReaderProps, type SearchFieldPlacement, type SearchSuggestionsPlacementSet, Section, type SectionProps, SecureField, type SecureFieldProps, type SensoryFeedback, type SetStateAction, type Shape, type ShapeProps, type ShapeStyle, type ShortcutFileURLParameter, type ShortcutJsonParameter, type ShortcutParameter, type ShortcutTextParameter, type Size, Slider, type SliderProps, type SliderWithLabelProps, type SliderWithRangeValueLabelsProps, type SliderWithTicksProps, Spacer, type StateInitializer, Stepper, type StepperProps, type StrokeStyle, type StyledText, type SubmitTriggers, type SwingAnimation, type SymbolEffect, type SymbolRenderingMode, type SymbolVariants, type SystemImageProps, Tab, type TabCustomizationBehavior, type TabPlacement, type TabProps, type TabRole, TabSection, type TabSectionProps, TabView, type TabViewProps, type TabViewStyle, TapGesture, Text, type TextAlignment, TextField, type TextFieldProps, type TextFieldStyle, type TextInputAutocapitalization, type TextProps, TimerIntervalLabel, type TimerIntervalLabelProps, type TimerIntervalProgressViewProps, Toggle, type ToggleProps, type ToggleStyle, type ToolBarProps, Toolbar, type ToolbarDefaultItemKind, ToolbarItem, ToolbarItemGroup, type ToolbarItemGroupProps, type ToolbarItemPlacement, type ToolbarItemProps, type ToolbarPlacement, ToolbarSpacer, type ToolbarSpacerProps, type ToolbarSpacerSizing, type ToolbarTitleDisplayMode, type TruncationMode, type UIImageProps, type UnderlineStyle, type UnderlyingSource, UnevenRoundedRectangle, type UnevenRoundedRectangleProps, type UserInterfaceSizeClass, VStack, type VStackProps, type VerticalAlignment, type VerticalEdge, type VerticalEdgeSet, VideoPlayer, type VideoPlayerProps, ViewModifiers, type VirtualNode, type Visibility, WebView, type WebViewProps, Widget, type WidgetAccentedRenderingMode, type WidgetDisplaySize, type WidgetFamily, type WidgetReloadPolicy, type WidgetRenderingMode, ZStack, type ZStackProps, createContext, fetch, formDataToJson, gradient, modifiers, useCallback, useCancelToken, useColorScheme, useContext, useEffect, useEffectEvent, useKeyboardVisible, useMemo, useObservable, useReducer, useRef, useSelector, useState };
