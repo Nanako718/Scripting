@@ -3,7 +3,6 @@
 #!icon=https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/AliPay.png
 
 [Argument]
-boxjs_key = input,"12123.token",tag=BoxJS存储Key,desc=Token在BoxJS中存储的key名称，默认为12123.token
 is_debug = switch,false,tag=调试模式,desc=启用调试模式，会在控制台输出调试信息
 
 [Script]
