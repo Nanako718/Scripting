@@ -78,18 +78,17 @@ function GuidePage() {
     await Pasteboard.setString(url);
     // 打开 Loon
     await Safari.openURL("loon:///");
-    // 显示提示
-    await Dialog.alert({
-      title: "链接已复制",
-      message: "插件链接已复制到剪贴板，请在打开Loon后手动添加",
-      buttonLabel: "确定"
-    });
   };
 
   const installBoxJsSubscription = async () => {
     const subscriptionUrl = "https://raw.githubusercontent.com/Nanako718/Scripting/main/BoxJs/DTZSGHNR.json";
     const boxjsUrl = `http://boxjs.com/#/sub/add/${encodeURIComponent(subscriptionUrl)}`;
     await Safari.present(boxjsUrl, false);
+  };
+
+  const openAlipayMiniProgram = async () => {
+    const alipayUrl = "alipays://platformapi/startapp?appId=2019050964403523";
+    await Safari.openURL(alipayUrl);
   };
 
 function ToolSelectionPage({
@@ -225,6 +224,16 @@ function ToolSelectionPage({
               <Button title="安装插件" action={installLoonPlugin} />
             </>
           )}
+        </Section>
+
+        <Section title="第四步：打开支付宝小程序">
+          <Text font="body">
+            点击下方按钮打开 交管12123 支付宝小程序
+          </Text>
+          <Button title="打开支付宝小程序" action={openAlipayMiniProgram} />
+          <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 8 }}>
+            登录后会自动抓取 Token 并保存到 BoxJS
+          </Text>
         </Section>
 
         <Section title="使用说明">

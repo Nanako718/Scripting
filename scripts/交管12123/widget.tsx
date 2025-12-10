@@ -9,6 +9,7 @@ import {
   WidgetReloadPolicy,
   ZStack,
   RoundedRectangle,
+  Link,
 } from "scripting"
 import {
   fetchTrafficData,
@@ -355,15 +356,20 @@ async function render() {
   // 检查 token 配置
   if (!token) {
     Widget.present(
-      <VStack padding spacing={8} alignment="center">
-        <Text font="headline" foregroundStyle="systemRed">未配置 Token</Text>
-        <Text font="body" foregroundStyle="secondaryLabel">
-          请先在主应用中设置 Token
-        </Text>
-        <Text font="caption" foregroundStyle="secondaryLabel">
-          从支付宝小程序交管12123获取，或配置 BoxJs
-        </Text>
-      </VStack>,
+      <Link url="alipays://platformapi/startapp?appId=2019050964403523">
+        <VStack padding spacing={8} alignment="center">
+          <Text font="headline" foregroundStyle="systemRed">未配置 Token</Text>
+          <Text font="body" foregroundStyle="secondaryLabel">
+            请先在主应用中设置 Token
+          </Text>
+          <Text font="caption" foregroundStyle="secondaryLabel">
+            从支付宝小程序交管12123获取，或配置 BoxJs
+          </Text>
+          <Text font="caption" foregroundStyle="accentColor" padding={{ top: 8 }}>
+            点击打开支付宝小程序
+          </Text>
+        </VStack>
+      </Link>,
       reloadPolicy
     )
     return
@@ -374,15 +380,20 @@ async function render() {
 
     if (!data) {
       Widget.present(
-        <VStack padding spacing={8} alignment="center">
-          <Text font="headline" foregroundStyle="systemRed">获取数据失败</Text>
-          <Text font="body" foregroundStyle="secondaryLabel">
-            verifyToken 可能已过期
-          </Text>
-          <Text font="caption" foregroundStyle="secondaryLabel">
-            请重新获取 Token
-          </Text>
-        </VStack>,
+        <Link url="alipays://platformapi/startapp?appId=2019050964403523">
+          <VStack padding spacing={8} alignment="center">
+            <Text font="headline" foregroundStyle="systemRed">获取数据失败</Text>
+            <Text font="body" foregroundStyle="secondaryLabel">
+              Token 可能已过期
+            </Text>
+            <Text font="caption" foregroundStyle="secondaryLabel">
+              请重新获取 Token
+            </Text>
+            <Text font="caption" foregroundStyle="accentColor" padding={{ top: 8 }}>
+              点击打开支付宝小程序
+            </Text>
+          </VStack>
+        </Link>,
         reloadPolicy
       )
       return
@@ -409,12 +420,17 @@ async function render() {
       console.error('错误堆栈:', error.stack)
     }
     Widget.present(
-      <VStack padding spacing={8} alignment="center">
-        <Text font="headline" foregroundStyle="systemRed">发生错误</Text>
-        <Text font="body" foregroundStyle="secondaryLabel">
-          {String(error)}
-        </Text>
-      </VStack>,
+      <Link url="alipays://platformapi/startapp?appId=2019050964403523">
+        <VStack padding spacing={8} alignment="center">
+          <Text font="headline" foregroundStyle="systemRed">发生错误</Text>
+          <Text font="body" foregroundStyle="secondaryLabel">
+            {String(error)}
+          </Text>
+          <Text font="caption" foregroundStyle="accentColor" padding={{ top: 8 }}>
+            点击打开支付宝小程序
+          </Text>
+        </VStack>
+      </Link>,
       reloadPolicy
     )
   }
