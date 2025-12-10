@@ -31,7 +31,7 @@ export type TrafficData = {
   vehicleImageUrl?: string;
 }
 
-const BOXJS_KEY = "body_12123"; // BoxJs 中存储的 key
+const BOXJS_KEY = "12123.token"; // BoxJs 中存储的 key
 
 // 从 BoxJs 读取 Token
 export async function fetchTokenFromBoxJs(boxJsUrl: string): Promise<string | null> {

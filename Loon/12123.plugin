@@ -2,8 +2,12 @@
 #!desc=获取交管12123Token
 #!icon=https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/AliPay.png
 
+[Argument]
+boxjs_key = input,"12123.token",tag=BoxJS存储Key,desc=Token在BoxJS中存储的key名称，默认为12123.token
+is_debug = switch,false,tag=调试模式,desc=启用调试模式，会在控制台输出调试信息
+
 [Script]
-http-request ^https:\/\/miniappcsfw\.122\.gov\.cn:8443\/openapi\/invokeApi\/business\/biz script-path=https://raw.githubusercontent.com/95du/scripts/main/rewrite/getToken_12123.js, requires-body=true, timeout=1000, tag=12123_Token
+http-request ^https:\/\/miniappcsfw\.122\.gov\.cn:8443\/openapi\/invokeApi\/business\/biz script-path=https://raw.githubusercontent.com/Nanako718/Scripting/main/Quantumult%20X/js/12123_token.js, requires-body=true, timeout=1000, tag=12123_Token, argument=boxjs_key&is_debug
 
 [MITM]
 hostname = miniappcsfw.122.gov.cn

@@ -47,7 +47,7 @@ https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/Quantumult
 
 **添加插件：**
 ```
-http://script.hub/file/_start_/https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/Quantumult%20X/10010_cookie.conf/_end_/10010_cookie.plugin?n=%E8%81%94%E9%80%9ACookie%2B%20%E8%87%AA%E5%8A%A8%E6%8A%93%E5%8F%96%E4%B8%AD%E5%9B%BD%E8%81%94%E9%80%9A%20riskSync%20%E8%AF%B7%E6%B1%82%E7%9A%84%20Cookie%20%E5%B9%B6%E4%BF%9D%E5%AD%98%E5%88%B0BoxJS&type=qx-rewrite&target=loon-plugin&del=true&jqEnabled=true&icon=%E4%B8%AD%E5%9B%BD%E8%81%94%E9%80%9A
+http://script.hub/file/_start_/https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/QuantumultX/10010_cookie.conf/_end_/10010_cookie.plugin?n=%E8%81%94%E9%80%9ACookie%2B%20%E8%87%AA%E5%8A%A8%E6%8A%93%E5%8F%96%E4%B8%AD%E5%9B%BD%E8%81%94%E9%80%9A%20riskSync%20%E8%AF%B7%E6%B1%82%E7%9A%84%20Cookie%20%E5%B9%B6%E4%BF%9D%E5%AD%98%E5%88%B0BoxJS&type=qx-rewrite&target=loon-plugin&del=true&jqEnabled=true&icon=%E4%B8%AD%E5%9B%BD%E8%81%94%E9%80%9A
 ```
 
 ---
