@@ -1,0 +1,22 @@
+{
+  "color" : "rgba(102, 196, 235,1)",
+  "author" : {
+    "email" : "2753086015@qq.com",
+    "name" : "DTZSGHNR",
+    "homepage" : "https://github.com/Nanako718"
+  },
+  "localizedNames" : "群晖监控",
+  "remoteResource" : null,
+  "name" : "群晖监控",
+  "version" : "1.0.1",
+  "intentInputTypes" : [
+
+  ],
+  "runInApp" : false,
+  "contributors" : [
+
+  ],
+  "description" : "群晖NAS监控小组件，显示CPU、内存、磁盘使用率、网络流量和在线状态。",
+  "localizedDescriptions" : "群晖NAS监控小组件，显示CPU、内存、磁盘使用率、网络流量和在线状态。",
+  "icon" : "server.rack"
+}
