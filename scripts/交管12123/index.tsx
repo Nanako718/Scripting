@@ -196,10 +196,10 @@ function ToolSelectionPage({
                 点击下方链接安装重写规则：
               </Text>
               <Text font="caption" foregroundStyle="secondaryLabel">
-                https://raw.githubusercontent.com/Nanako718/Scripting/main/QuantumultX/12123.sgmodule
+                https://raw.githubusercontent.com/Nanako718/Scripting/main/Quantumult%20X/12123.sgmodule
               </Text>
               <Link url={(() => {
-                const url = "https://raw.githubusercontent.com/Nanako718/Scripting/main/QuantumultX/12123.sgmodule";
+                const url = "https://raw.githubusercontent.com/Nanako718/Scripting/main/Quantumult%20X/12123.sgmodule";
                 const tagName = '交管12123';
                 const config = `
     {
