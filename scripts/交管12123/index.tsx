@@ -362,6 +362,24 @@ function SettingsPage() {
           />
         </Section>
 
+        {vehicleImageUrl ? (
+          <Section title="图片预览">
+            <Text font="caption" foregroundStyle="secondaryLabel" padding={{ bottom: 8 }}>
+              预览效果（宽度：{vehicleImageWidth}，高度：{vehicleImageHeight}）
+            </Text>
+            <VStack alignment="center" spacing={8} padding={{ top: 8, bottom: 8 }}>
+              <Image
+                imageUrl={vehicleImageUrl}
+                frame={{
+                  width: parseInt(vehicleImageWidth, 10) || 120,
+                  height: parseInt(vehicleImageHeight, 10) || 60,
+                }}
+                resizable
+              />
+            </VStack>
+          </Section>
+        ) : null}
+
         <Button title="保存设置" action={handleSave} />
       </Form>
       <Spacer />
