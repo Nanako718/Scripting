@@ -1,10 +1,14 @@
 {
   "color" : "rgba(28, 140, 255,1)",
-  "author" : null,
-  "localizedNames" : null,
+  "author" : {
+    "email" : "2753086015@qq.com",
+    "name" : "DTZSGHNR",
+    "homepage" : "https://github.com/Nanako718"
+  },
+  "localizedNames" : "交管12123",
   "remoteResource" : null,
   "name" : "交管12123",
-  "version" : "1.0.0",
+  "version" : "1.0.1",
   "intentInputTypes" : [
 
   ],
@@ -12,7 +16,7 @@
   "contributors" : [
 
   ],
-  "description" : null,
-  "localizedDescriptions" : null,
+  "description" : "交管12123小组件，显示车辆信息、违章记录、记分情况等，支持BoxJs自动获取Token。",
+  "localizedDescriptions" : "交管12123小组件，显示车辆信息、违章记录、记分情况等，支持BoxJs自动获取Token。",
   "icon" : "car.fill"
 }
