@@ -1,0 +1,18 @@
+{
+  "color" : "rgba(233, 123, 199,1)",
+  "contributors" : [
+
+  ],
+  "description" : null,
+  "author" : null,
+  "version" : "1.0.0",
+  "runInApp" : false,
+  "name" : "中国广电",
+  "localizedNames" : null,
+  "localizedDescriptions" : null,
+  "icon" : "square.2.layers.3d.fill",
+  "intentInputTypes" : [
+
+  ],
+  "remoteResource" : null
+}

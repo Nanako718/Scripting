@@ -1,0 +1,24 @@
+{
+  "intentInputTypes" : [
+
+  ],
+  "description" : "qBittorrent 限速控制脚本，支持在控制中心添加 Toggle 控制",
+  "remoteResource" : null,
+  "icon" : "gauge.with.dots.needle.33percent",
+  "version" : "1.0.0",
+  "contributors" : [
+
+  ],
+  "localizedNames" : {
+    "zh" : "qB限速",
+    "en" : "qB Speed Limit"
+  },
+  "localizedDescriptions" : {
+    "zh" : "qBittorrent 限速控制脚本，支持在控制中心添加 Toggle 控制",
+    "en" : "qBittorrent speed limit control script with Control Center Toggle support"
+  },
+  "color" : "rgba(124, 76, 179,1)",
+  "author" : null,
+  "runInApp" : false,
+  "name" : "qB限速"
+}

@@ -34,6 +34,22 @@
           "https://raw.githubusercontent.com/Nanako718/Scripting/main/images/12123.png",
           "https://raw.githubusercontent.com/Nanako718/Scripting/main/images/12123.png"
         ]
+      },
+      {
+        "id": "10099",
+        "name": "中国广电配置",
+        "keys": [
+          "10099.access",
+          "10099.data",
+          "10099.cookie"
+        ],
+        "descs_html": [
+          "<h4 align=\"center\">点击查看抓取到的中国广电配置</h4>"
+        ],
+        "icons": [
+          "https://raw.githubusercontent.com/Nanako718/Scripting/main/images/10099.png",
+          "https://raw.githubusercontent.com/Nanako718/Scripting/main/images/10099.png"
+        ]
       }
     ]
   }

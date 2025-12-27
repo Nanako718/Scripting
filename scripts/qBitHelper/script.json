@@ -1,0 +1,32 @@
+{
+  "version" : "1.0.6",
+  "localizedNames" : {
+    "zh" : "qBitHelper",
+    "en" : "qBitHelper"
+  },
+  "icon" : "tray.full.fill",
+  "name" : "qBitHelper",
+  "author" : {
+    "email" : null,
+    "homepage" : null,
+    "name" : "Unknown"
+  },
+  "color" : "rgba(28, 140, 255,1)",
+  "localizedDescriptions" : {
+    "en" : "Remote monitor for qBittorrent\/Transmission status ",
+    "zh" : "远程监控 qBittorrent\/Transmission 状态的脚本"
+  },
+  "remoteResource" : {
+    "hash" : "d9bde74194de1f1cdb218bf59a0a8731",
+    "autoUpdateInterval" : 600,
+    "url" : "https:\/\/imarkr.com\/api\/github\/download\/MolTau9527\/Scripting-Tools\/scripts\/qBitHelper.zip"
+  },
+  "description" : null,
+  "contributors" : [
+
+  ],
+  "intentInputTypes" : [
+
+  ],
+  "runInApp" : false
+}

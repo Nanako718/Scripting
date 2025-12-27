@@ -1,0 +1,24 @@
+{
+  "intentInputTypes" : [
+
+  ],
+  "author" : null,
+  "version" : "1.0.0",
+  "description" : "Transmission 限速控制脚本，支持在控制中心添加 Toggle 控制",
+  "color" : "rgba(243, 159, 68,1)",
+  "contributors" : [
+
+  ],
+  "remoteResource" : null,
+  "name" : "Tr限速",
+  "icon" : "gauge.with.dots.needle.67percent",
+  "localizedNames" : {
+    "zh" : "Tr限速",
+    "en" : "Tr Speed Limit"
+  },
+  "localizedDescriptions" : {
+    "zh" : "Transmission 限速控制脚本，支持在控制中心添加 Toggle 控制",
+    "en" : "Transmission speed limit control script with Control Center Toggle support"
+  },
+  "runInApp" : false
+}
