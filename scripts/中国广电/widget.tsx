@@ -18,6 +18,7 @@ type ChinaRadioSettings = {
   access: string
   data: string
   cookie: string
+  body?: string
   titleDayColor: Color
   titleNightColor: Color
   descDayColor: Color
@@ -27,6 +28,7 @@ type ChinaRadioSettings = {
   refreshInterval: number
   enableBoxJs?: boolean
   boxJsUrl?: string
+  enableLog?: boolean
 }
 
 const SETTINGS_KEY = "chinaRadioSettings"
@@ -68,10 +70,10 @@ type ApiResponse = {
 }
 
 // 从 BoxJs 读取配置
-async function fetchConfigFromBoxJs(boxJsUrl: string): Promise<{ access: string | null; data: string | null; cookie: string | null }> {
+async function fetchConfigFromBoxJs(boxJsUrl: string): Promise<{ access: string | null; data: string | null; cookie: string | null; body: string | null }> {
   try {
     const baseUrl = boxJsUrl.replace(/\/$/, "")
-    const [accessRes, dataRes, cookieRes] = await Promise.all([
+    const [accessRes, dataRes, cookieRes, bodyRes] = await Promise.all([
       fetch(`${baseUrl}/query/data/10099.access`, {
         headers: { 'Accept': 'application/json' }
       }),
@@ -80,45 +82,91 @@ async function fetchConfigFromBoxJs(boxJsUrl: string): Promise<{ access: string 
       }),
       fetch(`${baseUrl}/query/data/10099.cookie`, {
         headers: { 'Accept': 'application/json' }
+      }),
+      fetch(`${baseUrl}/query/data/10099.body`, {
+        headers: { 'Accept': 'application/json' }
       })
     ])
     
     const access = accessRes.ok ? (await accessRes.json())?.val : null
     const data = dataRes.ok ? (await dataRes.json())?.val : null
     const cookie = cookieRes.ok ? (await cookieRes.json())?.val : null
+    const body = bodyRes.ok ? (await bodyRes.json())?.val : null
     
     if (access && data && cookie) {
-      console.log("✅ 从 BoxJs 成功读取配置")
-      return { access, data, cookie }
+      return { access, data, cookie, body }
     }
   } catch (error) {
-    console.error("🚨 从 BoxJs 读取配置异常:", error)
+    // Ignore errors
   }
-  return { access: null, data: null, cookie: null }
+  return { access: null, data: null, cookie: null, body: null }
 }
 
-// 获取用户数据
-async function fetchUserData(access: string, data: string, cookie: string): Promise<RadioData | null> {
+// 获取原始 API 响应
+async function fetchRawApiResponse(access: string, data: string, cookie: string, body?: string): Promise<string | null> {
   try {
-    // 构建请求体（base64编码的数据）
-    // 这里需要根据实际请求构建，但为了简化，我们直接使用原始请求
-    const body = "ewogICJkYXRhIiA6ICJVeXU0anNNSHV1QjQ2cXlcL1dyVFNNSWFFV3BLXC90ZXowY0tRNFJVRUZqaW5TeTJ6QzFsZkRGaEtMTzBEeGNtWlFJUVFHWXdFeUxoQU5KTGxtTEt6a3NmQkMrbjJKTkVudjgyUHR3cUUrU0liK1ZtVzV0bkg5WTdKQVY4dzJvektcL29uQ2h3SlwvbHVDc2pTOFpMWTVKc3FkUnVjXC9cL0k4NVZjcGtyNkpyYm0zdkNKS1NZY2tJaVpBNjhpN2NMVUM5eXp0a3J4RWlTRjRFV2N0Vk81bUNQTis0U0pBdkhWRHRFSFhJYUJFT3BlRVR4UUg0MFJLOUpvXC9Nb0N3RHdOUzRmMDB0dnFCMDdOS0c2MVE1akc5QitHaktnd1I1RXlSZ001VmFjaGErRGZ5b1R4ZHhjajBEZWlDc0MxMXFnVERqVERKQklERFwvY3JlY2VKXC8zVDEwTHBJbWc9PSIKfQ=="
+    const requestBody = body || ""
+    
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      'priority': 'u=3, i',
+      'access': access,
+      'accept': '*/*',
+      't5hhv8ah': data,
+      'accept-encoding': 'gzip, deflate, br',
+      'user-agent': 'ChinaRadio/2.0.5 (iPhone; iOS 26.3; Scale/3.00)',
+      'cookie': cookie,
+      'accept-language': 'zh-Hans-CN;q=1',
+    }
+    
+    if (requestBody) {
+      headers['content-length'] = String(requestBody.length)
+    }
     
     const response = await fetch(API_URL, {
       method: "POST",
-      headers: {
-        'content-length': '370',
-        'content-type': 'application/json',
-        'priority': 'u=3, i',
-        'access': access,
-        'accept': '*/*',
-        't5hhv8ah': data,
-        'accept-encoding': 'gzip, deflate, br',
-        'user-agent': 'ChinaRadio/2.0.5 (iPhone; iOS 26.3; Scale/3.00)',
-        'cookie': cookie,
-        'accept-language': 'zh-Hans-CN;q=1',
-      },
-      body: body,
+      headers,
+      body: requestBody,
+    })
+
+    if (response.ok) {
+      const rawText = await response.text()
+      return rawText
+    }
+  } catch (error) {
+    // Ignore errors
+  }
+  return null
+}
+
+// 获取用户数据
+async function fetchUserData(access: string, data: string, cookie: string, body?: string): Promise<RadioData | null> {
+  try {
+    // body 是 base64 编码的字符串，直接使用，不要 JSON.stringify
+    // 如果没有 body，使用空字符串（而不是空 JSON）
+    const requestBody = body || ""
+    
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      'priority': 'u=3, i',
+      'access': access,
+      'accept': '*/*',
+      't5hhv8ah': data,
+      'accept-encoding': 'gzip, deflate, br',
+      'user-agent': 'ChinaRadio/2.0.5 (iPhone; iOS 26.3; Scale/3.00)',
+      'cookie': cookie,
+      'accept-language': 'zh-Hans-CN;q=1',
+    }
+    
+    // 设置 content-length（body 存在时）
+    if (requestBody) {
+      headers['content-length'] = String(requestBody.length)
+    }
+    
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers,
+      body: requestBody,
     })
 
     if (response.ok) {
@@ -165,24 +213,16 @@ async function fetchUserData(access: string, data: string, cookie: string): Prom
           total: flowTotalMB,
         }
         
-        console.log("💰 话费数据:", `${feeData.balance}${feeData.unit}`)
-        console.log("📞 语音:", `已用${voiceUsed}分钟 剩余${voiceRemain}分钟 总计${voiceTotal}分钟`)
-        console.log("📶 流量:", `已用${formatFlowValue(flowUsedMB, "MB").balance}${formatFlowValue(flowUsedMB, "MB").unit} 剩余${flowFormatted.balance}${flowFormatted.unit} 总计${formatFlowValue(flowTotalMB, "MB").balance}${formatFlowValue(flowTotalMB, "MB").unit}`)
-        
         return {
           fee: feeData,
           voice: voiceData,
           flow: flowData,
           packName: userData.packName,
         }
-      } else {
-        console.warn("⚠️ API 返回非成功状态:", data.status, data.message)
       }
-    } else {
-      console.error("❌ HTTP 请求失败，状态码:", response.status)
     }
   } catch (error) {
-    console.error("🚨 请求异常:", error)
+    // Ignore errors
   }
   return null
 }
@@ -201,28 +241,35 @@ function formatFlowValue(value: number, unit: string = "MB"): { balance: string;
   }
 }
 
-// 卡片主题配置 - Catppuccin 配色方案
+// 卡片主题配置 - Catppuccin Macchiato 配色方案（参考群晖监控）
 const cardThemes = {
   fee: {
-    background: { light: "rgba(140, 170, 238, 0.12)", dark: "rgba(140, 170, 238, 0.18)" } as DynamicShapeStyle,
-    iconColor: { light: "#8caaee", dark: "#8caaee" } as DynamicShapeStyle,
-    titleColor: { light: "#737994", dark: "#99d1db" } as DynamicShapeStyle,
-    descColor: { light: "#51576d", dark: "#c6d0f5" } as DynamicShapeStyle,
+    background: { light: "rgba(30, 102, 245, 0.12)", dark: "rgba(138, 173, 244, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#1E66F5", dark: "#8aadf4" } as DynamicShapeStyle,
+    titleColor: { light: "#6E738D", dark: "#a5adce" } as DynamicShapeStyle,
+    descColor: { light: "#4C4F69", dark: "#cad3f5" } as DynamicShapeStyle,
     icon: "creditcard.fill"
   },
   voice: {
-    background: { light: "rgba(166, 209, 137, 0.12)", dark: "rgba(166, 209, 137, 0.18)" } as DynamicShapeStyle,
-    iconColor: { light: "#a6d189", dark: "#a6d189" } as DynamicShapeStyle,
-    titleColor: { light: "#626880", dark: "#81c8be" } as DynamicShapeStyle,
-    descColor: { light: "#51576d", dark: "#c6d0f5" } as DynamicShapeStyle,
+    background: { light: "rgba(136, 57, 239, 0.12)", dark: "rgba(198, 160, 246, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#8839EF", dark: "#c6a0f6" } as DynamicShapeStyle,
+    titleColor: { light: "#6E738D", dark: "#a5adce" } as DynamicShapeStyle,
+    descColor: { light: "#4C4F69", dark: "#cad3f5" } as DynamicShapeStyle,
     icon: "phone.fill"
   },
   flow: {
-    background: { light: "rgba(239, 159, 118, 0.12)", dark: "rgba(239, 159, 118, 0.18)" } as DynamicShapeStyle,
-    iconColor: { light: "#ef9f76", dark: "#ef9f76" } as DynamicShapeStyle,
-    titleColor: { light: "#737994", dark: "#e5c890" } as DynamicShapeStyle,
-    descColor: { light: "#51576d", dark: "#c6d0f5" } as DynamicShapeStyle,
+    background: { light: "rgba(254, 100, 11, 0.12)", dark: "rgba(245, 169, 127, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#FE640B", dark: "#f5a97f" } as DynamicShapeStyle,
+    titleColor: { light: "#6E738D", dark: "#a5adce" } as DynamicShapeStyle,
+    descColor: { light: "#4C4F69", dark: "#cad3f5" } as DynamicShapeStyle,
     icon: "antenna.radiowaves.left.and.right"
+  },
+  flowUsed: {
+    background: { light: "rgba(23, 146, 153, 0.12)", dark: "rgba(125, 196, 228, 0.18)" } as DynamicShapeStyle,
+    iconColor: { light: "#179299", dark: "#7dc4e4" } as DynamicShapeStyle,
+    titleColor: { light: "#6E738D", dark: "#a5adce" } as DynamicShapeStyle,
+    descColor: { light: "#4C4F69", dark: "#cad3f5" } as DynamicShapeStyle,
+    icon: "arrow.up.arrow.down"
   }
 }
 
@@ -432,34 +479,52 @@ function SmallWidgetView({ data, titleStyle, descStyle }: {
   titleStyle: DynamicShapeStyle
   descStyle: DynamicShapeStyle
 }) {
+  // Catppuccin Macchiato 配色方案（参考群晖监控）
+  const bgColor: DynamicShapeStyle = {
+    light: "#EFF1F5", // Latte Base
+    dark: "#24273a",  // Macchiato Base
+  }
+  
   return (
-    <VStack alignment="leading" padding={{ top: 8, leading: 8, bottom: 8, trailing: 8 }} spacing={6}>
-      <SmallDataCard
-        title={data.fee.title}
-        value={data.fee.balance}
-        unit={data.fee.unit}
-        theme={cardThemes.fee}
-        titleStyle={titleStyle}
-        descStyle={descStyle}
-        useLogoAsIcon={true}
-      />
-      <SmallDataCard
-        title={data.flow.title}
-        value={data.flow.balance}
-        unit={data.flow.unit}
-        theme={cardThemes.flow}
-        titleStyle={titleStyle}
-        descStyle={descStyle}
-      />
-      <SmallDataCard
-        title={data.voice.title}
-        value={data.voice.balance}
-        unit="MIN"
-        theme={cardThemes.voice}
-        titleStyle={titleStyle}
-        descStyle={descStyle}
-      />
-    </VStack>
+    <ZStack
+      frame={{ maxWidth: Infinity, maxHeight: Infinity }}
+      widgetBackground={{
+        style: bgColor,
+        shape: {
+          type: "rect",
+          cornerRadius: 24,
+          style: "continuous",
+        },
+      }}
+    >
+      <VStack alignment="leading" padding={{ top: 8, leading: 8, bottom: 8, trailing: 8 }} spacing={6}>
+        <SmallDataCard
+          title={data.fee.title}
+          value={data.fee.balance}
+          unit={data.fee.unit}
+          theme={cardThemes.fee}
+          titleStyle={titleStyle}
+          descStyle={descStyle}
+          useLogoAsIcon={true}
+        />
+        <SmallDataCard
+          title={data.flow.title}
+          value={data.flow.balance}
+          unit={data.flow.unit}
+          theme={cardThemes.flow}
+          titleStyle={titleStyle}
+          descStyle={descStyle}
+        />
+        <SmallDataCard
+          title={data.voice.title}
+          value={data.voice.balance}
+          unit="MIN"
+          theme={cardThemes.voice}
+          titleStyle={titleStyle}
+          descStyle={descStyle}
+        />
+      </VStack>
+    </ZStack>
   )
 }
 
@@ -477,40 +542,72 @@ function WidgetView({ data, settings }: { data: RadioData; settings: ChinaRadioS
     return <SmallWidgetView data={data} titleStyle={titleStyle} descStyle={descStyle} />
   }
 
+  const flowUsedFormatted = data.flow.used ? formatFlowValue(data.flow.used, "MB") : null
+  
+  // Catppuccin Macchiato 配色方案（参考群晖监控）
+  const bgColor: DynamicShapeStyle = {
+    light: "#EFF1F5", // Latte Base
+    dark: "#24273a",  // Macchiato Base
+  }
+  
   return (
-    <VStack alignment="leading" padding={{ top: 10, leading: 10, bottom: 10, trailing: 10 }} spacing={8}>
-      <HStack alignment="center" spacing={6}>
-        <DataCard
-          title={data.fee.title}
-          value={data.fee.balance}
-          unit={data.fee.unit}
-          theme={cardThemes.fee}
-          titleStyle={titleStyle}
-          descStyle={descStyle}
-          showLogo={true}
-        />
-        <DataCard
-          title={data.voice.title}
-          value={data.voice.balance}
-          unit={data.voice.unit}
-          theme={cardThemes.voice}
-          titleStyle={titleStyle}
-          descStyle={descStyle}
-          progressUsed={data.voice.used}
-          progressTotal={data.voice.total}
-        />
-        <DataCard
-          title={data.flow.title}
-          value={data.flow.balance}
-          unit={data.flow.unit}
-          theme={cardThemes.flow}
-          titleStyle={titleStyle}
-          descStyle={descStyle}
-          progressUsed={data.flow.used}
-          progressTotal={data.flow.total}
-        />
-      </HStack>
-    </VStack>
+    <ZStack
+      frame={{ maxWidth: Infinity, maxHeight: Infinity }}
+      widgetBackground={{
+        style: bgColor,
+        shape: {
+          type: "rect",
+          cornerRadius: 24,
+          style: "continuous",
+        },
+      }}
+    >
+      <VStack alignment="leading" padding={{ top: 10, leading: 10, bottom: 10, trailing: 10 }} spacing={8}>
+        <HStack alignment="center" spacing={6}>
+          <DataCard
+            title={data.fee.title}
+            value={data.fee.balance}
+            unit={data.fee.unit}
+            theme={cardThemes.fee}
+            titleStyle={titleStyle}
+            descStyle={descStyle}
+            showLogo={true}
+          />
+          <DataCard
+            title={data.voice.title}
+            value={data.voice.balance}
+            unit={data.voice.unit}
+            theme={cardThemes.voice}
+            titleStyle={titleStyle}
+            descStyle={descStyle}
+            progressUsed={data.voice.used}
+            progressTotal={data.voice.total}
+          />
+          <DataCard
+            title={data.flow.title}
+            value={data.flow.balance}
+            unit={data.flow.unit}
+            theme={cardThemes.flow}
+            titleStyle={titleStyle}
+            descStyle={descStyle}
+            progressUsed={data.flow.used}
+            progressTotal={data.flow.total}
+          />
+          {flowUsedFormatted && data.flow.used && data.flow.total ? (
+            <DataCard
+              title="已用流量"
+              value={flowUsedFormatted.balance}
+              unit={flowUsedFormatted.unit}
+              theme={cardThemes.flowUsed}
+              titleStyle={titleStyle}
+              descStyle={descStyle}
+              progressUsed={data.flow.used}
+              progressTotal={data.flow.total}
+            />
+          ) : null}
+        </HStack>
+      </VStack>
+    </ZStack>
   )
 }
 
@@ -528,6 +625,7 @@ async function render() {
   let access = settings?.access || ""
   let data = settings?.data || ""
   let cookie = settings?.cookie || ""
+  let body = settings?.body || ""
   
   if (settings?.enableBoxJs && settings?.boxJsUrl) {
     const boxJsConfig = await fetchConfigFromBoxJs(settings.boxJsUrl)
@@ -535,9 +633,7 @@ async function render() {
       access = boxJsConfig.access
       data = boxJsConfig.data
       cookie = boxJsConfig.cookie
-      console.log("✅ 使用 BoxJs 中的配置")
-    } else {
-      console.warn("⚠️ 从 BoxJs 读取配置失败，使用配置的本地值")
+      body = boxJsConfig.body || body
     }
   }
 
@@ -546,7 +642,17 @@ async function render() {
     return
   }
 
-  const userData = await fetchUserData(access, data, cookie)
+  // 如果开启了日志模式，获取并输出原始 API 响应
+  if (settings?.enableLog) {
+    const rawResponse = await fetchRawApiResponse(access, data, cookie, body)
+    if (rawResponse) {
+      console.log("=== API 原始响应 ===")
+      console.log(rawResponse)
+      console.log("==================")
+    }
+  }
+
+  const userData = await fetchUserData(access, data, cookie, body)
 
   if (!userData) {
     Widget.present(<Text>获取数据失败，请检查网络或配置。</Text>, reloadPolicy)

@@ -20,6 +20,7 @@ type ChinaRadioSettings = {
   access: string
   data: string
   cookie: string
+  body?: string
   titleDayColor: Color
   titleNightColor: Color
   descDayColor: Color
@@ -29,6 +30,7 @@ type ChinaRadioSettings = {
   refreshInterval: number
   enableBoxJs: boolean
   boxJsUrl: string
+  enableLog?: boolean
 }
 
 const SETTINGS_KEY = "chinaRadioSettings"
@@ -52,6 +54,8 @@ const defaultSettings: ChinaRadioSettings = {
   // BoxJs 配置
   enableBoxJs: false,
   boxJsUrl: "",
+  // 日志开关
+  enableLog: false,
 }
 
 function SettingsPage() {
@@ -62,6 +66,7 @@ function SettingsPage() {
   const [access, setAccess] = useState(initialSettings.access)
   const [data, setData] = useState(initialSettings.data)
   const [cookie, setCookie] = useState(initialSettings.cookie)
+  const [body, setBody] = useState(initialSettings.body || "")
   const [titleDayColor, setTitleDayColor] = useState(initialSettings.titleDayColor)
   const [titleNightColor, setTitleNightColor] = useState(initialSettings.titleNightColor)
   const [descDayColor, setDescDayColor] = useState(initialSettings.descDayColor)
@@ -71,12 +76,14 @@ function SettingsPage() {
   const [refreshInterval, setRefreshInterval] = useState(initialSettings.refreshInterval)
   const [enableBoxJs, setEnableBoxJs] = useState(initialSettings.enableBoxJs ?? false)
   const [boxJsUrl, setBoxJsUrl] = useState(initialSettings.boxJsUrl ?? "")
+  const [enableLog, setEnableLog] = useState(initialSettings.enableLog ?? false)
 
   const handleSave = () => {
     const newSettings: ChinaRadioSettings = {
       access,
       data,
       cookie,
+      body,
       titleDayColor,
       titleNightColor,
       descDayColor,
@@ -86,6 +93,7 @@ function SettingsPage() {
       refreshInterval,
       enableBoxJs,
       boxJsUrl,
+      enableLog,
     }
     Storage.set(SETTINGS_KEY, newSettings)
     dismiss()
@@ -113,6 +121,12 @@ function SettingsPage() {
             prompt="在此处粘贴 Cookie"
             onChanged={setCookie}
           />
+          <TextField
+            title="Body (可选)"
+            value={body}
+            prompt="在此处粘贴 body (base64 字符串)"
+            onChanged={setBody}
+          />
         </Section>
 
         <Section title="刷新设置">
@@ -139,6 +153,19 @@ function SettingsPage() {
               prompt="请输入 BoxJs 地址，例如：http://boxjs.com"
               onChanged={setBoxJsUrl}
             />
+          ) : null}
+        </Section>
+
+        <Section title="调试设置">
+          <Toggle
+            title="开启日志"
+            value={enableLog}
+            onChanged={setEnableLog}
+          />
+          {enableLog ? (
+            <Text font="caption" foregroundStyle="secondaryLabel" padding={{ leading: 16, trailing: 16, bottom: 8 }}>
+              开启后将显示 API 的原始响应内容
+            </Text>
           ) : null}
         </Section>
 

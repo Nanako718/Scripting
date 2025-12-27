@@ -41,7 +41,8 @@
         "keys": [
           "10099.access",
           "10099.data",
-          "10099.cookie"
+          "10099.cookie",
+          "10099.body"
         ],
         "descs_html": [
           "<h4 align=\"center\">点击查看抓取到的中国广电配置</h4>"

@@ -1,0 +1,10 @@
+#!name=中国广电配置
+#!desc=自动抓取中国广电 App 的 access、data、Cookie 和 body
+#!icon=https://raw.githubusercontent.com/Nanako718/Scripting/main/images/10099.png
+
+[Script]
+http-request ^https:\/\/app\.10099\.com\.cn\/contact-web\/api\/busi\/qryUserInfo script-path=https://raw.githubusercontent.com/Nanako718/Scripting/main/Quantumult%20X/js/10099_config.js, requires-body=true, timeout=5000, tag=10099_Config
+
+[MITM]
+hostname = app.10099.com.cn, *.10099.com.cn
+
