@@ -384,6 +384,53 @@ function DataCard({
   )
 }
 
+// 圆形进度条组件（模仿群晖监控样式）
+function CircularProgress({
+  value,
+  label,
+  icon,
+  color,
+  labelColor,
+}: {
+  value: number;
+  label: string;
+  icon: string;
+  color: DynamicShapeStyle;
+  labelColor: DynamicShapeStyle;
+}) {
+  const percentage = Math.min(100, Math.max(0, value));
+  const normalizedValue = percentage / 100;
+
+  return (
+    <VStack alignment="center" spacing={8}>
+      <Gauge
+        value={normalizedValue}
+        min={0}
+        max={1}
+        label={<Text font={9} fontWeight="medium" foregroundStyle={labelColor}>{label}</Text>}
+        currentValueLabel={
+          <VStack alignment="center" spacing={3}>
+            <Image
+              systemName={icon}
+              font={16}
+              foregroundStyle={color}
+            />
+            <Text
+              font={12}
+              fontWeight="bold"
+              foregroundStyle={color}
+            >
+              {Math.round(percentage)}%
+            </Text>
+          </VStack>
+        }
+        gaugeStyle="accessoryCircular"
+        tint={color}
+      />
+    </VStack>
+  );
+}
+
 // 小尺寸组件卡片
 function SmallDataCard({
   title,
@@ -485,6 +532,45 @@ function SmallWidgetView({ data, titleStyle, descStyle }: {
     dark: "#24273a",  // Macchiato Base
   }
   
+  // 计算流量使用进度（百分比）
+  const flowProgressValue = data.flow.used && data.flow.total && data.flow.total > 0
+    ? (data.flow.used / data.flow.total) * 100
+    : 0
+  
+  // 格式化已用流量
+  const flowUsedFormatted = data.flow.used ? formatFlowValue(data.flow.used, "MB") : null
+  
+  // 定义次要文本颜色（用于label）
+  const secondaryTextColor: DynamicShapeStyle = {
+    light: "#6E738D", // Latte Subtext0
+    dark: "#a5adce",  // Macchiato Subtext0
+  }
+  
+  // 根据百分比返回进度条颜色
+  const getProgressColor = (percentage: number): DynamicShapeStyle => {
+    if (percentage < 50) {
+      // 低使用率：绿色
+      return {
+        light: "#40A02B", // Latte Green
+        dark: "#a6da95",  // Macchiato Green
+      } as DynamicShapeStyle
+    } else if (percentage < 80) {
+      // 中使用率：黄色/橙色
+      return {
+        light: "#FE640B", // Latte Peach
+        dark: "#f5a97f",  // Macchiato Peach
+      } as DynamicShapeStyle
+    } else {
+      // 高使用率：红色
+      return {
+        light: "#D20F39", // Latte Red
+        dark: "#ed8796",  // Macchiato Red
+      } as DynamicShapeStyle
+    }
+  }
+  
+  const progressColor = getProgressColor(flowProgressValue)
+  
   return (
     <ZStack
       frame={{ maxWidth: Infinity, maxHeight: Infinity }}
@@ -497,32 +583,120 @@ function SmallWidgetView({ data, titleStyle, descStyle }: {
         },
       }}
     >
-      <VStack alignment="leading" padding={{ top: 8, leading: 8, bottom: 8, trailing: 8 }} spacing={6}>
-        <SmallDataCard
-          title={data.fee.title}
-          value={data.fee.balance}
-          unit={data.fee.unit}
-          theme={cardThemes.fee}
-          titleStyle={titleStyle}
-          descStyle={descStyle}
-          useLogoAsIcon={true}
-        />
-        <SmallDataCard
-          title={data.flow.title}
-          value={data.flow.balance}
-          unit={data.flow.unit}
-          theme={cardThemes.flow}
-          titleStyle={titleStyle}
-          descStyle={descStyle}
-        />
-        <SmallDataCard
-          title={data.voice.title}
-          value={data.voice.balance}
-          unit="MIN"
-          theme={cardThemes.voice}
-          titleStyle={titleStyle}
-          descStyle={descStyle}
-        />
+      <VStack alignment="leading" padding={{ top: 4, leading: 8, bottom: 8, trailing: 8 }} spacing={6}>
+        {/* 顶部：中国广电（左）和logo（右） */}
+        <HStack alignment="center" spacing={6}>
+          <Text
+            font={14}
+            fontWeight="bold"
+            foregroundStyle={secondaryTextColor}
+            lineLimit={1}
+          >
+            中国广电
+          </Text>
+          <Spacer />
+          <Image 
+            imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/main/images/10099.png" 
+            frame={{ width: 24, height: 24 }} 
+            resizable 
+          />
+        </HStack>
+        
+        {/* 分割线 */}
+        <HStack
+          alignment="center"
+          frame={{ width: Infinity, height: 1 }}
+          widgetBackground={{
+            style: {
+              light: "rgba(110, 115, 141, 0.3)", // Latte Subtext0 with opacity
+              dark: "rgba(165, 173, 206, 0.3)",  // Macchiato Subtext0 with opacity
+            } as DynamicShapeStyle,
+            shape: {
+              type: "rect",
+              cornerRadius: 0.5,
+              style: "continuous"
+            }
+          }}
+        >
+          <Spacer />
+        </HStack>
+        
+        {/* 底部：使用进度（左）和数据列表（右） */}
+        <HStack alignment="center" spacing={8}>
+          {/* 左侧：CircularProgress */}
+          <CircularProgress
+            value={flowProgressValue}
+            label="流量"
+            icon="antenna.radiowaves.left.and.right"
+            color={progressColor}
+            labelColor={secondaryTextColor}
+          />
+          
+          {/* 右侧：纵向数据列表（标题和数值分行显示，带颜色区分） */}
+          <VStack alignment="leading" spacing={3} frame={{ minWidth: 0, maxWidth: Infinity }}>
+            {/* 话费剩余 - 蓝色 */}
+            <VStack alignment="leading" spacing={1}>
+              <Text
+                font={9}
+                fontWeight="medium"
+                foregroundStyle={titleStyle}
+                lineLimit={1}
+              >
+                话费剩余
+              </Text>
+              <Text
+                font={12}
+                fontWeight="bold"
+                foregroundStyle={cardThemes.fee.iconColor}
+                lineLimit={1}
+              >
+                {`${data.fee.balance}${data.fee.unit}`}
+              </Text>
+            </VStack>
+            
+            {/* 剩余流量 - 紫色 */}
+            <VStack alignment="leading" spacing={1}>
+              <Text
+                font={9}
+                fontWeight="medium"
+                foregroundStyle={titleStyle}
+                lineLimit={1}
+              >
+                剩余流量
+              </Text>
+              <Text
+                font={12}
+                fontWeight="bold"
+                foregroundStyle={cardThemes.voice.iconColor}
+                lineLimit={1}
+              >
+                {`${data.flow.balance}${data.flow.unit}`}
+              </Text>
+            </VStack>
+            
+            {/* 已用流量 - 青色 */}
+            {flowUsedFormatted && (
+              <VStack alignment="leading" spacing={1}>
+                <Text
+                  font={9}
+                  fontWeight="medium"
+                  foregroundStyle={titleStyle}
+                  lineLimit={1}
+                >
+                  已用流量
+                </Text>
+                <Text
+                  font={12}
+                  fontWeight="bold"
+                  foregroundStyle={cardThemes.flowUsed.iconColor}
+                  lineLimit={1}
+                >
+                  {`${flowUsedFormatted.balance}${flowUsedFormatted.unit}`}
+                </Text>
+              </VStack>
+            )}
+          </VStack>
+        </HStack>
       </VStack>
     </ZStack>
   )

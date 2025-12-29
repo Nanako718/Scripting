@@ -13,6 +13,7 @@ export interface HistoryPoint {
   timestamp: number;
   uploadRate: number;
   downloadRate: number;
+  count?: number; // 用于计算小时平均值
 }
 
 export type ClientType = 'qb' | 'tr';

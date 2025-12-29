@@ -13,7 +13,7 @@ interface DisplayProps {
 }
 
 const SIZES = ['B', 'KB', 'MB', 'GB', 'TB'];
-const MAX_POINTS = 10;
+const MAX_HOURS = 12;
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B';
@@ -25,7 +25,7 @@ const formatRate = (bps: number) => `${formatBytes(bps)}/s`;
 
 const formatTime = (ts: number) => {
   const d = new Date(ts);
-  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+  return `${String(d.getHours()).padStart(2, '0')}:00`;
 };
 
 const getClientName = (clientType?: 'qb' | 'tr') => clientType === 'tr' ? 'Transmission' : 'qBittorrent';
@@ -50,12 +50,41 @@ function StatCard({ icon, label, value, color, compact }: {
   );
 }
 
+// 获取小时时间戳（整点）
+const getHourTimestamp = (timestamp: number): number => {
+  const date = new Date(timestamp);
+  date.setMinutes(0, 0, 0);
+  return date.getTime();
+};
+
 function RateChart({ history, data, rateKey, color, label }: {
   history: HistoryPoint[]; data: ClientData; rateKey: 'uploadRate' | 'downloadRate'; color: Color | DynamicShapeStyle; label: string;
 }) {
-  const recentHistory = history.slice(-MAX_POINTS);
-  const values = recentHistory.map(p => p[rateKey] / (1024 * 1024));
+  // 确保有12个小时的数据点（如果不足，用空值填充）
+  const now = Date.now();
+  const hours: HistoryPoint[] = [];
+  
+  // 生成最近12个小时的时间点
+  for (let i = MAX_HOURS - 1; i >= 0; i--) {
+    const hourTimestamp = getHourTimestamp(now - i * 60 * 60 * 1000);
+    const hourData = history.find(p => getHourTimestamp(p.timestamp) === hourTimestamp);
+    
+    if (hourData) {
+      hours.push(hourData);
+    } else {
+      // 如果没有数据，使用0值
+      hours.push({
+        timestamp: hourTimestamp,
+        uploadRate: 0,
+        downloadRate: 0
+      });
+    }
+  }
+  
+  const values = hours.map(p => p[rateKey] / (1024 * 1024));
   const minY = Math.min(...values);
+  const maxY = Math.max(...values);
+  const range = maxY - minY || 1; // 避免除零
 
   return (
     <VStack spacing={4} frame={FULL_WIDTH}>
@@ -65,14 +94,14 @@ function RateChart({ history, data, rateKey, color, label }: {
         <Text font={10} foregroundStyle={color}>{formatRate(data[rateKey])}</Text>
       </HStack>
       <Chart chartYAxis="hidden" frame={{ maxHeight: 80 }}>
-        <LineChart marks={recentHistory.map((p, idx) => ({
+        <LineChart marks={hours.map((p, idx) => ({
           label: formatTime(p.timestamp), 
-          value: values[idx] - minY, 
+          value: (values[idx] - minY) / range, 
           foregroundStyle: color
         }))} />
       </Chart>
       <HStack frame={FULL_WIDTH}>
-        <Text font={9} foregroundStyle={Theme.Subtext}>数据点: {history.length}</Text>
+        <Text font={9} foregroundStyle={Theme.Subtext}>12小时趋势</Text>
         <Spacer />
         <Text font={9} foregroundStyle={Theme.Subtext}>更新: {formatTime(Date.now())}</Text>
       </HStack>
