@@ -1,0 +1,42 @@
+{
+  "author" : {
+    "email" : "2753086015@qq.com",
+    "homepage" : null,
+    "name" : "DTZSGHNR"
+  },
+  "intentInputTypes" : [
+
+  ],
+  "icon" : "server.rack",
+  "runInApp" : false,
+  "remoteResource" : null,
+  "localizedNames" : {
+    "zh" : "MoviePilot PT",
+    "de" : "",
+    "fr" : "",
+    "it" : "",
+    "ja" : "",
+    "es" : "",
+    "pt" : "",
+    "en" : "MoviePilot PT",
+    "ru" : ""
+  },
+  "contributors" : [
+
+  ],
+  "description" : "时光沙漏",
+  "version" : "1.0.1",
+  "name" : "Life Progress Pro",
+  "color" : "rgba(0, 122, 255, 1)",
+  "localizedDescriptions" : {
+    "zh" : "时光流逝进度小组件",
+    "de" : "",
+    "fr" : "",
+    "it" : "",
+    "ja" : "",
+    "es" : "",
+    "pt" : "",
+    "en" : "Life Progress Pro Widget, show the progress of your life",
+    "ru" : ""
+  }
+}
