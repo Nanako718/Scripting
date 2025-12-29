@@ -7,36 +7,36 @@
   "intentInputTypes" : [
 
   ],
-  "icon" : "server.rack",
+  "icon" : "hourglass.bottomhalf.filled",
   "runInApp" : false,
   "remoteResource" : null,
   "localizedNames" : {
-    "zh" : "时光沙漏",
-    "de" : "",
-    "fr" : "",
-    "it" : "",
-    "ja" : "",
-    "es" : "",
-    "pt" : "",
-    "en" : "时光沙漏",
-    "ru" : ""
+    "zh" : "时光进度",
+    "de" : "Lebensfortschritt",
+    "fr" : "Progrès Temporel",
+    "it" : "Progresso Temporale",
+    "ja" : "時間の進捗",
+    "es" : "Progreso Temporal",
+    "pt" : "Progresso Temporal",
+    "en" : "Life Progress",
+    "ru" : "Прогресс Времени"
   },
   "contributors" : [
 
   ],
-  "description" : "时光沙漏",
-  "version" : "1.0.1",
+  "description" : "优雅的时光流逝进度小组件，采用 Catppuccin 配色方案，支持深色/浅色模式自动适配",
+  "version" : "1.1.0",
   "name" : "Life Progress Pro",
-  "color" : "rgba(0, 122, 255, 1)",
+  "color" : "rgba(203, 166, 247, 1)",
   "localizedDescriptions" : {
-    "zh" : "时光流逝进度小组件",
-    "de" : "",
-    "fr" : "",
-    "it" : "",
-    "ja" : "",
-    "es" : "",
-    "pt" : "",
-    "en" : "Life Progress Pro Widget, show the progress of your life",
-    "ru" : ""
+    "zh" : "优雅的时光流逝进度小组件，采用 Catppuccin 配色方案，支持深色/浅色模式自动适配。实时追踪今日、本周、本月、今年及人生进度，以精美的设计呈现时间流逝的每一刻。",
+    "de" : "Elegantes Lebensfortschritt-Widget mit Catppuccin-Farbschema und automatischer Anpassung an Hell-/Dunkelmodus. Verfolgt den Fortschritt von Tag, Woche, Monat, Jahr und Leben in Echtzeit.",
+    "fr" : "Widget élégant de progression temporelle avec schéma de couleurs Catppuccin et adaptation automatique au mode clair/sombre. Suit en temps réel la progression du jour, de la semaine, du mois, de l'année et de la vie.",
+    "it" : "Widget elegante di progresso temporale con schema colori Catppuccin e adattamento automatico alla modalità chiara/scura. Traccia in tempo reale il progresso di giorno, settimana, mese, anno e vita.",
+    "ja" : "Catppuccinカラースキームを使用したエレガントな時間進行ウィジェット。ライト/ダークモードの自動適応に対応。日、週、月、年、人生の進捗をリアルタイムで追跡します。",
+    "es" : "Widget elegante de progreso temporal con esquema de colores Catppuccin y adaptación automática al modo claro/oscuro. Rastrea en tiempo real el progreso del día, semana, mes, año y vida.",
+    "pt" : "Widget elegante de progresso temporal com esquema de cores Catppuccin e adaptação automática ao modo claro/escuro. Rastreia em tempo real o progresso do dia, semana, mês, ano e vida.",
+    "en" : "Elegant life progress widget with Catppuccin color scheme and automatic light/dark mode adaptation. Tracks real-time progress of day, week, month, year, and life with beautiful design.",
+    "ru" : "Элегантный виджет прогресса времени с цветовой схемой Catppuccin и автоматической адаптацией к светлому/темному режиму. Отслеживает в реальном времени прогресс дня, недели, месяца, года и жизни."
   }
 }
