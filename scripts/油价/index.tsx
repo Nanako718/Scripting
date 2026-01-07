@@ -84,15 +84,7 @@ function SettingsPage() {
   return (
     <VStack>
       <Form>
-        <Section
-          title="省份设置"
-          footer={
-            <Text>
-              开启手动选择省份后，小组件将使用您选择的省份获取油价数据，而不是自动定位。
-              如果定位失败或需要查看其他省份的油价，可以开启此选项。
-            </Text>
-          }
-        >
+        <Section title="省份设置">
           <Toggle
             title="手动选择省份"
             value={useManualProvince}
@@ -119,6 +111,13 @@ function SettingsPage() {
               </HStack>
             </Button>
           ) : null}
+        </Section>
+
+        <Section>
+          <Text font="caption" foregroundStyle="secondaryLabel">
+            开启手动选择省份后，小组件将使用您选择的省份获取油价数据，而不是自动定位。
+            如果定位失败或需要查看其他省份的油价，可以开启此选项。
+          </Text>
         </Section>
 
         <Button title="保存设置" action={handleSave} />

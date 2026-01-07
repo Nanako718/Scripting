@@ -26,7 +26,7 @@ export function View({ data }: { data: any }) {
   const dif = currentStatus;
   const state = dif > 0;
   const symbol = state ? "+" : "";
-  const color = state ? "systemRed" : dif < 0 ? "systemGreen" : "secondaryLabel";
+  const color = state ? "systemRed" : dif < 0 ? "systemGreen" : dif === 0 ? "#52CAF0" : "secondaryLabel";
   
   // 计算百分比
   let percentage = 0;

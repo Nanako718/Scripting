@@ -1,4 +1,4 @@
-import { Color, ColorScheme, Size, VirtualNode, KeyboardType, Edge, Point, KeywordPoint, Visibility } from "scripting"
+import { Color, ColorScheme, Size, VirtualNode, KeyboardType, Edge, Point, KeywordPoint, Visibility, ReadableStream } from "scripting"
 
 declare global {
 
@@ -892,6 +892,7 @@ declare global {
     /**
      * Display an Alert UI.
      */
+    function alert(message: string): Promise<void>
     function alert(options: {
       /** The message of the alert. */
       message: string
@@ -903,6 +904,7 @@ declare global {
     /**
      * Display an Confirm modal, return a promise that will resolve a boolean value that indicate whether the user confirm or not.
      */
+    function confirm(message: string): Promise<boolean>
     function confirm(options: {
       /**
        * The message of the confirm.
@@ -924,6 +926,7 @@ declare global {
     /**
      * Display a Prompt UI. Returns string result or null.
      */
+    function prompt(message: string): Promise<string | null>
     function prompt(options: {
       /** You need to provide a title to describe the purpose */
       title: string
@@ -996,21 +999,90 @@ declare global {
      *
      * If the key was already in the storage, its associated value is changed.
      */
-    function set(key: string, value: string, options?: KeychainOptions): void
+    function set(key: string, value: string, options?: {
+      /**
+       * A key with a value that indicates when the keychain item is accessible. Defaults to 'unlocked'.
+       */
+      accessibility?: KeychainAccessibility
+      /**
+       * A key with a boolean value that indicates whether the item synchronizes through iCloud. Defaults to false.
+       */
+      synchronizable?: boolean
+    }): boolean
+
+    function setBool(key: string, value: boolean, options?: {
+      /**
+       * A key with a value that indicates when the keychain item is accessible. Defaults to 'unlocked'.
+       */
+      accessibility?: KeychainAccessibility
+      /**
+       * A key with a boolean value that indicates whether the item synchronizes through iCloud. Defaults to false.
+       */
+      synchronizable?: boolean
+    }): boolean
+    function setData(key: string, value: Data, options?: {
+      /**
+       * A key with a value that indicates when the keychain item is accessible. Defaults to 'unlocked'.
+       */
+      accessibility?: KeychainAccessibility
+      /**
+       * A key with a boolean value that indicates whether the item synchronizes through iCloud. Defaults to false.
+       */
+      synchronizable?: boolean
+    }): boolean
     /**
      * Decrypts and returns the value for the given `key` or `null` if `key` is not in the storage.
      */
-    function get(key: string, options?: KeychainOptions): string | null
+    function get(key: string, options?: {
+      /**
+       * A key with a boolean value that indicates whether the item synchronizes through iCloud. Defaults to false.
+       */
+      synchronizable?: boolean
+    }): string | null
+    function getBool(key: string, options?: {
+      /**
+       * A key with a boolean value that indicates whether the item synchronizes through iCloud. Defaults to false.
+       */
+      synchronizable?: boolean
+    }): boolean | null
+    function getData(key: string, options?: {
+      /**
+       * A key with a boolean value that indicates whether the item synchronizes through iCloud. Defaults to false.
+       */
+      synchronizable?: boolean
+    }): Data | null
     /**
      * Deletes associated value for the given `key`.
      *
      * If the given `key` does not exist, nothing will happen.
      */
-    function remove(key: string, options?: KeychainOptions): void
+    function remove(key: string, options?: {
+      /**
+       * A key with a boolean value that indicates whether the item synchronizes through iCloud. Defaults to false.
+       */
+      synchronizable?: boolean
+    }): boolean
     /**
      * Returns true if the storage contains the given `key`.
      */
-    function contains(key: string, options?: KeychainOptions): boolean
+    function contains(key: string, options?: {
+      /**
+       * A key with a boolean value that indicates whether the item synchronizes through iCloud. Defaults to false.
+       */
+      synchronizable?: boolean
+    }): boolean
+    function keys(options?: {
+      /**
+       * A key with a boolean value that indicates whether the item synchronizes through iCloud. Defaults to false.
+       */
+      synchronizable?: boolean
+    }): string[]
+    function clear(options?: {
+      /**
+       * A key with a boolean value that indicates whether the item synchronizes through iCloud. Defaults to false.
+       */
+      synchronizable?: boolean
+    }): boolean
   }
 
   type KeychainOptions = {
@@ -1530,10 +1602,189 @@ declare global {
     function scan(): Promise<string | null>
   }
 
+  class LivePhoto {
+    /**
+     * The size of the live photo
+     */
+    readonly size: Size
+
+    /**
+     * Get the resources of the live photo.
+     * @returns A promise that resolves to an array of objects containing the data, assetLocalIdentifier, contentType, originalFilename, pixelHeight, and pixelWidth of the live photo.
+     */
+    getAssetResources(): Promise<{
+      data: Data
+      assetLocalIdentifier: string
+      contentType: UTType
+      originalFilename: string
+      pixelHeight: number
+      pixelWidth: number
+    }[]>
+
+    /**
+     * Asynchronously loads a Live Photo from the specified resource files.
+     * @param options The options for the live photo
+     * @param options.imagePath The path to the image file.
+     * @param options.videoPath The path to the video file.
+     * @param options.targetSize The target size of Live Photo to be returned. Pass null to obtain the requested Live Photo at its original size.
+     * @param options.placeholderImage The placeholder image to use while the live photo loads.
+     * @param options.contentMode The content mode of the placeholder image.
+     * @param options.onResult A callback to be called when image loading is complete, providing the
+     * requested Live Photo or information about the status of the request. This callback will be called multiple times.
+     * The block takes the following parameters:
+     *   - `result`: The requested Live Photo object.
+     *   - `info`: A map providing information about the status of the request.
+     *     - `error`: An error message, if the request failed.
+     *     - `degraded`: A Boolean value indicating whether the live photo is degraded.
+     *     - `cancelled`: A Boolean value indicating whether the request was cancelled.
+     * @returns Returns a promise that resolves a cancellable function, you can call this function to cancel the loading.
+     */
+    static from(options: {
+      imagePath: string
+      videoPath: string
+      targetSize?: Size | null
+      placeholderImage: UIImage | null
+      contentMode?: "aspectFit" | "aspectFill"
+      onResult: (result: LivePhoto | null, info: {
+        error: string | null
+        degraded: boolean | null
+        cancelled: boolean | null
+      }) => void
+    }): Promise<() => void>
+  }
+
+  /**
+   * The interface that represents a filter that can be applied to the `Photos.pick` method.
+   */
+  class PHPickerFilter {
+    private constructor()
+
+    static bursts(): PHPickerFilter
+    static cinematicVideos(): PHPickerFilter
+    static depthEffectPhotos(): PHPickerFilter
+    static livePhotos(): PHPickerFilter
+    static images(): PHPickerFilter
+    static panoramas(): PHPickerFilter
+    static screenRecordings(): PHPickerFilter
+    static screenshots(): PHPickerFilter
+    static videos(): PHPickerFilter
+    static slomoVideos(): PHPickerFilter
+    static timelapseVideos(): PHPickerFilter
+    static all(filters: PHPickerFilter[]): PHPickerFilter
+    static any(filters: PHPickerFilter[]): PHPickerFilter
+    static not(filter: PHPickerFilter): PHPickerFilter
+  }
+
+  class PHPickerResult {
+    private constructor()
+
+    /**
+     * Reads the result as a live photo, if this result can be read as a live photo, returns a promise that resolves to the live photo, otherwise returns null, or rejects with an error.
+     */
+    livePhoto(): Promise<LivePhoto | null>
+
+    /**
+     * Reads the result as a UIImage, if this result can be read as a UIImage, returns a promise that resolves to the UIImage, otherwise returns null, or rejects with an error.
+     */
+    uiImage(): Promise<UIImage | null>
+
+    /**
+     * Reads the result as an image, if this result can be read as an image, returns a promise that resolves to the image path, otherwise returns null, or rejects with an error.
+     */
+    imagePath(): Promise<string | null>
+
+    /**
+     * Reads the result as a video, if this result can be read as a video, returns a promise that resolves to the video path, otherwise returns null, or rejects with an error.
+     */
+    videoPath(): Promise<string | null>
+  }
+
   /**
    * The interface that manages access and changes to the user’s photo library.
    */
   namespace Photos {
+
+    /**
+     * The information about the captured media.
+     */
+    type CaptureInfo = {
+      /**
+       * The cropping rectangle that was applied to the original image.
+       */
+      cropRect: {
+        x: number
+        y: number
+        width: number
+        height: number
+      } | null
+      /**
+       * The original image of the captured photo.
+       */
+      originalImage: UIImage | null
+      /**
+       * The edited image of the captured photo.
+       */
+      editedImage: UIImage | null
+      /**
+       * The image path of the captured photo.
+       */
+      imagePath: string | null
+      /**
+       * The metadata of the captured photo.
+       */
+      mediaMetadata: Record<string, any> | null
+      /**
+       * The video path of the captured video.
+       */
+      mediaPath: string | null
+      /**
+       * The media type of the captured media.
+       */
+      mediaType: string | null
+    }
+
+    /**
+     * Get the available media types from the Photos app.
+     */
+    function availableMediaTypes(): string[] | null
+
+    /**
+     * Capture a photo or video.
+     * @param options The options for capture
+     * @param options.mode The capture mode, either "photo" or "video".
+     * @param options.mediaTypes The media types to capture, such as ["public.image", "public.movie"].
+     * @param options.allowsEditing A Boolean value indicating whether the captured media can be edited.
+     * @param options.cameraDevice The camera device to use, either "rear" or "front". Defaults to "rear".
+     * @param options.cameraFlashMode The flash mode to use, either "auto", "on", or "off". Defaults to "auto".
+     * @param options.videoMaximumDuration The maximum duration of the video capture, in seconds. Defaults to 600. This value is ignored if the mode is "photo".
+     * @param options.videoQuality The quality of the video capture, either "low", "medium", "high", "640x480", "iFrame960x540", or "iFrame1280x720". Defaults to "medium".
+     * @returns A promise that resolves to a CaptureInfo object, or null if the capture is canceled.
+     */
+    function capture(options: {
+      mode: "photo" | "video"
+      mediaTypes: UTType[]
+      allowsEditing?: boolean
+      cameraDevice?: "rear" | "front"
+      cameraFlashMode?: "auto" | "on" | "off"
+      videoMaximumDuration?: DurationInSeconds
+      videoQuality?: "low" | "medium" | "high" | "640x480" | "iFrame960x540" | "iFrame1280x720"
+    }): Promise<CaptureInfo | null>
+
+    /**
+     * Present a photo picker dialog and pick limited number of photos.
+     * @param options The options for pick
+     * @param options.mode This property offers two ways that photos lay out in the picker:
+     *   - A linear mode (compact), in which photos form a line in a smaller area in the picker
+     *   - A two-dimensional mode (default), in which photos form a grid in a larger area in the picker
+     * @param options.filter The filter for the picker
+     * @param options.limit The limited number of photos, defaults to 1.
+     */
+    function pick(options?: {
+      mode?: "default" | "compact"
+      filter?: PHPickerFilter
+      limit?: number
+    }): Promise<PHPickerResult[]>
+
     /**
      * Get the latest specified number of photos from the Photos app.
      * @param count The number of photos you want.
@@ -1549,7 +1800,28 @@ declare global {
      */
     function takePhoto(): Promise<UIImage | null>
     /**
-     * Save an image data to the Photos app. Returns a boolean value indicates that whether the operation is successful.
+     * Save an image by path to the Photos app.
+     * @param path The path of the image
+     * @param options The option for saving image
+     * @param options.fileName The optional image name
+     * @returns Returns a promise that resolves a boolean value indicates that whether the operation is successful
+     */
+    function savePhoto(path: string, options?: {
+      /**
+       * The optional photo name.
+       */
+      fileName?: string
+      /**
+       * Whether to move the file to the Photos app, or just copy it.
+       */
+      shouldMoveFile?: boolean
+    }): Promise<boolean>
+    /**
+     * Save an image data to the Photos app.
+     * @param image The image data
+     * @param options The option for saving image
+     * @param options.fileName The optional image name
+     * @returns Returns a promise that resolves a boolean value indicates that whether the operation is successful
      */
     function savePhoto(image: Data, options?: {
       /**
@@ -1557,6 +1829,42 @@ declare global {
        */
       fileName?: string
     }): Promise<boolean>
+    /**
+     * Save a video data to the Photos app.
+     * @param path The path of the video file
+     * @param options The option for saving video
+     * @returns Returns a promise that resolves a boolean value indicates that whether the operation is successful
+     */
+    function saveVideo(path: string, options?: {
+      /**
+       * The optional video name.
+       */
+      fileName?: string
+      /**
+       * Whether to move the file to the Photos app, or just copy it.
+       */
+      shouldMoveFile?: boolean
+    }): Promise<boolean>
+    /**
+     * Save a video data to the Photos app.
+     * @param video The video data
+     * @param options The option for saving video
+     * @returns Returns a promise that resolves a boolean value indicates that whether the operation is successful
+     */
+    function saveVideo(video: Data, options?: {
+      /**
+       * The optional photo name.
+       */
+      fileName?: string
+    }): Promise<boolean>
+    /**
+     * Save a live photo to the Photos app
+     * @param imagePath The path of the image
+     * @param videoPath The path of the video
+     * @param shouldMoveFile If true, the file will be moved to the Photos app, otherwise it will be copied. Defaults to false.
+     * @returns Returns a promise that resolves when the operation is complete, or rejects with an error if the operation fails.
+     */
+    function saveLivePhoto(imagePath: string, videoPath: string, shouldMoveFile?: boolean): Promise<void>
   }
 
   type PickFilesOption = {
@@ -1600,147 +1908,197 @@ declare global {
     }[]
   }
 
+
   /**
    * Type definition for iOS UTType identifiers
    * Reference: https://developer.apple.com/documentation/uniformtypeidentifiers/system_declared_uniform_type_identifiers
    */
   type UTType =
-    // Image Types
-    | "public.image"                     // Generic image type
-    | "public.image.live-photo"          // Live Photo
-    | "public.image.raw"                 // RAW image
-    | "public.jpeg"                      // JPEG image
-    | "public.jpeg-2000"                 // JPEG 2000
-    | "public.png"                       // PNG image
-    | "public.heic"                      // HEIC image
-    | "public.heif"                      // HEIF image
-    | "public.gif"                       // GIF image
-    | "public.tiff"                      // TIFF image
-    | "com.compuserve.gif"               // GIF alias
-    | "public.svg-image"                 // SVG image
-    | "public.bmp"                       // BMP image
-    | "com.microsoft.bmp"                // BMP alias
-    | "com.microsoft.ico"                // ICO icon
+    // 3D content
+    | "public.3d-content"
+    | "com.pixar.universal-scene-description"
+    | "com.pixar.universal-scene-description-mobile"
 
-    // Video Types
-    | "public.movie"                     // Generic movie/video type
-    | "public.video"                     // Video
-    | "public.mpeg-4"                    // MP4 video
-    | "public.mpeg"                      // MPEG video
-    | "public.avi"                       // AVI video
-    | "public.quicktime-movie"           // QuickTime video
-    | "com.apple.quicktime-movie"        // QuickTime alias
-    | "public.3gpp"                      // 3GPP video
-    | "public.3gpp2"                     // 3GPP2 video
-    | "com.microsoft.windows-media-wmv"   // WMV video
-    | "com.microsoft.windows-media-wm"    // WM video
-    | "com.apple.m4v-video"              // M4V video
+    // Apple 3D content
+    | "com.apple.reality"
+    | "com.apple.scenekit.scene"
+    | "com.apple.arobject"
 
-    // Audio Types
-    | "public.audio"                     // Generic audio type
-    | "public.mp3"                       // MP3 audio
-    | "public.wav"                       // WAV audio
-    | "public.m4a"                       // M4A audio
-    | "public.aiff"                      // AIFF audio
-    | "com.apple.protected-mpeg-4-audio" // Protected audio
-    | "com.microsoft.windows-media-wma"   // WMA audio
-    | "public.aifc"                      // AIFC audio
-    | "public.midi"                      // MIDI audio
-    | "com.apple.coreaudio-format"       // Core Audio Format
+    // Apple file system objects
+    | "public.directory"
+    | "public.symlink"
+    | "public.mount-point"
+    | "com.apple.alias-file"
+    | "public.folder"
+    | "public.volume"
+    | "public.disk-image"
 
-    // Document Types
-    | "public.data"                      // Generic data type
-    | "public.text"                      // Text file
-    | "public.plain-text"                // Plain text
-    | "public.html"                      // HTML file
-    | "public.xml"                       // XML file
-    | "public.json"                      // JSON file
-    | "public.yaml"                      // YAML file
-    | "public.rtf"                       // RTF file
-    | "public.pdf"                       // PDF file
-    | "com.adobe.pdf"                    // Adobe PDF
-    | "public.markdown"                  // Markdown file
-    | "public.markdown-text"             // Markdown text
-    | "public.csv"                       // CSV file
-    | "public.source-code"               // Source code
-    | "public.swift-source"              // Swift source code
-    | "public.objective-c-source"        // Objective-C source code
-    | "public.c-source"                  // C source code
-    | "public.c-plus-plus-source"        // C++ source code
-    | "public.java-source"               // Java source code
-    | "public.python-script"             // Python script
-    | "public.shell-script"              // Shell script
-    | "public.ruby-script"               // Ruby script
+    // Apple image formats
+    | "public.heic"
+    | "public.heif"
+    | "com.apple.live-photo"
 
-    // Archive Types
-    | "public.zip-archive"               // ZIP archive
-    | "org.gnu.gnu-zip-archive"          // GZIP archive
-    | "public.tar-archive"               // TAR archive
-    | "org.gnu.gnu-zip-tar-archive"      // GZIP TAR archive
-    | "com.pkware.zip-archive"           // PKWare ZIP archive
-    | "com.rarlab.rar-archive"           // RAR archive
-    | "org.7-zip.7-zip-archive"          // 7ZIP archive
+    // Apple system types
+    | "com.apple.framework"
+    | "com.apple.application-bundle"
+    | "com.apple.application-and-system-extension"
+    | "com.apple.metadata-importer"
+    | "com.apple.quicklook-generator"
+    | "com.apple.xpc-service"
+    | "com.apple.systempreference.prefpane"
 
-    // Office Document Types
-    | "com.microsoft.word.doc"           // Word document
-    | "com.microsoft.word.docx"          // Word DOCX document
-    | "com.microsoft.excel.xls"          // Excel document
-    | "com.microsoft.excel.xlsx"         // Excel XLSX document
-    | "com.microsoft.powerpoint.ppt"     // PowerPoint document
-    | "com.microsoft.powerpoint.pptx"    // PowerPoint PPTX document
-    | "org.openxmlformats.wordprocessingml.document"   // OpenXML Word
-    | "org.openxmlformats.spreadsheetml.sheet"         // OpenXML Excel
-    | "org.openxmlformats.presentationml.presentation" // OpenXML PowerPoint
-    | "org.oasis-open.opendocument.text"              // OpenDocument Text
-    | "org.oasis-open.opendocument.spreadsheet"       // OpenDocument Spreadsheet
-    | "org.oasis-open.opendocument.presentation"      // OpenDocument Presentation
+    // Application files
+    | "com.adobe.pdf"
+    | "com.apple.rtfd"
+    | "com.apple.flat-rtfd"
+    | "org.idpf.epub-container"
 
-    // iWork Document Types
-    | "com.apple.iwork.pages.pages"     // Pages document
-    | "com.apple.iwork.numbers.numbers" // Numbers document
-    | "com.apple.iwork.keynote.keynote" // Keynote document
+    // Audio
+    | "public.mp3"
+    | "public.aiff-audio"
+    | "com.microsoft.waveform-audio"
+    | "public.midi-audio"
+    | "public.playlist"
+    | "public.m3u-playlist"
 
-    // System Types
-    | "public.folder"                    // Folder
-    | "public.directory"                 // Directory
-    | "public.symlink"                   // Symbolic link
-    | "public.url"                       // URL
-    | "public.file-url"                  // File URL
-    | "com.apple.application"            // Application
-    | "com.apple.application-bundle"     // Application bundle
-    | "com.apple.framework"              // Framework
-    | "com.apple.package"                // Package
-    | "com.apple.resolvable"            // Resolvable
-    | "public.executable"                // Executable
-    | "public.disk-image"                // Disk image
-    | "public.database"                  // Database
+    // Audio and video
+    | "com.apple.quicktime-movie"
+    | "public.mpeg"
+    | "public.mpeg-2-video"
+    | "public.mpeg-2-transport-stream"
+    | "public.mpeg-4"
+    | "public.mpeg-4-audio"
+    | "com.apple.protected-mpeg-4-video"
+    | "com.apple.protected-mpeg-4-audio"
+    | "public.avi"
 
-    // Font Types
-    | "public.font"                      // Font
-    | "public.truetype-font"             // TrueType font
-    | "public.opentype-font"             // OpenType font
-    | "com.adobe.postscript-font"        // PostScript font
+    // Compiled programming language sources
+    | "public.assembly-source"
+    | "public.c-header"
+    | "public.c-source"
+    | "public.c-plus-plus-header"
+    | "public.c-plus-plus-source"
+    | "public.objective-c-plus-plus-source"
+    | "public.objective-c-source"
+    | "public.swift-source"
 
-    // Graphic Design Types
-    | "com.adobe.photoshop-image"        // Photoshop file
-    | "com.adobe.illustrator.ai-image"   // Illustrator file
-    | "org.webmproject.webp"             // WebP image
+    // Compressed archives
+    | "public.archive"
+    | "public.zip-archive"
+    | "org.gnu.gnu-zip-archive"
+    | "public.bzip2-archive"
+    | "com.apple.archive"
 
-    // 3D File Types
-    | "public.3d-content"                // 3D content
-    | "public.usd"                       // USD file
-    | "public.obj"                       // OBJ file
-    | "public.stl"                       // STL file
+    // Cryptographic files
+    | "com.rsa.pkcs-12"
+    | "public.x509-certificate"
 
-    // Other Types
-    | "public.content"                   // Generic content
-    | "public.composite-content"         // Composite content
-    | "public.archive"                   // Archive
-    | "public.item"                      // Item
-    | "public.contact"                   // Contact
-    | "public.message"                   // Message
-    | "public.calendar-event"            // Calendar event
-    | "public.log"                       // Log
+    // Data interchange formats
+    | "public.delimited-values-text"
+    | "public.comma-separated-values-text"
+    | "public.tab-separated-values-text"
+    | "public.utf8-tab-separated-values-text"
+    | "public.rtf"
+    | "public.xml"
+    | "public.yaml"
+    | "public.json"
+    | "public.vcard"
+
+    // Executables
+    | "public.executable"
+    | "public.unix-executable"
+    | "public.windows-executable"
+
+    // Icon images
+    | "com.microsoft.ico"
+    | "com.apple.icns"
+
+    // Images
+    | "public.png"
+    | "com.compuserve.gif"
+    | "public.jpeg"
+    | "org.webmproject.webp"
+    | "public.tiff"
+    | "com.microsoft.bmp"
+    | "public.svg-image"
+    | "public.camera-raw-image"
+
+    // Internet-specific
+    | "public.html"
+    | "com.apple.webarchive"
+    | "com.apple.internet-location"
+    | "com.microsoft.internet-shortcut"
+
+    // Property lists
+    | "com.apple.property-list"
+    | "com.apple.xml-property-list"
+    | "com.apple.binary-property-list"
+
+    // Shazam
+    | "com.apple.shazamsignature"
+    | "com.apple.shazamcatalog"
+
+    // Scripted programming language sources
+    | "public.script"
+    | "com.apple.applescript.text"
+    | "com.netscape.javascript-source"
+    | "com.apple.applescript.script"
+    | "com.apple.applescript.script-bundle"
+    | "public.make-source"
+    | "public.shell-script"
+    | "public.python-script"
+    | "public.ruby-script"
+    | "public.perl-script"
+    | "public.php-script"
+
+    // Text files
+    | "public.text"
+    | "public.plain-text"
+    | "public.utf8-plain-text"
+    | "public.utf16-plain-text"
+    | "public.utf16-external-plain-text"
+
+    // URLs
+    | "public.url"
+    | "public.file-url"
+    | "com.apple.bookmark"
+
+    // Apple system base types
+    | "public.item"
+    | "public.content"
+    | "public.composite-content"
+    | "public.data"
+    | "com.apple.resolvable"
+    | "com.apple.package"
+    | "com.apple.bundle"
+    | "com.apple.plugin"
+    | "com.apple.application"
+    | "public.source-code"
+    | "public.bookmark"
+    | "public.log"
+
+    // Application base types
+    | "public.spreadsheet"
+    | "public.presentation"
+    | "public.database"
+    | "public.message"
+    | "public.contact"
+    | "public.calendar-event"
+    | "public.to-do-item"
+    | "public.email-message"
+    | "public.font"
+
+    // Image, audio, and video base types
+    | "public.image"
+    | "public.audio"
+    | "public.audiovisual-content"
+    | "public.movie"
+    | "public.video"
+
+    // Tag classes
+    | "public.filename-extension"
+    | "public.mime-type"
+
 
 
   /**
@@ -1919,6 +2277,13 @@ declare global {
       navigationType: "linkActivated" | "reload" | "backForward" | "formResubmitted" | "formSubmitted" | "other"
     }) => Promise<boolean>
     /**
+     * Load a webpage by a file path, returns a Promise with boolean value indicates that whether the load request is completed.
+     * @param path The path of a file that contains web content.
+     * @param allowingReadAccessTo The path of a file or directory containing web content that you grant the system permission to read. This path must not be empty. To prevent WebKit from reading any other content, specify the same value as the `path` parameter. To read additional files related to the content file, specify a directory. Default value is the same as the `path` parameter.
+     * @returns A Promise with boolean value indicates that whether the load request is completed.
+     */
+    loadFile(path: string, allowingReadAccessTo?: string): Promise<boolean>
+    /**
      * Load a webpage by a URL string, returns a Promise with boolean value indicates that whether the load request is completed.
      * @param url URL string.
      */
@@ -1990,9 +2355,9 @@ declare global {
       navigationTitle?: string
     }): Promise<void>
     /**
-     * Get the custom user agent string of the WebView, returns a Promise that resolves with the custom user agent string or `null` if it is not set.
+     * Get the custom user agent string of the WebView, returns the custom user agent string or `null` if it is not set.
      */
-    getCustomUserAgent(): Promise<string | null>
+    getCustomUserAgent(): string | null
     /**
      * Set the custom user agent string of the WebView, returns a Promise that resolves with a boolean value indicates whether the operation is successful.
      * @param userAgent The custom user agent string, or `null` to reset to the default user agent.
@@ -2005,27 +2370,27 @@ declare global {
      * console.log(userAgent) // "MyCustomUserAgent/1.0"
      * ```
      */
-    setCustomUserAgent(userAgent: string | null): Promise<boolean>
+    setCustomUserAgent(userAgent: string | null): boolean
     /**
      * Check whether there is a valid back item in the back-forward list.
      */
-    canGoBack(): Promise<boolean>
+    canGoBack(): boolean
     /**
      * Check whether there is a valid forward item in the back-forward list.
      */
-    canGoForward(): Promise<boolean>
+    canGoForward(): boolean
     /**
-     * Navigates to the back item in the back-forward list. Returns a Promise fulfills a boolean value indicates whether go back successfully.
+     * Navigates to the back item in the back-forward list. Returns a boolean value indicates whether go back successfully.
      */
-    goBack(): Promise<boolean>
+    goBack(): boolean
     /**
-     * Navigates to the forward item in the back-forward list. Returns a Promise fulfills a boolean value indicates whether go forward successfully.
+     * Navigates to the forward item in the back-forward list. Returns a boolean value indicates whether go forward successfully.
      */
-    goForward(): Promise<boolean>
+    goForward(): boolean
     /**
      * Reloads the current webpage.
      */
-    reload(): Promise<void>
+    reload(): void
     /**
      * Dismiss the WebView, if the WebView is not presented, do nothing. You can presented the WebView again before it was disposed.
      */
@@ -2361,7 +2726,7 @@ declare global {
     /**
      * The notes of the reminder.
      */
-    notes?: string
+    notes: string | null
     /**
      * A Boolean value determining whether or not the reminder is marked completed.
      * Setting this property to true will set `completionDate` to the current date; setting this property to false will set `completionDate` to null.
@@ -2377,17 +2742,17 @@ declare global {
     /**
      * The date on which the reminder was completed. Setting this property to a date will set `isCompleted` to true; setting this property to null will set completed to false.
      */
-    completionDate?: Date
+    completionDate: Date | null
     /**
      * The date components for the reminder's due date.
      */
-    dueDateComponents?: DateComponents
+    dueDateComponents: DateComponents | null
     /**
      * The date by which the reminder should be completed.
      * @deprecated
      * Use `dueDateComponents` instead, you can use `dueDateComponents?.date` to get the date value.
      */
-    dueDate?: Date
+    dueDate: Date | null
     /**
      * Whether the `dueDate` includes a time.
      * 
@@ -2399,11 +2764,28 @@ declare global {
     /**
      * The recurrence rules for the reminder.
      */
-    recurrenceRules?: RecurrenceRule[]
+    recurrenceRules: RecurrenceRule[] | null
+    alarms: EventAlarm[] | null
+    /**
+     * The attendees associated with the event, as an array of `EventParticipant` objects.
+     */
+    readonly attendees: EventParticipant[] | null
+
+    readonly hasAlarm: boolean
+    readonly hasNotes: boolean
+    /**
+     * Returns whether this object or any of the objects it contains has uncommitted changes.
+     */
+    readonly hasChanges: boolean
+    readonly hasAttendees: boolean
     /**
      * A Boolean value that indicates whether the reminder has recurrence rules.
      */
     readonly hasRecurrenceRules: boolean
+    addAlarm(alarm: EventAlarm): void
+
+    removAlarm(alarm: EventAlarm): void
+
     /**
      * Adds a recurrence rule to the recurrence rule array.
      */
@@ -2523,6 +2905,67 @@ declare global {
    * The action taken by the user after editing an event.
    */
   type EventEditViewAction = "deleted" | "saved" | "canceled"
+
+  enum AlarmProximity {
+    none = 0,
+    enter = 1,
+    leave = 2
+  }
+
+  enum EventAvailability {
+    notSupported = -1,
+    busy = 0,
+    free = 1,
+    tentative = 2,
+    unavailable = 3,
+  }
+
+  /**
+   * An object that specifies a geofence to activate the alarm of a calendar item.
+   */
+  type EventStructuredLocation = {
+    /**
+     * The title of the location.
+     */
+    title: string | null
+    geoLocation: LocationInfo | null
+    /**
+     * A minimum distance from the core location that would trigger the alarm or reminder.
+     */
+    radius: number
+  }
+
+  class EventAlarm {
+    /**
+     * Creates and returns an alarm with an absolute date.
+     */
+    static fromAbsoluteDate(date: Date): EventAlarm
+    /**
+     * Creates and returns an alarm with a relative offset.
+     * @param offset The offset from the start of an event, at which the alarm fires. 
+     */
+    static fromRelativeOffset(offset: DurationInSeconds): EventAlarm
+
+    /**
+     * If you set this property for a relative offset alarm, it loses the relative offset and becomes an absolute alarm.
+     */
+    absoluteDate: Date | null
+    /**
+     * The offset from the start of an event, at which the alarm fires.
+     * If you set this value for an absolute alarm, it loses its absolute date and becomes a relative offset alarm.
+     */
+    relativeOffset: number
+    /**
+     * This property is used in conjunction with `proximity` to perform geofence-based triggering of reminders.
+     */
+    structuredLocation: EventStructuredLocation | null
+    /**
+     * A value indicating how a location-based alarm is triggered.
+     * Alarms can be set to trigger when entering or exiting a location specified by structuredLocation. By default, alarms are not affected by location.
+     */
+    proximity: AlarmProximity
+  }
+
   /**
    * The `CalendarEvent` API enables you to create and manage events in iOS calendars, with properties like title, location, dates, attendees, and recurrence.
    */
@@ -2531,6 +2974,8 @@ declare global {
      * A unique identifier for the event.
      */
     readonly identifier: string
+    readonly creationDate: Date | null
+    readonly lastModifiedDate: Date | null
     /**
      * The calendar for the event. This property cannot be set to null.
      * If you want to remove the event from the calendar, use the `remove` method.
@@ -2543,15 +2988,19 @@ declare global {
     /**
      * The notes for the event.
      */
-    notes?: string
+    notes: string | null
     /**
      * The URL string for the event.
      */
-    url?: string
+    url: string | null
     /**
      * A Boolean value that indicates whether the event is an all-day event.
      */
     isAllDay: boolean
+    /**
+     * The original occurrence date of an event if it is part of a recurring series.
+     */
+    readonly occurrenceDate: Date
     /**
      * The start date of the event.
      */
@@ -2563,24 +3012,54 @@ declare global {
     /**
      * The location associated with the calendar item.
      */
-    location?: string
+    location: string | null
     /**
      * The time zone for the 
      */
-    timeZone?: string
+    timeZone: string | null
+    /**
+     * This setting is used by CalDAV and Exchange servers to indicate how the event should be treated for scheduling purposes.
+If the event’s calendar does not support availability settings, this property’s value is EventAvailability.notSupported.
+     */
+    availability: EventAvailability
+    /**
+     * A Boolean value that indicates whether an event is a detached instance of a repeating event.
+     */
+    readonly isDetached: boolean
+    readonly hasAlarm: boolean
+    readonly hasNotes: boolean
+    /**
+     * Returns whether this object or any of the objects it contains has uncommitted changes.
+     */
+    readonly hasChanges: boolean
+    readonly hasAttendees: boolean
     /**
      * The attendees associated with the event, as an array of `EventParticipant` objects.
      */
-    readonly attendees?: EventParticipant[]
+    readonly attendees: EventParticipant[] | null
+    readonly organizer: EventParticipant | null
+    /**
+     * The alarms associated with the calendar item, as an array of EventAlarm objects.
+     */
+    alarms: EventAlarm[] | null
     /**
      * The recurrence rules for the event.
      */
-    recurrenceRules?: RecurrenceRule[]
+    recurrenceRules: RecurrenceRule[] | null
+    /**
+     * The event’s location with a potential geocoordinate.
+     */
+    structuredLocation: EventStructuredLocation | null
     /**
      * A Boolean value that indicates whether the event has recurrence rules.
      */
     readonly hasRecurrenceRules: boolean
+
     new(): CalendarEvent
+
+    addAlarm(alarm: EventAlarm): void
+
+    removAlarm(alarm: EventAlarm): void
     /**
      * Adds a recurrence rule to the recurrence rule array.
      */
@@ -3717,6 +4196,175 @@ declare global {
      * Callback that is called when ecorder encode error occured.
      */
     onError?: (message: string) => void
+  }
+
+  /**
+   * A type that represents a camera position.
+   */
+  type CameraPosition = "front" | "back"
+
+  /**
+   * A type that represents a camera type.
+   */
+  type CameraType = "wide" | "ultraWide" | "telephoto" | "trueDepth" | "dual" | "dualWide" | "triple"
+
+  type VideoRecorderState = "idle" | "preparing" | "ready" | "recording" | "paused" | "finishing" | "finished" | "failed"
+
+  type VideoCaptureSessionPreset = "high" | "medium" | "low" | "cif352x288" | "vga640x480" | "iFrame960x540" | "iFrame1280x720" | "hd1280x720" | "hd1920x1080" | "hd4K3840x2160"
+
+  type VideoCodec = "hevc" | "h264" | "jpeg" | "JPEGXL" | "proRes4444" | "appleProRes4444XQ" | "proRes422" | "proRes422HQ" | "proRes422LT" | "proRes422Proxy" | "proResRAW" | "proResRAWHQ" | "hevcWithAlpha"
+
+  type VideoOrientation = "portrait" | "landscapeLeft" | "landscapeRight"
+
+  class VideoRecorder {
+    /**
+     * Creates a video recorder with settings.
+     * @param settings The video settings to use for the recording.
+     * @param settings.camera The camera to use for the recording. Defaults to { position: "back" }. If you don't provide the preferredTypes, it will use the default types by camera position.
+     * @param settings.frameRate The frame rate to use for the recording. Supports 24, 30, 60, 120. Defaults to 30.
+     * @param settings.audioEnabled A boolean value that indicates whether audio is enabled for the recording. Defaults to true.
+     * @param settings.sessionPreset The session preset to use for the recording. Defaults to "high".
+     * @param settings.videoCodec The video codec to use for the recording. Defaults to "hevc".
+     * @param settings.videoBitRate The average bit rate—as bits per second—used in compressing video.
+     * @param settings.orientation The orientation to use for the recording. Defaults to "portrait".
+     * @param settings.mirrorFrontCamera A boolean value that indicates whether the front camera is mirrored. Defaults to true.
+     */
+    constructor(settings?: {
+      camera?: {
+        position: CameraPosition
+        preferredTypes?: CameraType[]
+      }
+      frameRate?: number
+      audioEnabled?: boolean
+      sessionPreset?: VideoCaptureSessionPreset
+      videoCodec?: VideoCodec
+      videoBitRate?: number
+      orientation?: VideoOrientation
+      mirrorFrontCamera?: boolean
+    })
+
+    /**
+     * The minimum zoom factor for the video recorder.
+     */
+    readonly minZoomFactor: number
+    /**
+     * The maximum zoom factor for the video recorder.
+     */
+    readonly maxZoomFactor: number
+    /**
+     * The current zoom factor for the video recorder.
+     */
+    readonly currentZoomFactor: number
+    /**
+     * A boolean value that indicates whether the current device of the video recorder has a torch.
+     */
+    readonly hasTorch: boolean
+    /**
+     * The current torch mode for the video recorder.
+     */
+    readonly torchMode: 'auto' | 'on' | 'off'
+
+    /**
+     * The current state of the video recorder.
+     */
+    state: VideoRecorderState
+
+    /**
+     * The callback that is called when the state of the video recorder changes.
+     * @param state The new state of the video recorder.
+     * @param details Additional details about the state change. When the state is "failed", this parameter contains the error message, and when the state is "finished", this parameter contains the path to the video file.
+     */
+    onStateChanged?:
+      | ((state: VideoRecorderState, details?: string) => void)
+      | null
+
+    /**
+     * Prepares the video recorder for recording.
+     * @returns A promise that resolves when the video recorder is ready for recording, or rejects with an error.
+     */
+    prepare(): Promise<void>
+
+    /**
+     * Starts a video recording, saving it to the specified path.
+     * @param toPath The path to save the video recording to.
+     * @throws An error if the video recording could not be started.
+     */
+    startRecording(toPath: string): void
+
+    /**
+     * Pauses a video recording.
+     * @throws An error if the video recording could not be paused.
+     */
+    pauseRecording(): void
+
+    /**
+     * Resumes a video recording.
+     * @throws An error if the video recording could not be resumed.
+     */
+    resumeRecording(): void
+
+    /**
+     * Stops a video recording.
+     * @returns A promise that resolves when the video recording is stopped, or rejects with an error.
+     */
+    stopRecording(): Promise<void>
+
+    /**
+     * Resets the video recorder, resetting the state. You should call this method when the video recorder is stopped and you want to start a new recording.
+     * @returns A promise that resolves when the video recorder is reset, or rejects with an error.
+     */
+    reset(): Promise<void>
+
+    /**
+     * Sets the torch mode for the video recorder.
+     * @param mode The torch mode to set.
+     */
+    setTorchMode(mode: 'auto' | 'off' | 'on'): void
+
+    /**
+     * Sets the focus point.
+     * @param focusPoint The focus point to set.
+     */
+    setFocusPoint(focusPoint: { x: number; y: number }): void
+
+    /**
+     * Sets the exposure point.
+     * @param focusPoint The exposure point to set.
+     */
+    setExposurePoint(focusPoint: { x: number; y: number }): void
+
+    /**
+     * Resets the focus point.
+     */
+    resetFocus(): void
+
+    /**
+     * Resets the exposure point.
+     */
+    resetExposure(): void
+
+    /**
+     * Sets the zoom factor for the video recorder.
+     * @param factor The zoom factor to set.
+     */
+    setZoomFactor(factor: number): void
+
+    /**
+     * Sets the zoom factor for the video recorder using a ramp.
+     * @param toFactor The new magnification factor.
+     * @param rate The rate at which to transition to the new magnification factor, specified in powers of two per second.
+     */
+    rampZoomFactor(toFactor: number, rate: number): void
+
+    /**
+     * Resets the zoom factor for the video recorder.
+     */
+    resetZoom(): void
+
+    /**
+     * Disposes the video recorder. You should call this method when the video recorder is no longer needed. After this method is called, the video recorder will be destroyed and cannot be used again.
+     */
+    dispose(): Promise<void>
   }
 
   type SocketIOStatus =
@@ -5071,28 +5719,164 @@ declare global {
   type JSONSchemaType = JSONSchemaPrimitive | JSONSchemaArray | JSONSchemaObject
 
   namespace Assistant {
+
     /**
-     * Indicates whether the Assistant API is available.
-     * This status depends on the selected AI provider and whether a valid API Key is configured.
-     * If the appropriate API Key is not provided, the Assistant API will be unavailable.
+     * The provider for the Assistant API.
+     */
+    type Provider = "openai" | "gemini" | "anthropic" | "deepseek" | "openrouter" | {
+      custom: string
+    }
+
+    /**
+     * A chunk of text output from the assistant.
+     */
+    type StreamTextChunk = {
+      type: 'text'
+      content: string
+    }
+
+    /**
+     * A chunk of reasoning output from the assistant.
+     */
+    type StreamReasoningChunk = {
+      type: 'reasoning'
+      content: string
+    }
+
+    /**
+     * A chunk of usage output from the assistant.
+     */
+    type StreamUsageChunk = {
+      type: 'usage'
+      content: {
+        /**
+         * The total cost of the request.
+         */
+        totalCost: number | null
+        /**
+         * The number of tokens that were read from cache.
+         */
+        cacheReadTokens: number | null
+        /**
+         * The number of tokens that were written to cache.
+         */
+        cacheWriteTokens: number | null
+        /**
+         * The number of input tokens.
+         */
+        inputTokens: number
+        /**
+         * The number of output tokens.
+         */
+        outputTokens: number
+      }
+    }
+
+    type StreamChunk = StreamTextChunk | StreamReasoningChunk | StreamUsageChunk
+
+    /**
+     * The text content of a message.
+     */
+    type MessageTextContent = string | {
+      type: 'text'
+      content: string
+    }
+
+    /**
+     * The image content of a message.
+     */
+    type MessageImageContent = {
+      type: 'image'
+      /**
+       * Base64 encoded image data string. Must include the `data:image/xxx;base64,` prefix.
+       */
+      content: string
+    }
+
+    /**
+     * The document content of a message.
+     */
+    type MessageDocumentContent = {
+      type: 'document'
+      content: {
+        /**
+         * The MIME type of the document data.
+         */
+        mediaType: string
+        /**
+         * Base64 encoded document data string.
+         */
+        data: string
+      }
+    }
+
+    /**
+     * The content of a message.
+     */
+    type MessageContent = MessageTextContent | MessageImageContent | MessageDocumentContent
+
+    type MessageItem = {
+      role: "user" | "assistant"
+      content: MessageContent | MessageContent[]
+    }
+
+    /**
+     * Indicates whether the user has access to the assistant.
      */
     const isAvailable: boolean
+
+
+    /**
+     * Indicates whether the assistant chat page is currently presented.
+     */
+    const isPresented: boolean
+
+    /**
+     * Indicates whether there is an active conversation with the assistant.
+     */
+    const hasActiveConversation: boolean
+
+    /**
+     * Requests streamed output from the assistant, returning a ReadableStream of chunks. You can pass in a system prompt, a list of messages, and specify the AI provider and model to use.
+     * @param options The options for the request.
+     * @param options.systemPrompt The system prompt to use for the request.
+     * @param options.messages The messages to use for the request.
+     * @param options.provider Specifies the AI provider to use. You can use a custom provider with the given name.
+     * @example
+     * const stream = await Assistant.requestStreaming({
+     *   systemPrompt: "You are a helpful assistant.",
+     *   messages: [
+     *     {
+     *       role: "user",
+     *       content: "Tell me a joke."
+     *     }
+     *   ],
+     *   provider: "openai"
+     * })
+     * for await (const chunk of stream) {
+     *   console.log(chunk)
+     * }
+     */
+    function requestStreaming(options: {
+      systemPrompt?: string | null
+      messages: MessageItem | MessageItem[]
+      provider?: Provider
+      modelId?: string
+    }): Promise<ReadableStream<StreamChunk>>
     /**
      * Requests structured JSON output from the assistant.
      * @param prompt The input prompt for the assistant.
      * @param schema The expected output JSON schema.
      * @param options The options for the request.
      * @param options.provider Specifies the AI provider to use. You can use a custom provider with the given name.
-     * @param options.modelId You must ensure the specified ID matches a model supported by that provider (e.g., `"gpt-4-turbo"` for OpenAI, or `"gemini-1.5-pro"` for Gemini). If not specified, the app will use the default model configured for the provider.
+     * @param options.modelId You must ensure the specified ID matches a model supported by that provider (e.g., `"gpt-4-turbo"` for OpenAI, or `"gemini-2.5-pro"` for Gemini). If not specified, the app will use the default model configured for the provider.
      * @returns A promise that resolves to the structured data.
      */
     function requestStructuredData<R>(
       prompt: string,
       schema: JSONSchemaArray | JSONSchemaObject,
       options?: {
-        provider: "openai" | "gemini" | "anthropic" | "deepseek" | "openrouter" | {
-          custom: string
-        }
+        provider: Provider
         modelId?: string
       }
     ): Promise<R>
@@ -5117,6 +5901,45 @@ declare global {
         modelId?: string
       }
     ): Promise<R>
+
+    /**
+     * Starts a conversation with the assistant. You can pass in a message and an optional list of images to send to the assistant. You should call `present` to present the assistant chat page.
+     * If the conversation is already running, this method will throw an error. You should call `stopConversation` to stop the conversation before starting a new one.
+     * @param options The options for the conversation.
+     * @param options.message The message to send to the assistant.
+     * @param options.images The images to send to the assistant.
+     * @param options.autoStart Whether to start the conversation automatically. Defaults to false.
+     * @param options.systemPrompt The system prompt to use for the conversation. The default system prompt is the Scripting Assistant system prompt, the Assistant Tools are available in this prompt. If you want to use a different system prompt, you can pass it in here, and the Assistant Tools are not available anymore.
+     * @param options.modelId The model ID to use for the conversation.
+     * @param options.provider The provider to use for the conversation. User can change the provider in the assistant chat page.
+     * @returns A promise that resolves when the conversation is created, or throws an error if the operation fails.
+     */
+    function startConversation(options: {
+      message: string
+      images?: UIImage[]
+      autoStart?: boolean
+      systemPrompt?: string
+      modelId?: string
+      provider?: Provider
+    }): Promise<void>
+
+    /**
+     * Stops the conversation with the assistant. This will dismiss the assistant chat page.
+     * @returns A promise that resolves when the conversation is stopped, or throws an error if the operation fails.
+     */
+    function stopConversation(): Promise<void>
+
+    /**
+     * Presents the assistant chat page. You can call this method after `startConversation` to present the assistant chat page, or represent the conversation after `dismiss` is called.
+     * @returns A promise that resolves when the assistant chat page is dismissed, or throws an error if the operation fails.
+     */
+    function present(): Promise<void>
+
+    /**
+     * Dismisses the assistant chat page. If `stopConversation` is called, this method will be called automatically.
+     * @returns A promise that resolves when the assistant chat page is dismissed, or throws an error if the operation fails.
+     */
+    function dismiss(): Promise<void>
   }
 
   /**
@@ -6180,6 +7003,72 @@ declare global {
     unlock(password: string): boolean
   }
 
+  enum DateFormatterStyle {
+    none = 0,
+    short = 1,
+    medium = 2,
+    long = 3,
+    full = 4,
+  }
+
+  enum DateFormatterBehavior {
+    default = 0,
+    behavior10_4 = 1040,
+  }
+
+  type CalendarIdentifier = "current" | "autoupdatingCurrent" | "gregorian" | "buddhist" | "chinese" | "hebrew" | "islamic" | "japanese" | "persian" | "republicOfChina" | "indian" | "coptic" | "ethiopianAmeteMihret" | "ethiopianAmeteAlem" | "islamicCivil" | "islamicTabular" | "islamicUmmAlQura" | "iso8601" | "persianCivil"
+
+  type TimeZoneIdentifier = "current" | "autoupdatingCurrent" | "gmt" | string
+
+  class DateFormatter {
+    new(): DateFormatter
+
+    static localizedString(date: Date, options: {
+      dateStyle: DateFormatterStyle
+      timeStyle: DateFormatterStyle
+    }): string
+
+    static dateFormat(template: string, locale?: string): string | null
+
+    string(date: Date): string
+    date(string: string): Date | null
+    setLocalizedDateFormatFromTemplate(template: string): void
+
+    calendar: CalendarIdentifier
+    timeZone: TimeZoneIdentifier
+    locale: string
+    dateFormat: string
+    dateStyle: DateFormatterStyle
+    timeStyle: DateFormatterStyle
+    generatesCalendarDates: boolean
+    formatterBehavior: DateFormatterBehavior
+    isLenient: boolean
+    twoDigitStartDate: Date | null
+    defaultDate: Date | null
+    eraSymbols: string[]
+    monthSymbols: string[]
+    shortMonthSymbols: string[]
+    weekdaySymbols: string[]
+    shortWeekdaySymbols: string[]
+    longEraSymbols: string[]
+    veryShortMonthSymbols: string[]
+    standaloneMonthSymbols: string[]
+    shortStandaloneMonthSymbols: string[]
+    veryShortStandaloneMonthSymbols: string[]
+    quarterSymbols: string[]
+    shortQuarterSymbols: string[]
+    standaloneQuarterSymbols: string[]
+    shortStandaloneQuarterSymbols: string[]
+    veryShortWeekdaySymbols: string[]
+    standaloneWeekdaySymbols: string[]
+    shortStandaloneWeekdaySymbols: string[]
+    veryShortStandaloneWeekdaySymbols: string[]
+    amSymbol: string
+    pmSymbol: string
+    gregorianStartDate: Date | null
+    doesRelativeDateFormatting: boolean
+  }
+
   /**
    * This class provides an interface for working with date components.
    * It allows you to create and manipulate date components such as year, month, day, hour, minute, second, and nanosecond.
@@ -6188,8 +7077,8 @@ declare global {
    */
   class DateComponents {
     constructor(options?: {
-      calendar?: "current" | "autoupdatingCurrent" | "gregorian" | "buddhist" | "chinese" | "hebrew" | "islamic" | "japanese" | "persian" | "republicOfChina" | "indian" | "coptic" | "ethiopianAmeteMihret" | "ethiopianAmeteAlem" | "islamicCivil" | "islamicTabular" | "islamicUmmAlQura" | "iso8601" | "persianCivil" | null
-      timeZone?: "current" | "autoupdatingCurrent" | "gmt" | string | null
+      calendar?: CalendarIdentifier | null
+      timeZone?: TimeZoneIdentifier | null
       era?: number | null
       year?: number | null
       yearForWeekOfYear?: number | null
@@ -10202,6 +11091,19 @@ If the length of the value parameter exceeds the length of the `maximumUpdateVal
      * The regular variant of the Liquid Glass material.
      */
     static identity(): UIGlass
+  }
+
+  namespace AppStore {
+    /**
+     * Apens a modal that will allow user to interact with a product in the App Store without leaving the Scripting app.
+     * @param id The identifier of the app to open in the App Store.
+     * @returns A promise that resolves when the modal is closed. Or throws an error if there was already a modal open.
+     */
+    function presentApp(id: string): Promise<void>
+    /**
+     * Dismiss the modal that was opened using `presentApp`.
+     */
+    function dismissApp(): Promise<void>
   }
 }
 
