@@ -1,6 +1,7 @@
-import { Widget, Text, VStack, fetch } from "scripting";
+import { Widget, Text, VStack } from "scripting";
 import { View as SystemSmallView } from "./widget/family/small";
 import { View as SystemMediumView } from "./widget/family/medium";
+import { fetchGoldPrice } from "./util/api";
 
 type GoldProfitSettings = {
   grams: string;
@@ -8,45 +9,6 @@ type GoldProfitSettings = {
 };
 
 const SETTINGS_KEY = "goldProfitSettings";
-
-async function fetchGoldPrice(): Promise<number | null> {
-  try {
-    const res = await fetch("https://www.huilvbiao.com/api/gold_indexApi", {
-      method: "GET",
-      headers: {
-        accept: "*/*",
-        "accept-encoding": "gzip, deflate, br",
-        "accept-language": "zh-CN,zh;q=0.9",
-      },
-    });
-
-    if (!res.ok) {
-      return null;
-    }
-
-    const text = await res.text();
-
-    // 解析返回的 JS 文本，优先使用上海黄金延期 AUTD 的价格
-    const autdMatch = text.match(/var\s+hq_str_gds_AUTD\s*=\s*"([^"]+)"/);
-    const targetMatch = autdMatch;
-
-    if (!targetMatch) {
-      return null;
-    }
-
-    const firstField = targetMatch[1].split(",")[0];
-    const price = parseFloat(firstField);
-
-    if (Number.isNaN(price)) {
-      return null;
-    }
-
-    return price;
-  } catch (e) {
-    console.log("获取金价失败:", e);
-    return null;
-  }
-}
 
 (async () => {
   const settings = Storage.get<GoldProfitSettings>(SETTINGS_KEY);
@@ -79,23 +41,26 @@ async function fetchGoldPrice(): Promise<number | null> {
   }
 
   try {
-    const currentPrice = await fetchGoldPrice();
+    const goldData = await fetchGoldPrice();
     
-    if (currentPrice == null) {
+    if (goldData == null || goldData.currentPrice == null) {
       throw new Error("无法获取当前金价\n请检查网络连接");
     }
 
+    const { currentPrice, currentStatus, trendData } = goldData;
     const profit = (currentPrice - buyPriceNum) * gramsNum;
     const priceDiff = currentPrice - buyPriceNum;
     const percentage = (priceDiff / buyPriceNum) * 100;
 
     const data = {
       currentPrice,
+      currentStatus,
       buyPrice: buyPriceNum,
       grams: gramsNum,
       profit,
       priceDiff,
       percentage,
+      trendData,
     };
 
     switch (Widget.family) {

@@ -8,8 +8,8 @@ import {
   VStack,
   Spacer,
   TextField,
-  fetch,
 } from "scripting";
+import { fetchGoldPrice } from "./util/api";
 
 type GoldProfitSettings = {
   grams: string;
@@ -22,45 +22,6 @@ const defaultSettings: GoldProfitSettings = {
   grams: "",
   buyPrice: "",
 };
-
-async function fetchGoldPrice(): Promise<number | null> {
-  try {
-    const res = await fetch("https://www.huilvbiao.com/api/gold_indexApi", {
-      method: "GET",
-      headers: {
-        accept: "*/*",
-        "accept-encoding": "gzip, deflate, br",
-        "accept-language": "zh-CN,zh;q=0.9",
-      },
-    });
-
-    if (!res.ok) {
-      return null;
-    }
-
-    const text = await res.text();
-
-    // 解析返回的 JS 文本，优先使用上海黄金延期 AUTD 的价格
-    const autdMatch = text.match(/var\s+hq_str_gds_AUTD\s*=\s*"([^"]+)"/);
-    const targetMatch = autdMatch;
-
-    if (!targetMatch) {
-      return null;
-    }
-
-    const firstField = targetMatch[1].split(",")[0];
-    const price = parseFloat(firstField);
-
-    if (Number.isNaN(price)) {
-      return null;
-    }
-
-    return price;
-  } catch (e) {
-    console.log("获取金价失败:", e);
-    return null;
-  }
-}
 
 function SettingsPage() {
   const dismiss = Navigation.useDismiss();
@@ -98,16 +59,16 @@ function SettingsPage() {
       return;
     }
 
-    const price = await fetchGoldPrice();
+    const goldData = await fetchGoldPrice();
     setLoading(false);
 
-    if (price == null) {
+    if (goldData == null || goldData.currentPrice == null) {
       setError("无法获取当前金价，请稍后重试");
       return;
     }
 
-    setCurrentPrice(price);
-    const p = (price - buyPriceNum) * gramsNum;
+    setCurrentPrice(goldData.currentPrice);
+    const p = (goldData.currentPrice - buyPriceNum) * gramsNum;
     setProfit(p);
   };
 

@@ -4,16 +4,38 @@ import {
   Text,
   Spacer,
   Image,
+  Chart,
+  LineChart,
   Button,
 } from "scripting";
 import { RefreshIntent } from "../../app_intents";
 
 export function View({ data }: { data: any }) {
-  const { currentPrice, buyPrice, grams, profit, priceDiff, percentage } = data;
+  const { currentPrice, currentStatus, buyPrice, grams, profit, priceDiff, percentage, trendData } = data;
   
-  const state = profit > 0;
+  // 取最近30条数据用于显示
+  const displayData = trendData && trendData.length > 0 ? trendData.slice(-30) : [];
+  const values = displayData.length > 0 ? displayData.map((d: any) => d.price) : [currentPrice || 0];
+  const minY = Math.min(...values);
+  const maxY = Math.max(...values);
+  const range = maxY - minY || 1;
+
+  const lastInfo = displayData.length > 1 ? displayData[displayData.length - 2] : null;
+
+  const dif = currentStatus;
+  const state = dif > 0;
   const symbol = state ? "+" : "";
-  const color = state ? "systemRed" : profit < 0 ? "systemGreen" : "secondaryLabel";
+  const color = state ? "systemRed" : dif < 0 ? "systemGreen" : "systemBlue";
+  
+  // 计算百分比
+  let pricePercentage = 0;
+  if (lastInfo && currentPrice && lastInfo.price) {
+    pricePercentage = ((currentPrice - lastInfo.price) / lastInfo.price) * 100;
+  } else if (currentPrice && dif !== 0) {
+    pricePercentage = (dif / (currentPrice - dif)) * 100;
+  }
+
+  const shadowSize = 6;
   
   return (
     <VStack padding alignment="leading" spacing={1}>
@@ -22,7 +44,7 @@ export function View({ data }: { data: any }) {
           <Image
             foregroundStyle={color}
             systemName={
-              state ? "arrowtriangle.up.fill" : profit < 0 ? "arrowtriangle.down.fill" : "minus"
+              state ? "arrowtriangle.up.fill" : dif < 0 ? "arrowtriangle.down.fill" : "minus"
             }
           />
           <Text font={"headline"} fontWeight={"semibold"}>
@@ -39,7 +61,27 @@ export function View({ data }: { data: any }) {
 
       <Button intent={RefreshIntent(undefined)} buttonStyle={"plain"}>
         <VStack spacing={0}>
-          <HStack alignment={"bottom"} padding={{ top: 0 }}>
+          {displayData.length > 0 ? (
+            <Chart
+              chartXAxis={"hidden"}
+              chartYAxis={"hidden"}
+              padding={{ top: 2, bottom: 8 }}>
+              <LineChart
+                marks={displayData.map((item: any) => ({
+                  label: item.date,
+                  value: (item.price - minY) / range,
+                  foregroundStyle: color,
+                  shadow: {
+                    color: color,
+                    radius: shadowSize,
+                    y: 2,
+                  },
+                }))}
+              />
+            </Chart>
+          ) : null}
+
+          <HStack alignment={"bottom"} padding={{ top: displayData.length > 0 ? -4 : 0 }}>
             <HStack alignment={"bottom"} spacing={1}>
               <Text
                 monospacedDigit={true}
@@ -64,13 +106,13 @@ export function View({ data }: { data: any }) {
                 foregroundStyle={color}>
                 {symbol + profit.toFixed(2)} 元
               </Text>
-              {percentage !== 0 ? (
+              {pricePercentage !== 0 ? (
                 <Text
                   monospacedDigit={true}
                   font={8}
                   fontWeight={"semibold"}
                   foregroundStyle={color}>
-                  {symbol + percentage.toFixed(2)}%
+                  {symbol + pricePercentage.toFixed(2)}%
                 </Text>
               ) : null}
             </VStack>
