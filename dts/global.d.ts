@@ -1,6 +1,13 @@
 import { Color, ColorScheme, Size, VirtualNode, KeyboardType, Edge, Point, KeywordPoint, Visibility, ReadableStream } from "scripting"
 
 declare global {
+  type Without<T, U> = {
+    [P in Exclude<keyof T, keyof U>]?: never
+  }
+
+  type XOR<T, U> =
+    | (T & Without<U, T>)
+    | (U & Without<T, U>)
 
   /**
    * The console object provides access to the debugging console pop-up view.
@@ -112,6 +119,24 @@ declare global {
      * @param enabled Whether to enable or disable the wake lock.
      */
     function setWakeLockEnabled(enabled: boolean): void
+
+    /**
+     * Network interface information
+     */
+    type NetworkInterface = {
+      address: string
+      netmask: string | null
+      family: 'IPv4' | 'IPv6'
+      mac: string | null
+      isInternal: boolean
+      cidr: string | null
+    }
+
+    /**
+     * Get the network interfaces of the device.
+     * @returns A dictionary of network interfaces, where the key is the interface name and the value is an array of network interface objects.
+     */
+    function networkInterfaces(): Record<string, NetworkInterface[]>
   }
 
   /**
@@ -1398,6 +1423,19 @@ declare global {
     function exists(path: string): Promise<boolean>
     function existsSync(path: string): boolean
     /**
+     * Add a bookmark for a file or folder. This is useful when you obtain a security-scoped file or folder path, such as a file obtained from the user via the `Photos` or `onDropContent` APIs.
+     * @param path The path of the file or folder
+     * @param name The name of the bookmark, you can specify a name for the bookmark, or it will be generated automatically
+     * @returns The name of the bookmark or `null` if the bookmark is not created.
+     */
+    function addFileBookmark(path: string, name?: string): string | null
+    /**
+     * Remove a bookmark for a file or folder. This is useful when you have access to a security-scoped file or folder, and no longer need to access it.
+     * @param name The name of the bookmark
+     * @returns Returns a boolean value indicates that whether the operation is successful
+     */
+    function removeFileBookmark(name: string): boolean
+    /**
      * Get path to a bookmarked file or folder.
      * @param name Name of a bookmark.
      */
@@ -1679,6 +1717,11 @@ declare global {
     private constructor()
 
     /**
+     * The item provider of the result
+     */
+    readonly itemProvider: ItemProvider
+
+    /**
      * Reads the result as a live photo, if this result can be read as a live photo, returns a promise that resolves to the live photo, otherwise returns null, or rejects with an error.
      */
     livePhoto(): Promise<LivePhoto | null>
@@ -1689,12 +1732,12 @@ declare global {
     uiImage(): Promise<UIImage | null>
 
     /**
-     * Reads the result as an image, if this result can be read as an image, returns a promise that resolves to the image path, otherwise returns null, or rejects with an error.
+     * Reads the result as an image, if this result can be read as an image, the image will be copy to the app group's sandbox, returns a promise that resolves to the image path, otherwise returns null, or rejects with an error. You should delete the image file when you no longer need it.
      */
     imagePath(): Promise<string | null>
 
     /**
-     * Reads the result as a video, if this result can be read as a video, returns a promise that resolves to the video path, otherwise returns null, or rejects with an error.
+     * Reads the result as a video, if this result can be read as a video, the video will be copy to the app group's sandbox, returns a promise that resolves to the video path, otherwise returns null, or rejects with an error. You should delete the video file when you no longer need it.
      */
     videoPath(): Promise<string | null>
   }
@@ -1865,6 +1908,113 @@ declare global {
      * @returns Returns a promise that resolves when the operation is complete, or rejects with an error if the operation fails.
      */
     function saveLivePhoto(imagePath: string, videoPath: string, shouldMoveFile?: boolean): Promise<void>
+  }
+
+  /**
+   * The current state of a drop.
+   */
+  class DropInfo {
+    private constructor()
+
+    /**
+     * The location of the drag in the coordinate space of the drop view.
+     */
+    readonly location: Point
+    /**
+     * Indicates whether at least one item conforms to at least one of the specified uniform type identifiers.
+     * @param types The uniform type identifiers to query for.
+     */
+    hasItemsConforming(types: UTType[]): boolean
+    /**
+     * Finds item providers that conform to at least one of the specified uniform type identifiers. This function is only valid during the `onDrop.performDrop` action.
+     * @param types The uniform type identifiers to query for.
+     * @returns The item providers that conforms to contentTypes.
+     */
+    itemProviders(types: UTType[]): ItemProvider[]
+  }
+
+  /**
+   * The ItemProvider class is used to provide data for a file or file system item.
+   */
+  class ItemProvider {
+
+    /**
+     * The types that the item provider can provide.
+     */
+    readonly registeredTypes: UTType[]
+
+    /**
+     * The types that the item provider can provide in place.
+     */
+    readonly registeredInPlaceTypes: UTType[]
+
+    /**
+     * Returns a Boolean value indicating whether an item provider contains a data representation conforming to a specified universal type identifier.
+     */
+    hasItemConforming(type: UTType): boolean
+    /**
+     * Returns a Boolean value indicating whether an item provider contains a data representation conforming to a specified universal type identifier.
+     */
+    hasRepresentationConforming(type: UTType): boolean
+    /**
+     * Returns a Boolean value indicating whether an item provider contains a data representation conforming to a specified universal type identifier and to specified open-in-place behavior.
+     */
+    hasInPlaceRepresentationConforming(type: UTType): boolean
+
+    /**
+     * Checks whether the item provider can load a UIImage object.
+     */
+    canLoadUIImage(): boolean
+    /**
+     * Checks whether the item provider can load a LivePhoto object.
+     */
+    canLoadLivePhoto(): boolean
+
+    /**
+     * Loads a UIImage object from the item provider.
+     */
+    loadUIImage(): Promise<UIImage | null>
+    /**
+     * Loads a PHLivePhoto object from the item provider.
+     */
+    loadLivePhoto(): Promise<LivePhoto | null>
+    /**
+     * Loads a URL string from the item provider.
+     */
+    loadURL(): Promise<string | null>
+    /**
+     * Loads a text string from the item provider.
+     */
+    loadText(): Promise<string | null>
+    /**
+     * Asynchronously copies the provided, typed data into a generic data object.
+     * @param type The type of data to load
+     * @returns Returns a promise that resolves to the data or null.
+     */
+    loadData(type: UTType): Promise<Data | null>
+    /**
+     * Loads a file path from the item provider. If the item provide can load data as the specified type, this file will be copied to the app group's temporary directory and the file path will be returned, otherwise null will be returned.
+     * @param type The type of data to load
+     * @returns Returns a promise that resolves to the file path or null.
+     */
+    loadFilePath(type: UTType): Promise<string | null>
+
+    /**
+     * Creates an item provider from a UIImage object.
+     */
+    static fromUIImage(image: UIImage): ItemProvider
+    /**
+     * Creates an item provider from a text string.
+     */
+    static fromText(text: string): ItemProvider
+    /**
+     * Creates an item provider from a URL string, or null if the URL string is invalid.
+     */
+    static fromURL(url: string): ItemProvider | null
+    /**
+     * Creates an item provider from a file path.
+     */
+    static fromFilePath(path: string): ItemProvider
   }
 
   type PickFilesOption = {
@@ -3137,6 +3287,11 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
     type AudioSessionSetActiveOptions = "notifyOthersOnDeactivation"
 
     /**
+     * The systemwide output volume set by the user.
+     */
+    const outputVolume: number
+
+    /**
      * Get session category.
      * An audio session category defines a set of audio behaviors for your app. The default category assigned to an audio session is soloAmbient.
      */
@@ -3219,6 +3374,19 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      * Sets the preference for not interrupting the audio session with system alerts.
      */
     function setPrefersNoInterruptionsFromSystemAlerts(valiue: boolean): Promise<void>
+
+    type AudioSessionOutputVolumeListener = (newValue: number, oldValue: number) => void
+
+    /**
+     * Adds a listener that is called when the output volume changes.
+     * @param listener The listener is called when the output volume changes.
+     */
+    function addOutputVolumeListener(listener: AudioSessionOutputVolumeListener): void
+    /**
+     * Removes a listener that is called when the output volume changes.
+     * @param listener The listener is called when the output volume changes.
+     */
+    function removeOutputVolumeListener(listener: AudioSessionOutputVolumeListener): void
   }
   /**
   * The type of an audio interruption.
@@ -3994,6 +4162,277 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
   }
 
   /**
+   * Rounding methods to use when performing time calculations.
+   *  - `quickTime`: Rounds using the QuickTime method.
+   *  - `roundAwayFromZero`: Rounds away from zero.
+   *  - `roundTowardZero`: Rounds toward zero.
+   *  - `roundHalfAwayFromZero`: Rounds half away from zero.
+   *  - `roundTowardNegativeInfinity`: Rounds toward negative infinity.
+   *  - `roundTowardPositiveInfinity`: Rounds toward positive infinity.
+   *  - `default`: The default rounding method. This value is equal to `roundHalfAwayFromZero`.
+   */
+  type MediaTimeRoundingMethod = 'quickTime' | 'roundAwayFromZero' | 'roundTowardZero' | 'roundHalfAwayFromZero' | 'roundTowardNegativeInfinity' | 'roundTowardPositiveInfinity' | 'default'
+
+  /**
+   * Represents a media time.
+   */
+  class MediaTime {
+    private constructor()
+
+    readonly secondes: number
+    readonly isValid: boolean
+    readonly isPositiveInfinity: boolean
+    readonly isNegativeInfinity: boolean
+    readonly isIndefinite: boolean
+    readonly isNumeric: boolean
+    readonly hasBeenRounded: boolean
+
+    convertScale(newTimescale: number, method: MediaTimeRoundingMethod): MediaTime
+    getSeconds(): number
+    minus(other: MediaItem): MediaItem
+    plus(other: MediaItem): MediaItem
+    lt(other: MediaItem): boolean
+    gt(other: MediaItem): boolean
+    lte(other: MediaItem): boolean
+    gte(other: MediaItem): boolean
+    eq(other: MediaItem): boolean
+    neq(other: MediaItem): boolean
+
+    /**
+     * Makes a media time.
+     * @param options The options to make the media time.
+     * 
+     * Makes with `value` and `timescale`:
+     * @param options.value The value of the media time.
+     * @param options.timescale The timescale of the media time.
+     * 
+     * Makes with `seconds` and `preferredTimescale`:
+     * @param options.seconds The seconds of the media time.
+     * @param options.preferredTimescale The preferred timescale of the media time.
+     * 
+     * @returns The media time. If the media time is invalid, then `MediaTime.invalid()` is returned.
+     */
+    static make(options: {
+      value: number
+      timescale: number
+    } | {
+      seconds: number
+      preferredTimescale: number
+    }): MediaTime
+    static zero(): MediaTime
+    static invalid(): MediaTime
+    static indefinite(): MediaTime
+    static positiveInfinity(): MediaTime
+    static negativeInfinity(): MediaTime
+  }
+
+  namespace MediaComposer {
+    /**
+     * Represents a time range.
+     */
+    type TimeRange = {
+      /**
+       * The start time of the time range.
+       */
+      start: MediaTime
+      /**
+       * The duration of the time range.
+       */
+      duration: MediaTime
+    }
+
+    /**
+     * Represents a fade configuration.
+     */
+    type FadeConfig = {
+      /**
+       * The number of seconds to fade in the clip. Defaults to 0.
+       */
+      fadeInSeconds?: number
+      /**
+       * The number of seconds to fade out the clip. Defaults to 0.
+       */
+      fadeOutSeconds?: number
+    }
+
+    type DuckingConfig = {
+      /**
+       * Whether ducking is enabled. Defaults to true.
+       */
+      enabled?: boolean
+      /**
+       * External audio volume during voice/dialogue. (0...1). Defaults to 0.25.
+       */
+      duckedVolume?: number
+      /**
+       * Seconds to ramp down before a voice segment starts. Defaults to 0.15.
+       */
+      attackSeconds?: number
+      /**
+       * Seconds to ramp up after a voice segment ends. Defaults to 0.25.
+       */
+      releaseSeconds?: number
+    }
+
+    /**
+     * Represents an export preset.
+     */
+    type ExportPreset = "640x480" | "960x540" | "1280x720" | "1920x1080" | "3840x2160" | "AppleM4A" | "LowQuality" | "MediumQuality" | "HighestQuality" | "HEVC1920x1080" | "HEVC3840x2160" | "HEVC4320x2160"
+      | "HEVC7680x4320" | "MVHEVC960x960" | "MVHEVC1440x1440" | "MVHEVC4320x4320" | "MVHEVC7680x7680"
+      | "HEVCHighestQuality" | "AppleProRes422LPCM" | "AppleProRes4444LPCM" | "HEVC1920x1080WithAlpha"
+      | "HEVC3840x2160WithAlpha" | "HEVCHighestQualityWithAlpha"
+
+    type VideoClip = {
+      /**
+       * The video file path.
+       */
+      videoPath: string
+      /**
+       * The time range to use from the source video. Defaults to the entire video.
+       */
+      sourceTimeRange?: TimeRange | null
+      /**
+       * Whether to keep the original audio from the source video. Defaults to false.
+       */
+      keepOriginalAudio?: boolean
+      /**
+       * The fade configuration.
+       */
+      fade?: FadeConfig | null
+    }
+
+    type ImageClip = {
+      /**
+       * The image file path.
+       */
+      imagePath: string
+      /**
+       * The duration of the clip.
+       */
+      duration: MediaTime
+      /**
+       * The content mode to handle the image.
+       */
+      contentMode?: "fit" | "crop"
+      /**
+       * The background color of the clip.
+       */
+      backgroundColor?: Color
+      /**
+       * The fade configuration.
+       */
+      fade?: FadeConfig | null
+    }
+
+    /**
+     * Represents a video or image clip.
+     */
+    type VideoItem = XOR<VideoClip, ImageClip>
+
+    type AudioClip = {
+      /**
+       * The audio file path.
+       */
+      path: string
+      /**
+       * The time range to use from the source audio. Defaults to the entire audio.
+       */
+      sourceTimeRange?: TimeRange | null
+      /**
+       * Place this clip at a specific time on the final timeline. If null, clips are appended sequentially after the previous external audio clip.
+       */
+      at?: MediaTime
+      /**
+       * Per-clip gain (0...1). Defaults to 1.
+       */
+      volume?: number
+      /**
+       * The fade configuration.
+       */
+      fade?: FadeConfig | null
+      /**
+       * Whether to loop the audio clip to match the duration of the video. Defaults to false.
+       */
+      loopToFitVideoDuration?: boolean
+    }
+
+    /**
+     * Represents a video scale mode.
+     *  - `fit`: The video is resized to fit the `renderSize` using the default resizing mode.
+     *  - `crop`: The video is resized to fit the `renderSize` using the `crop` resizing mode.
+     */
+    type VideoScaleMode = 'fit' | 'crop'
+
+    /**
+     * Represents a color space policy.
+     *  - `keepSource`: Keep the color space of the source video.
+     *  - `forceSDR`: Force the color space to SDR.
+     */
+    type colorSpacePolicy = 'keepSource' | 'forceSDR'
+
+    type ExportFileType = "mp4" | "mov" | "qta" | "m4v" | "m4a" | "mobile3GPP" | "mobile3GPP2"
+
+    type ExportOptions = {
+      /**
+       * The size to render the video at. Defaults to 1080x1920.
+       */
+      renderSize?: Size
+      /**
+       * The frame rate to use when rendering the video. Defaults to 30.
+       */
+      frameRate?: number
+      /**
+       * The color space policy to use when rendering the video. Defaults to `forceSDR`.
+       */
+      scaleMode?: VideoScaleMode
+      /**
+       * Global fade for video clips. Per-clip fade overrides it when provided.
+       */
+      globalVideoFade?: FadeConfig | null
+      /**
+       * External audio default gain (applied as base before per-clip volume). (0...1). Defaults to 1.
+       */
+      externalAudioBaseVolume?: number
+      /**
+       * Duck external audio when video original audio exists.
+       */
+      ducking?: DuckingConfig
+      /**
+       * The export preset to use. Defaults to `HighestQuality`.
+       */
+      presetName?: ExportPreset
+      /**
+       * The output file type to use. Defaults to `mp4`.
+       */
+      outputFileType?: ExportFileType
+    }
+
+    /**
+     * Composes a video and audio timeline and exports it to a file.
+     * @param options The options for the export.
+     * @param options.exportPath The path to export the video to.
+     * @param options.timeline The timeline to export.
+     * @param options.timeline.videoItems The video items to include in the timeline, either video clips or image clips.
+     * @param options.timeline.audioClips The audio clips to include in the timeline.
+     * @param options.exportOptions The export options to use.
+     * @param options.overwrite Whether to overwrite the output file if it already exists. Defaults to true.
+     * @returns A promise that resolves to an object containing the output path and duration, or rejects with an error.
+     */
+    function composeAndExport(options: {
+      exportPath: string
+      timeline: {
+        videoItems: VideoItem[]
+        audioClips: AudioClip[]
+      }
+      exportOptions?: ExportOptions
+      overwrite?: boolean
+    }): Promise<{
+      exportPath: string
+      duration: MediaTime
+    }>
+  }
+
+  /**
    * Use for playing audio or video.
    */
   class AVPlayer {
@@ -4255,6 +4694,16 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      * The current zoom factor for the video recorder.
      */
     readonly currentZoomFactor: number
+    /**
+     * A video zoom factor multiplier to use when displaying zoom information in a user interface.
+     * @available iOS 18.0+
+     */
+    readonly displayZoomFactor: number
+    /**
+     * A video zoom factor multiplier to use when displaying zoom information in a user interface.
+     * @available iOS 18.0+
+     */
+    readonly displayZoomFactorMultiplier: number
     /**
      * A boolean value that indicates whether the current device of the video recorder has a torch.
      */

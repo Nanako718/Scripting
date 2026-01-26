@@ -31,7 +31,7 @@
 
   ],
   "description" : "一个显示中石化油价趋势的小组件，支持自动定位和多种油号显示。",
-  "version" : "1.0.3",
+  "version" : "1.0.4",
   "iconImage" : null,
   "localizedNames" : {
     "zh" : "",

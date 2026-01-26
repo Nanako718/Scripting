@@ -72,6 +72,11 @@ export async function getProvinceId(manualProvinceId?: string): Promise<{ provin
       return { provinceId: province.value, cityName: province.label };
     }
   }
+  
+  // 获取上一次保存的省份ID
+  const LAST_PROVINCE_KEY = 'lastProvinceId';
+  const lastProvinceId = Storage.get<string>(LAST_PROVINCE_KEY);
+  
   try {
     const location = await Location.requestCurrent();
     if (!location) {
@@ -116,12 +121,32 @@ export async function getProvinceId(manualProvinceId?: string): Promise<{ provin
       
       if (matchedProvince) {
         const cityName = locality || subLocality || subAdministrativeArea || administrativeArea || '未知';
-        return { provinceId: matchedProvince.value, cityName };
+        const currentProvinceId = matchedProvince.value;
+        
+        // 如果上一次保存的省份和当前定位的省份相同，使用上一次的省份
+        if (lastProvinceId && lastProvinceId === currentProvinceId) {
+          const lastProvince = provinces.find((p) => p.value === lastProvinceId);
+          return { provinceId: lastProvinceId, cityName: lastProvince?.label || cityName };
+        }
+        
+        // 如果省份不同，更新保存的省份
+        Storage.set(LAST_PROVINCE_KEY, currentProvinceId);
+        return { provinceId: currentProvinceId, cityName };
       }
     }
   } catch (e) {
     console.log('定位失败:', e);
   }
+  
+  // 如果定位失败，尝试使用上一次保存的省份
+  if (lastProvinceId) {
+    const lastProvince = provinces.find((p) => p.value === lastProvinceId);
+    if (lastProvince) {
+      return { provinceId: lastProvinceId, cityName: lastProvince.label };
+    }
+  }
+  
+  // 如果都没有，使用默认值
   return { provinceId: '11', cityName: '北京' };
 }
 

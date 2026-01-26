@@ -1,0 +1,39 @@
+{
+  "intentInputTypes" : [
+
+  ],
+  "iconImage" : null,
+  "contributors" : [
+
+  ],
+  "remoteResource" : null,
+  "localizedNames" : {
+    "ja" : "",
+    "zh" : "",
+    "pt" : "",
+    "en" : "",
+    "fr" : "",
+    "de" : "",
+    "it" : "",
+    "es" : "",
+    "ru" : ""
+  },
+  "version" : "1.0.0",
+  "author" : null,
+  "color" : "rgba(230, 190, 1,1)",
+  "icon" : "chart.line.uptrend.xyaxis",
+  "runInApp" : false,
+  "name" : "金价收益",
+  "description" : null,
+  "localizedDescriptions" : {
+    "ja" : "",
+    "zh" : "",
+    "pt" : "",
+    "en" : "",
+    "fr" : "",
+    "de" : "",
+    "it" : "",
+    "es" : "",
+    "ru" : ""
+  }
+}
