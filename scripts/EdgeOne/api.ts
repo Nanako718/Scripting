@@ -244,7 +244,7 @@ async function doFetch(secretId: string, secretKey: string, startStr: string, en
   const payloadObj = {
     StartTime: startStr,
     EndTime: endStr,
-    Interval: "day",
+    // Interval: "min",
     MetricNames: METRIC_NAMES,
   };
   const payload = JSON.stringify(payloadObj);

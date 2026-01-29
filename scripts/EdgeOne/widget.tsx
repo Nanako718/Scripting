@@ -28,12 +28,12 @@ const theme = {
   yellow: { light: "#FF9500", dark: "#FF9F0A" } as any,
 };
 
-/** 格式化工具：返回数字和单位两部分 */
+/** 流量格式化：与控制台一致使用 SI 单位 1MB=10^6 B */
 function splitBytes(bytes: number): { val: string; unit: string } {
-  if (bytes < 1024) return { val: bytes.toString(), unit: "B" };
-  if (bytes < 1024 * 1024) return { val: (bytes / 1024).toFixed(1), unit: "KB" };
-  if (bytes < 1024 * 1024 * 1024) return { val: (bytes / (1024 * 1024)).toFixed(1), unit: "MB" };
-  return { val: (bytes / (1024 * 1024 * 1024)).toFixed(2), unit: "GB" };
+  if (bytes < 1e3) return { val: bytes.toString(), unit: "B" };
+  if (bytes < 1e6) return { val: (bytes / 1e3).toFixed(1), unit: "KB" };
+  if (bytes < 1e9) return { val: (bytes / 1e6).toFixed(2), unit: "MB" };
+  return { val: (bytes / 1e9).toFixed(2), unit: "GB" };
 }
 
 function splitRequest(n: number): { val: string; unit: string } {
@@ -63,6 +63,7 @@ function WidgetView({
 }) {
   const { current, previous } = data;
   const timeString = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  // 缓存命中率：按 命中流量/总流量；控制台若按「命中请求数/总请求数」会不同
   const hitRate = current.flux > 0 ? (current.hitFlux / current.flux * 100).toFixed(1) : "0.0";
 
   return (
@@ -188,6 +189,20 @@ async function render() {
   try {
     const data = await fetchMetricsWithTrend(settings);
     if (!data) throw new Error("获取数据失败");
+    const c = data.current;
+    const hitRatePct = c.flux > 0 ? (c.hitFlux / c.flux * 100).toFixed(2) : "0";
+    console.log("[EdgeOne] API 四个指标 raw:", {
+      总流量_flux: c.flux,
+      总请求数_request: c.request,
+      带宽峰值_bandwidth: c.bandwidth,
+      缓存命中流量_hitFlux: c.hitFlux,
+    });
+    console.log("[EdgeOne] API 四个指标 展示:", {
+      总流量: (c.flux / 1e6).toFixed(2) + "MB",
+      总请求数: c.request >= 10000 ? (c.request / 10000).toFixed(2) + "万次" : c.request + "次",
+      带宽峰值: c.bandwidth >= 1e6 ? (c.bandwidth / 1e6).toFixed(2) + "Mbps" : (c.bandwidth / 1e3).toFixed(2) + "Kbps",
+      缓存命中率: hitRatePct + "%",
+    });
     const timeRange = settings.timeRange === "today" ? "today" : "7days";
     const timeRangeLabel = timeRange === "today" ? "当日" : "近7天";
     Widget.present(<WidgetView data={data} timeRangeLabel={timeRangeLabel} />, reloadPolicy);
