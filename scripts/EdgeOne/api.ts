@@ -15,16 +15,20 @@ export type EdgeOneMetrics = {
   request: number;
   bandwidth: number;
   hitFlux: number;
+  /** 源站响应流量 l7Flow_inFlux_hy，用于 缓存命中率 = (flux - originInFlux)/flux */
+  originInFlux?: number;
 };
 
 export const SETTINGS_KEY = "edgeOneSettings";
 
 const HOST = "teo.tencentcloudapi.com";
 const SERVICE = "teo";
-const ACTION = "DescribeOverviewL7Data";
 const VERSION = "2022-09-01";
 const SIGNED_HEADERS = "content-type;host;x-tc-action";
+const ACTION_OVERVIEW = "DescribeOverviewL7Data";
 const METRIC_NAMES = ["l7Flow_flux", "l7Flow_request", "l7Flow_bandwidth", "l7Flow_hit_outFlux"];
+const ACTION_ORIGIN_PULL = "DescribeTimingL7OriginPullData";
+const ORIGIN_PULL_METRIC = "l7Flow_inFlux_hy";
 
 // ---------- 时间范围助手 ----------
 function pad2(n: number): string {
@@ -214,9 +218,9 @@ function getDate(timestamp: number): string {
 }
 
 // ---------- 腾讯云 API 签名 v3 ----------
-function signTC3(secretId: string, secretKey: string, payload: string, timestamp: number): string {
+function signTC3(secretId: string, secretKey: string, action: string, payload: string, timestamp: number): string {
   const date = getDate(timestamp);
-  const canonicalHeaders = "content-type:application/json; charset=utf-8\nhost:" + HOST + "\nx-tc-action:" + ACTION.toLowerCase() + "\n";
+  const canonicalHeaders = "content-type:application/json; charset=utf-8\nhost:" + HOST + "\nx-tc-action:" + action.toLowerCase() + "\n";
   const canonicalRequest = "POST\n/\n\n" + canonicalHeaders + "\n" + SIGNED_HEADERS + "\n" + getHashHex(payload);
   const credentialScope = date + "/" + SERVICE + "/tc3_request";
   const stringToSign = "TC3-HMAC-SHA256\n" + timestamp + "\n" + credentialScope + "\n" + getHashHex(canonicalRequest);
@@ -244,12 +248,11 @@ async function doFetch(secretId: string, secretKey: string, startStr: string, en
   const payloadObj = {
     StartTime: startStr,
     EndTime: endStr,
-    // Interval: "min",
     MetricNames: METRIC_NAMES,
   };
   const payload = JSON.stringify(payloadObj);
   const timestamp = Math.floor(Date.now() / 1000);
-  const authorization = signTC3(secretId, secretKey, payload, timestamp);
+  const authorization = signTC3(secretId, secretKey, ACTION_OVERVIEW, payload, timestamp);
 
   const res = await fetch("https://" + HOST + "/", {
     method: "POST",
@@ -257,7 +260,7 @@ async function doFetch(secretId: string, secretKey: string, startStr: string, en
       Authorization: authorization,
       "Content-Type": "application/json; charset=utf-8",
       Host: HOST,
-      "X-TC-Action": ACTION,
+      "X-TC-Action": ACTION_OVERVIEW,
       "X-TC-Timestamp": String(timestamp),
       "X-TC-Version": VERSION,
     },
@@ -269,6 +272,56 @@ async function doFetch(secretId: string, secretKey: string, startStr: string, en
   const json = JSON.parse(resText);
   if (json.Response?.Error) throw new Error(json.Response.Error.Message || "API 返回错误");
   return json.Response || null;
+}
+
+export type OriginPullResponse = {
+  TimingDataRecords?: Array<{
+    TypeKey?: string;
+    TypeValue?: Array<{ MetricName?: string; Sum?: number; Max?: number; Avg?: number }>;
+  }>;
+};
+
+async function doFetchOriginPull(secretId: string, secretKey: string, startStr: string, endStr: string): Promise<number | null> {
+  const payloadObj = {
+    ZoneIds: ["*"],
+    MetricNames: [ORIGIN_PULL_METRIC],
+    StartTime: startStr,
+    EndTime: endStr,
+  };
+  const payload = JSON.stringify(payloadObj);
+  const timestamp = Math.floor(Date.now() / 1000);
+  const authorization = signTC3(secretId, secretKey, ACTION_ORIGIN_PULL, payload, timestamp);
+
+  const res = await fetch("https://" + HOST + "/", {
+    method: "POST",
+    headers: {
+      Authorization: authorization,
+      "Content-Type": "application/json; charset=utf-8",
+      Host: HOST,
+      "X-TC-Action": ACTION_ORIGIN_PULL,
+      "X-TC-Timestamp": String(timestamp),
+      "X-TC-Version": VERSION,
+    },
+    body: payload,
+  });
+
+  const resText = await res.text();
+  if (!res.ok) return null;
+  let json: { Response?: OriginPullResponse & { Error?: { Message?: string } } };
+  try {
+    json = JSON.parse(resText);
+  } catch {
+    return null;
+  }
+  if (json.Response?.Error) return null;
+  const records = json.Response?.TimingDataRecords;
+  if (!records?.length) return null;
+  for (const rec of records) {
+    for (const tv of rec.TypeValue ?? []) {
+      if (tv.MetricName === ORIGIN_PULL_METRIC && tv.Sum != null) return tv.Sum;
+    }
+  }
+  return null;
 }
 
 function extractMetrics(response: OverviewL7Response | null): EdgeOneMetrics {
@@ -285,7 +338,7 @@ function extractMetrics(response: OverviewL7Response | null): EdgeOneMetrics {
   return metrics;
 }
 
-/** 同时获取当前和环比周期的数据 */
+/** 同时获取当前和环比周期的数据；缓存命中率用 源站响应流量 计算：(flux - originInFlux)/flux */
 export async function fetchMetricsWithTrend(settings: EdgeOneSettings): Promise<{
   current: EdgeOneMetrics;
   previous: EdgeOneMetrics;
@@ -297,15 +350,19 @@ export async function fetchMetricsWithTrend(settings: EdgeOneSettings): Promise<
   const timeRange = settings?.timeRange === "today" ? "today" : "7days";
   const { current, previous } = getComparisonTimeRanges(timeRange);
 
-  const [currRes, prevRes] = await Promise.all([
+  const [currRes, prevRes, currOrigin, prevOrigin] = await Promise.all([
     doFetch(secretId, secretKey, current.startStr, current.endStr),
     doFetch(secretId, secretKey, previous.startStr, previous.endStr),
+    doFetchOriginPull(secretId, secretKey, current.startStr, current.endStr),
+    doFetchOriginPull(secretId, secretKey, previous.startStr, previous.endStr),
   ]);
 
-  return {
-    current: extractMetrics(currRes),
-    previous: extractMetrics(prevRes),
-  };
+  const curr = extractMetrics(currRes);
+  const prev = extractMetrics(prevRes);
+  if (currOrigin != null) curr.originInFlux = currOrigin;
+  if (prevOrigin != null) prev.originInFlux = prevOrigin;
+
+  return { current: curr, previous: prev };
 }
 
 // ---------- 格式化工具 ----------

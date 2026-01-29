@@ -63,8 +63,13 @@ function WidgetView({
 }) {
   const { current, previous } = data;
   const timeString = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
-  // 缓存命中率：按 命中流量/总流量；控制台若按「命中请求数/总请求数」会不同
-  const hitRate = current.flux > 0 ? (current.hitFlux / current.flux * 100).toFixed(1) : "0.0";
+  // 缓存命中率：控制台定义 (EdgeOne响应 - 源站响应)/EdgeOne响应；无源站数据时退化为 hitFlux/flux
+  const hitRate =
+    current.flux > 0
+      ? (current.originInFlux != null
+          ? ((current.flux - current.originInFlux) / current.flux * 100).toFixed(1)
+          : (current.hitFlux / current.flux * 100).toFixed(1))
+      : "0.0";
 
   return (
     <ZStack
@@ -190,11 +195,17 @@ async function render() {
     const data = await fetchMetricsWithTrend(settings);
     if (!data) throw new Error("获取数据失败");
     const c = data.current;
-    const hitRatePct = c.flux > 0 ? (c.hitFlux / c.flux * 100).toFixed(2) : "0";
+    const hitRatePct =
+      c.flux > 0
+        ? (c.originInFlux != null
+            ? ((c.flux - c.originInFlux) / c.flux * 100).toFixed(2)
+            : (c.hitFlux / c.flux * 100).toFixed(2))
+        : "0";
     console.log("[EdgeOne] API 四个指标 raw:", {
       总流量_flux: c.flux,
       总请求数_request: c.request,
       带宽峰值_bandwidth: c.bandwidth,
+      源站响应_originInFlux: c.originInFlux ?? "(未拉取)",
       缓存命中流量_hitFlux: c.hitFlux,
     });
     console.log("[EdgeOne] API 四个指标 展示:", {
