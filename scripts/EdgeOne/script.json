@@ -1,0 +1,43 @@
+{
+  "icon" : "globe",
+  "intentInputTypes" : [
+
+  ],
+  "localizedDescriptions" : {
+    "fr" : "",
+    "es" : "",
+    "zh" : "腾讯云 EdgeOne 七层监控小组件，显示流量、请求数、带宽与命中流量。",
+    "en" : "Tencent Cloud EdgeOne L7 monitoring widget: flux, request count, bandwidth, hit flux.",
+    "de" : "",
+    "ja" : "",
+    "it" : "",
+    "ru" : "",
+    "pt" : ""
+  },
+  "version" : "1.0.0",
+  "author" : {
+    "name" : "DTZSGHNR",
+    "homepage" : "https://github.com/Nanako718",
+    "email" : "2753086015@qq.com"
+  },
+  "remoteResource" : null,
+  "description" : "腾讯云 EdgeOne 七层监控小组件，显示流量、请求数、带宽与命中流量。需配置 Secret ID、Secret Key 和站点 ID。",
+  "localizedNames" : {
+    "fr" : "",
+    "es" : "",
+    "zh" : "EdgeOne",
+    "en" : "EdgeOne",
+    "de" : "",
+    "ja" : "",
+    "it" : "",
+    "ru" : "",
+    "pt" : ""
+  },
+  "color" : "rgba(174, 109, 216,1)",
+  "iconImage" : null,
+  "name" : "EdgeOne",
+  "contributors" : [
+
+  ],
+  "runInApp" : false
+}
