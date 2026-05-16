@@ -1,22 +1,27 @@
 import { fetch } from "scripting";
 
-/** 显示范围：今日 / 近7天 */
 export type TimeRange = "today" | "7days";
 
 export type EdgeOneSettings = {
   secretId: string;
   secretKey: string;
-  /** 小组件显示的数据范围，默认近7天 */
+  /** 站点 ZoneId（如 zone-xxx）；留空则查询账号下全部站点（ZoneIds 传 *） */
+  zoneId?: string;
   timeRange?: TimeRange;
 };
 
 export type EdgeOneMetrics = {
-  flux: number;
+  /** 总流量：l7Flow_flux 的 Sum；若无则用 l7Flow_outFlux + l7Flow_inFlux（字节）— 与控制台「总流量」 */
+  totalFlux: number;
+  /** 总请求数：l7Flow_request 的 Sum（次） */
   request: number;
-  bandwidth: number;
-  hitFlux: number;
-  /** 源站响应流量 l7Flow_inFlux_hy，用于 缓存命中率 = (flux - originInFlux)/flux */
-  originInFlux?: number;
+  /** 带宽峰值（bps）：l7Flow_bandwidth 的 Max；否则 max(outBandwidth.Max, inBandwidth.Max) */
+  bandwidthPeakBps: number;
+  /**
+   * 缓存命中率（%）：与控制台一致，1 − (源站响应 ÷ EdgeOne 响应)；
+   * 源站=l7Flow_inFlux_hy（回源接口），Edge=l7Flow_outFlux（分析接口）。回源未拉到为 -1。
+   */
+  cacheHitRate: number;
 };
 
 export const SETTINGS_KEY = "edgeOneSettings";
@@ -25,12 +30,19 @@ const HOST = "teo.tencentcloudapi.com";
 const SERVICE = "teo";
 const VERSION = "2022-09-01";
 const SIGNED_HEADERS = "content-type;host;x-tc-action";
-const ACTION_OVERVIEW = "DescribeOverviewL7Data";
-const METRIC_NAMES = ["l7Flow_flux", "l7Flow_request", "l7Flow_bandwidth", "l7Flow_hit_outFlux"];
+const ACTION_TIMING_L7 = "DescribeTimingL7AnalysisData";
 const ACTION_ORIGIN_PULL = "DescribeTimingL7OriginPullData";
-const ORIGIN_PULL_METRIC = "l7Flow_inFlux_hy";
+/** 与网页指标分析同源：七层访问时序 + 命中率用回源接口取源站响应字节 */
+const METRIC_NAMES_L7_FULL = [
+  "l7Flow_outFlux",
+  "l7Flow_inFlux",
+  "l7Flow_flux",
+  "l7Flow_outBandwidth",
+  "l7Flow_inBandwidth",
+  "l7Flow_bandwidth",
+  "l7Flow_request",
+];
 
-// ---------- 时间范围助手 ----------
 function pad2(n: number): string {
   return n < 10 ? "0" + n : String(n);
 }
@@ -49,58 +61,92 @@ function formatLocalISO(d: Date, hour: number, minute: number, second: number): 
   return `${y}-${m}-${day}T${h}:${min}:${sec}${sign}${oh}:${om}`;
 }
 
-/** 获取当前周期和环比周期的 StartTime/EndTime 字符串 */
+/**
+ * 当前周期与上一周期（环比基准）：
+ * - 两段时间等长、首尾相接（上一段结束紧邻当前段开始）、无重叠无间隔。
+ * - 「当日」：当前 = 今日 00:00 ~ 此刻；上一周期 = 将此时段整体向前平移等长。
+ * - 「近7天」：当前 = 此刻前滚动 7 天 ~ 此刻；上一周期 = 再往前等长 7 天。
+ */
 export function getComparisonTimeRanges(timeRange: TimeRange): {
   current: { startStr: string; endStr: string };
   previous: { startStr: string; endStr: string };
 } {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
   if (timeRange === "today") {
-    const yesterdayStart = new Date(todayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const yesterdayEnd = new Date(todayEnd);
-    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
-
+    const durationMs = Math.max(60_000, now.getTime() - todayStart.getTime());
+    const previousEnd = new Date(todayStart.getTime() - 1);
+    const previousStart = new Date(todayStart.getTime() - durationMs);
     return {
       current: {
         startStr: formatLocalISO(todayStart, 0, 0, 0),
-        endStr: formatLocalISO(todayEnd, 23, 59, 59),
+        endStr: formatLocalISO(now, now.getHours(), now.getMinutes(), now.getSeconds()),
       },
       previous: {
-        startStr: formatLocalISO(yesterdayStart, 0, 0, 0),
-        endStr: formatLocalISO(yesterdayEnd, 23, 59, 59),
-      },
-    };
-  } else {
-    // 近7天 (包含今天) vs 之前的 7 天
-    const currentStart = new Date(todayStart);
-    currentStart.setDate(currentStart.getDate() - 6);
-    
-    const previousEnd = new Date(currentStart);
-    previousEnd.setDate(previousEnd.getDate() - 1);
-    previousEnd.setHours(23, 59, 59, 999);
-    
-    const previousStart = new Date(previousEnd);
-    previousStart.setDate(previousStart.getDate() - 6);
-    previousStart.setHours(0, 0, 0, 0);
-
-    return {
-      current: {
-        startStr: formatLocalISO(currentStart, 0, 0, 0),
-        endStr: formatLocalISO(todayEnd, 23, 59, 59),
-      },
-      previous: {
-        startStr: formatLocalISO(previousStart, 0, 0, 0),
-        endStr: formatLocalISO(previousEnd, 23, 59, 59),
+        startStr: formatLocalISO(
+          previousStart,
+          previousStart.getHours(),
+          previousStart.getMinutes(),
+          previousStart.getSeconds()
+        ),
+        endStr: formatLocalISO(
+          previousEnd,
+          previousEnd.getHours(),
+          previousEnd.getMinutes(),
+          previousEnd.getSeconds()
+        ),
       },
     };
   }
+
+  const currentEnd = new Date(now);
+  const currentStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const previousEnd = new Date(currentStart.getTime() - 1);
+  const previousStart = new Date(currentStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  return {
+    current: {
+      startStr: formatLocalISO(
+        currentStart,
+        currentStart.getHours(),
+        currentStart.getMinutes(),
+        currentStart.getSeconds()
+      ),
+      endStr: formatLocalISO(currentEnd, currentEnd.getHours(), currentEnd.getMinutes(), currentEnd.getSeconds()),
+    },
+    previous: {
+      startStr: formatLocalISO(
+        previousStart,
+        previousStart.getHours(),
+        previousStart.getMinutes(),
+        previousStart.getSeconds()
+      ),
+      endStr: formatLocalISO(
+        previousEnd,
+        previousEnd.getHours(),
+        previousEnd.getMinutes(),
+        previousEnd.getSeconds()
+      ),
+    },
+  };
 }
 
-// ---------- 纯 JS 签名实现 ----------
+/** 文档：2h 内 min，2 天内 5min，7 天内 hour，超过 7 天 day；与不传 Interval 时服务端推算一致 */
+function inferInterval(startStr: string, endStr: string): "min" | "5min" | "hour" | "day" {
+  const startMs = Date.parse(startStr);
+  const endMs = Date.parse(endStr);
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) return "hour";
+  const span = Math.max(0, endMs - startMs);
+  const twoHours = 2 * 60 * 60 * 1000;
+  const twoDays = 2 * 24 * 60 * 60 * 1000;
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+  if (span <= twoHours) return "min";
+  if (span <= twoDays) return "5min";
+  if (span <= sevenDays) return "hour";
+  return "day";
+}
+
 function utf8Encode(str: string): Uint8Array {
   const n = str.length;
   const out: number[] = [];
@@ -131,13 +177,27 @@ const K = new Uint32Array([
   0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 ]);
 
-function rotr(n: number, b: number): number { return (n >>> b) | (n << (32 - b)); }
-function ch(x: number, y: number, z: number): number { return (x & y) ^ (~x & z); }
-function maj(x: number, y: number, z: number): number { return (x & y) ^ (x & z) ^ (y & z); }
-function sigma0(x: number): number { return rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22); }
-function sigma1(x: number): number { return rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25); }
-function gamma0(x: number): number { return rotr(x, 7) ^ rotr(x, 18) ^ (x >>> 3); }
-function gamma1(x: number): number { return rotr(x, 17) ^ rotr(x, 19) ^ (x >>> 10); }
+function rotr(n: number, b: number): number {
+  return (n >>> b) | (n << (32 - b));
+}
+function ch(x: number, y: number, z: number): number {
+  return (x & y) ^ (~x & z);
+}
+function maj(x: number, y: number, z: number): number {
+  return (x & y) ^ (x & z) ^ (y & z);
+}
+function sigma0(x: number): number {
+  return rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22);
+}
+function sigma1(x: number): number {
+  return rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25);
+}
+function gamma0(x: number): number {
+  return rotr(x, 7) ^ rotr(x, 18) ^ (x >>> 3);
+}
+function gamma1(x: number): number {
+  return rotr(x, 17) ^ rotr(x, 19) ^ (x >>> 10);
+}
 
 function sha256Bytes(data: Uint8Array): Uint8Array {
   const msg = new Uint8Array(data);
@@ -152,25 +212,57 @@ function sha256Bytes(data: Uint8Array): Uint8Array {
   view.setUint32(total - 4, (bitLen >>> 0) & 0xffffffff, false);
   view.setUint32(total - 8, Math.floor(bitLen / 0x100000000), false);
 
-  let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
-  let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+  let h0 = 0x6a09e667,
+    h1 = 0xbb67ae85,
+    h2 = 0x3c6ef372,
+    h3 = 0xa54ff53a;
+  let h4 = 0x510e527f,
+    h5 = 0x9b05688c,
+    h6 = 0x1f83d9ab,
+    h7 = 0x5be0cd19;
   const W = new Uint32Array(64);
   for (let i = 0; i < total; i += 64) {
     for (let t = 0; t < 16; t++) W[t] = view.getUint32(i + t * 4, false);
     for (let t = 16; t < 64; t++) W[t] = (gamma1(W[t - 2]) + W[t - 7] + gamma0(W[t - 15]) + W[t - 16]) >>> 0;
-    let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+    let a = h0,
+      b = h1,
+      c = h2,
+      d = h3,
+      e = h4,
+      f = h5,
+      g = h6,
+      h = h7;
     for (let t = 0; t < 64; t++) {
       const T1 = (h + sigma1(e) + ch(e, f, g) + K[t] + W[t]) >>> 0;
       const T2 = (sigma0(a) + maj(a, b, c)) >>> 0;
-      h = g; g = f; f = e; e = (d + T1) >>> 0; d = c; c = b; b = a; a = (T1 + T2) >>> 0;
+      h = g;
+      g = f;
+      f = e;
+      e = (d + T1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (T1 + T2) >>> 0;
     }
-    h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0;
-    h4 = (h4 + e) >>> 0; h5 = (h5 + f) >>> 0; h6 = (h6 + g) >>> 0; h7 = (h7 + h) >>> 0;
+    h0 = (h0 + a) >>> 0;
+    h1 = (h1 + b) >>> 0;
+    h2 = (h2 + c) >>> 0;
+    h3 = (h3 + d) >>> 0;
+    h4 = (h4 + e) >>> 0;
+    h5 = (h5 + f) >>> 0;
+    h6 = (h6 + g) >>> 0;
+    h7 = (h7 + h) >>> 0;
   }
   const out = new Uint8Array(32);
   const outView = new DataView(out.buffer);
-  outView.setUint32(0, h0, false); outView.setUint32(4, h1, false); outView.setUint32(8, h2, false); outView.setUint32(12, h3, false);
-  outView.setUint32(16, h4, false); outView.setUint32(20, h5, false); outView.setUint32(24, h6, false); outView.setUint32(28, h7, false);
+  outView.setUint32(0, h0, false);
+  outView.setUint32(4, h1, false);
+  outView.setUint32(8, h2, false);
+  outView.setUint32(12, h3, false);
+  outView.setUint32(16, h4, false);
+  outView.setUint32(20, h5, false);
+  outView.setUint32(24, h6, false);
+  outView.setUint32(28, h7, false);
   return out;
 }
 
@@ -217,10 +309,10 @@ function getDate(timestamp: number): string {
   return `${y}-${m}-${day}`;
 }
 
-// ---------- 腾讯云 API 签名 v3 ----------
 function signTC3(secretId: string, secretKey: string, action: string, payload: string, timestamp: number): string {
   const date = getDate(timestamp);
-  const canonicalHeaders = "content-type:application/json; charset=utf-8\nhost:" + HOST + "\nx-tc-action:" + action.toLowerCase() + "\n";
+  const canonicalHeaders =
+    "content-type:application/json; charset=utf-8\nhost:" + HOST + "\nx-tc-action:" + action.toLowerCase() + "\n";
   const canonicalRequest = "POST\n/\n\n" + canonicalHeaders + "\n" + SIGNED_HEADERS + "\n" + getHashHex(payload);
   const credentialScope = date + "/" + SERVICE + "/tc3_request";
   const stringToSign = "TC3-HMAC-SHA256\n" + timestamp + "\n" + credentialScope + "\n" + getHashHex(canonicalRequest);
@@ -229,30 +321,59 @@ function signTC3(secretId: string, secretKey: string, action: string, payload: s
   const kService = hmacSha256(kDate, utf8Encode(SERVICE));
   const kSigning = hmacSha256(kService, utf8Encode("tc3_request"));
   const signature = bytesToHex(hmacSha256(kSigning, utf8Encode(stringToSign)));
-  return "TC3-HMAC-SHA256 Credential=" + secretId + "/" + credentialScope + ", SignedHeaders=" + SIGNED_HEADERS + ", Signature=" + signature;
+  return (
+    "TC3-HMAC-SHA256 Credential=" +
+    secretId +
+    "/" +
+    credentialScope +
+    ", SignedHeaders=" +
+    SIGNED_HEADERS +
+    ", Signature=" +
+    signature
+  );
 }
 
-// ---------- API 请求逻辑 ----------
-export type OverviewL7Response = {
-  Data?: Array<{
-    TypeValue: Array<{
-      MetricName: string;
-      Sum: number;
-      Max: number;
-      Avg: number;
-    }>;
+export type TimingDataRecordRow = {
+  TypeKey?: string;
+  TypeValue?: Array<{
+    MetricName?: string;
+    Sum?: number;
+    Max?: number;
+    Avg?: number;
   }>;
 };
 
-async function doFetch(secretId: string, secretKey: string, startStr: string, endStr: string): Promise<OverviewL7Response | null> {
-  const payloadObj = {
+/** DescribeTimingL7AnalysisData 返回 Data；部分接口返回 TimingDataRecords，结构相同 */
+export type TimingL7AnalysisResponse = {
+  Data?: TimingDataRecordRow[];
+  TimingDataRecords?: TimingDataRecordRow[];
+};
+
+async function doFetchTimingL7Analysis(
+  secretId: string,
+  secretKey: string,
+  startStr: string,
+  endStr: string,
+  zoneIds: string[],
+  metricNames: string[]
+): Promise<TimingL7AnalysisResponse | null> {
+  const spanMs = Date.parse(endStr) - Date.parse(startStr);
+  const max31d = 31 * 24 * 60 * 60 * 1000;
+  if (!Number.isNaN(spanMs) && spanMs > max31d) {
+    throw new Error("查询时间范围不能超过 31 天");
+  }
+
+  /** 不传已废弃的 Area；地域筛选请用 Filters.country（本小组件未接） */
+  const payloadObj: Record<string, unknown> = {
     StartTime: startStr,
     EndTime: endStr,
-    MetricNames: METRIC_NAMES,
+    MetricNames: metricNames,
+    ZoneIds: zoneIds,
+    Interval: inferInterval(startStr, endStr),
   };
   const payload = JSON.stringify(payloadObj);
   const timestamp = Math.floor(Date.now() / 1000);
-  const authorization = signTC3(secretId, secretKey, ACTION_OVERVIEW, payload, timestamp);
+  const authorization = signTC3(secretId, secretKey, ACTION_TIMING_L7, payload, timestamp);
 
   const res = await fetch("https://" + HOST + "/", {
     method: "POST",
@@ -260,7 +381,7 @@ async function doFetch(secretId: string, secretKey: string, startStr: string, en
       Authorization: authorization,
       "Content-Type": "application/json; charset=utf-8",
       Host: HOST,
-      "X-TC-Action": ACTION_OVERVIEW,
+      "X-TC-Action": ACTION_TIMING_L7,
       "X-TC-Timestamp": String(timestamp),
       "X-TC-Version": VERSION,
     },
@@ -268,25 +389,114 @@ async function doFetch(secretId: string, secretKey: string, startStr: string, en
   });
 
   const resText = await res.text();
-  if (!res.ok) throw new Error(resText || "API 请求失败");
+  if (!res.ok) throw new Error(resText || "腾讯云 API 请求失败");
   const json = JSON.parse(resText);
-  if (json.Response?.Error) throw new Error(json.Response.Error.Message || "API 返回错误");
+  if (json.Response?.Error) throw new Error(json.Response.Error.Message || "腾讯云 API 返回错误");
   return json.Response || null;
 }
 
-export type OriginPullResponse = {
-  TimingDataRecords?: Array<{
-    TypeKey?: string;
-    TypeValue?: Array<{ MetricName?: string; Sum?: number; Max?: number; Avg?: number }>;
-  }>;
+function getTimingDataRows(resp: TimingL7AnalysisResponse | null): TimingDataRecordRow[] {
+  if (!resp) return [];
+  const rows = resp.Data?.length ? resp.Data : resp.TimingDataRecords;
+  return Array.isArray(rows) ? rows : [];
+}
+
+type AnalysisPartial = {
+  edgeOutFlux: number;
+  totalFlux: number;
+  request: number;
+  bandwidthPeakBps: number;
 };
 
-async function doFetchOriginPull(secretId: string, secretKey: string, startStr: string, endStr: string): Promise<number | null> {
-  const payloadObj = {
-    ZoneIds: ["*"],
-    MetricNames: [ORIGIN_PULL_METRIC],
+function extractAnalysisPartial(response: TimingL7AnalysisResponse | null): AnalysisPartial {
+  let sumOutFlux = 0;
+  let sumInFlux = 0;
+  let sumFlux = 0;
+  let sumRequest = 0;
+  let maxOutBw = 0;
+  let maxInBw = 0;
+  let maxBandwidth = 0;
+
+  for (const row of getTimingDataRows(response)) {
+    for (const m of row.TypeValue ?? []) {
+      const name = m.MetricName;
+      const sum = m.Sum ?? 0;
+      const mx = m.Max ?? 0;
+      if (name === "l7Flow_outFlux") sumOutFlux += sum;
+      else if (name === "l7Flow_inFlux") sumInFlux += sum;
+      else if (name === "l7Flow_flux") sumFlux += sum;
+      else if (name === "l7Flow_request") sumRequest += sum;
+      else if (name === "l7Flow_outBandwidth") {
+        if (mx > maxOutBw) maxOutBw = mx;
+      } else if (name === "l7Flow_inBandwidth") {
+        if (mx > maxInBw) maxInBw = mx;
+      } else if (name === "l7Flow_bandwidth") {
+        if (mx > maxBandwidth) maxBandwidth = mx;
+      }
+    }
+  }
+
+  const totalFlux = sumFlux > 0 ? sumFlux : sumOutFlux + sumInFlux;
+  const bandwidthPeakBps = maxBandwidth > 0 ? maxBandwidth : Math.max(maxOutBw, maxInBw);
+  return {
+    edgeOutFlux: sumOutFlux,
+    totalFlux,
+    request: sumRequest,
+    bandwidthPeakBps,
+  };
+}
+
+function sumMetricSumFromRows(rows: TimingDataRecordRow[], metricName: string): number {
+  let t = 0;
+  for (const row of rows) {
+    for (const m of row.TypeValue ?? []) {
+      if (m.MetricName === metricName) t += m.Sum ?? 0;
+    }
+  }
+  return t;
+}
+
+/** 与腾讯云指标分析文档一致：1 − (源站响应流量 / EdgeOne 响应流量)，结果 0–100（%） */
+function computeConsoleCacheHitPercent(edgeOneOutFluxSum: number, originResponseFluxSum: number): number {
+  if (!Number.isFinite(edgeOneOutFluxSum) || edgeOneOutFluxSum <= 0) return 0;
+  if (!Number.isFinite(originResponseFluxSum) || originResponseFluxSum < 0) return 0;
+  const ratio = originResponseFluxSum / edgeOneOutFluxSum;
+  const pct = (1 - Math.min(1, ratio)) * 100;
+  return Math.min(100, Math.max(0, pct));
+}
+
+function mergeEdgeOneMetrics(analysis: AnalysisPartial, originInfluxHySum: number | null): EdgeOneMetrics {
+  let cacheHitRate = -1;
+  if (originInfluxHySum !== null) {
+    const raw = computeConsoleCacheHitPercent(analysis.edgeOutFlux, originInfluxHySum);
+    cacheHitRate = Math.round(raw * 100) / 100;
+  }
+  return {
+    totalFlux: analysis.totalFlux,
+    request: analysis.request,
+    bandwidthPeakBps: analysis.bandwidthPeakBps,
+    cacheHitRate,
+  };
+}
+
+async function doFetchTimingL7OriginPull(
+  secretId: string,
+  secretKey: string,
+  startStr: string,
+  endStr: string,
+  zoneIds: string[]
+): Promise<TimingL7AnalysisResponse | null> {
+  const spanMs = Date.parse(endStr) - Date.parse(startStr);
+  const max31d = 31 * 24 * 60 * 60 * 1000;
+  if (!Number.isNaN(spanMs) && spanMs > max31d) {
+    throw new Error("查询时间范围不能超过 31 天");
+  }
+  const payloadObj: Record<string, unknown> = {
+    ZoneIds: zoneIds,
+    MetricNames: ["l7Flow_inFlux_hy"],
     StartTime: startStr,
     EndTime: endStr,
+    Interval: inferInterval(startStr, endStr),
   };
   const payload = JSON.stringify(payloadObj);
   const timestamp = Math.floor(Date.now() / 1000);
@@ -306,66 +516,90 @@ async function doFetchOriginPull(secretId: string, secretKey: string, startStr: 
   });
 
   const resText = await res.text();
-  if (!res.ok) return null;
-  let json: { Response?: OriginPullResponse & { Error?: { Message?: string } } };
-  try {
-    json = JSON.parse(resText);
-  } catch {
-    return null;
-  }
-  if (json.Response?.Error) return null;
-  const records = json.Response?.TimingDataRecords;
-  if (!records?.length) return null;
-  for (const rec of records) {
-    for (const tv of rec.TypeValue ?? []) {
-      if (tv.MetricName === ORIGIN_PULL_METRIC && tv.Sum != null) return tv.Sum;
-    }
-  }
-  return null;
+  if (!res.ok) throw new Error(resText || "腾讯云回源数据 API 请求失败");
+  const json = JSON.parse(resText);
+  if (json.Response?.Error) throw new Error(json.Response.Error.Message || "腾讯云回源数据 API 返回错误");
+  return json.Response || null;
 }
 
-function extractMetrics(response: OverviewL7Response | null): EdgeOneMetrics {
-  const metrics: EdgeOneMetrics = { flux: 0, request: 0, bandwidth: 0, hitFlux: 0 };
-  if (!response?.Data?.length) return metrics;
-  const typeValue = response.Data[0]?.TypeValue;
-  if (!typeValue) return metrics;
-  for (const m of typeValue) {
-    if (m.MetricName === "l7Flow_flux") metrics.flux = m.Sum;
-    else if (m.MetricName === "l7Flow_request") metrics.request = m.Sum;
-    else if (m.MetricName === "l7Flow_bandwidth") metrics.bandwidth = m.Max;
-    else if (m.MetricName === "l7Flow_hit_outFlux") metrics.hitFlux = m.Sum;
-  }
-  return metrics;
+function resolveCredentials(settings: EdgeOneSettings & Record<string, unknown>): {
+  secretId: string;
+  secretKey: string;
+  zoneIds: string[];
+} {
+  const secretId = String(settings.secretId ?? settings.accessKeyId ?? "").trim();
+  const secretKey = String(settings.secretKey ?? settings.accessKeySecret ?? "").trim();
+  const zoneRaw = String(settings.zoneId ?? settings.siteId ?? "").trim();
+  /** 文档：最多 100 个站点；账号级汇总用 *（数组元素为字符串 "*"） */
+  const parsed = zoneRaw
+    ? zoneRaw
+        .split(/[\s,，]+/)
+        .map((z) => z.trim())
+        .filter(Boolean)
+        .slice(0, 100)
+    : [];
+  const zoneIds = parsed.length > 0 ? parsed : ["*"];
+  return { secretId, secretKey, zoneIds };
 }
 
-/** 同时获取当前和环比周期的数据；缓存命中率用 源站响应流量 计算：(flux - originInFlux)/flux */
 export async function fetchMetricsWithTrend(settings: EdgeOneSettings): Promise<{
   current: EdgeOneMetrics;
   previous: EdgeOneMetrics;
 } | null> {
-  const secretId = String(settings?.secretId ?? "").trim();
-  const secretKey = String(settings?.secretKey ?? "").trim();
+  const s = settings as EdgeOneSettings & Record<string, unknown>;
+  const { secretId, secretKey, zoneIds } = resolveCredentials(s);
   if (!secretId || !secretKey) return null;
 
   const timeRange = settings?.timeRange === "today" ? "today" : "7days";
   const { current, previous } = getComparisonTimeRanges(timeRange);
 
-  const [currRes, prevRes, currOrigin, prevOrigin] = await Promise.all([
-    doFetch(secretId, secretKey, current.startStr, current.endStr),
-    doFetch(secretId, secretKey, previous.startStr, previous.endStr),
-    doFetchOriginPull(secretId, secretKey, current.startStr, current.endStr),
-    doFetchOriginPull(secretId, secretKey, previous.startStr, previous.endStr),
-  ]);
+  let currAnalysis: TimingL7AnalysisResponse | null;
+  let currOrigin: TimingL7AnalysisResponse | null = null;
+  try {
+    const [a, o] = await Promise.all([
+      doFetchTimingL7Analysis(secretId, secretKey, current.startStr, current.endStr, zoneIds, METRIC_NAMES_L7_FULL),
+      doFetchTimingL7OriginPull(secretId, secretKey, current.startStr, current.endStr, zoneIds).catch(() => null),
+    ]);
+    currAnalysis = a;
+    currOrigin = o;
+  } catch (error) {
+    console.log("[EdgeOne] 当前周期数据拉取失败:", {
+      timeRange,
+      startTime: current.startStr,
+      endTime: current.endStr,
+      zoneIds,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 
-  const curr = extractMetrics(currRes);
-  const prev = extractMetrics(prevRes);
-  if (currOrigin != null) curr.originInFlux = currOrigin;
-  if (prevOrigin != null) prev.originInFlux = prevOrigin;
+  const currPart = extractAnalysisPartial(currAnalysis);
+  const currOriginSum =
+    currOrigin === null ? null : sumMetricSumFromRows(getTimingDataRows(currOrigin), "l7Flow_inFlux_hy");
 
-  return { current: curr, previous: prev };
+  let prevAnalysis: TimingL7AnalysisResponse | null = null;
+  let prevOrigin: TimingL7AnalysisResponse | null = null;
+  try {
+    const [a, o] = await Promise.all([
+      doFetchTimingL7Analysis(secretId, secretKey, previous.startStr, previous.endStr, zoneIds, METRIC_NAMES_L7_FULL),
+      doFetchTimingL7OriginPull(secretId, secretKey, previous.startStr, previous.endStr, zoneIds).catch(() => null),
+    ]);
+    prevAnalysis = a;
+    prevOrigin = o;
+  } catch {
+    // 环比静默失败
+  }
+
+  const prevPart = extractAnalysisPartial(prevAnalysis);
+  const prevOriginSum =
+    prevOrigin === null ? null : sumMetricSumFromRows(getTimingDataRows(prevOrigin), "l7Flow_inFlux_hy");
+
+  return {
+    current: mergeEdgeOneMetrics(currPart, currOriginSum),
+    previous: mergeEdgeOneMetrics(prevPart, prevOriginSum),
+  };
 }
 
-// ---------- 格式化工具 ----------
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return bytes + " B";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + " KB";

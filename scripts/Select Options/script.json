@@ -1,0 +1,38 @@
+{
+  "description": "Interactive assistant tool for collecting single or multiple user selections.",
+  "color": "rgba(32, 178, 170,1)",
+  "icon": "checklist",
+  "localizedNames": {
+    "en": "",
+    "zh": "选择选项",
+    "pt": "",
+    "fr": "",
+    "it": "",
+    "es": "",
+    "de": "",
+    "ru": "",
+    "ja": ""
+  },
+  "name": "Select Options",
+  "remoteResource": null,
+  "intentInputTypes": [],
+  "localizedDescriptions": {
+    "zh": "用于在 Assistant 工具里让用户进行单选或多选确认。",
+    "es": "",
+    "ja": "",
+    "pt": "",
+    "fr": "",
+    "it": "",
+    "de": "",
+    "ru": ""
+  },
+  "version": "1.0.0",
+  "runInApp": false,
+  "author": {
+    "name": "@xream",
+    "email": "xreamxu@gmail.com",
+    "homepage": "https://t.me/zhetengsha"
+  },
+  "iconImage": null,
+  "contributors": []
+}

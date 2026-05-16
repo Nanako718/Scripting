@@ -1,4 +1,4 @@
-import { Color, ColorScheme, Size, VirtualNode, KeyboardType, Edge, Point, KeywordPoint, Visibility, ReadableStream } from "scripting"
+import { Color, ColorScheme, Size, VirtualNode, KeyboardType, Edge, Point, KeywordPoint, Visibility, ReadableStream, FunctionComponent, AppIntent, AppIntentProtocol } from "scripting"
 
 declare global {
   type Without<T, U> = {
@@ -51,9 +51,51 @@ declare global {
    */
   namespace Device {
     /**
+     * A type that represents the orientation of the device.
+     */
+    type Orientation =
+      | "portrait"
+      | "portraitUpsideDown"
+      | "landscapeLeft"
+      | "landscapeRight"
+      | "faceUp"
+      | "faceDown"
+      | "unknown"
+
+    type InterfaceOrientation =
+      | "portrait"
+      | "portraitUpsideDown"
+      | "landscape"
+      | "landscapeLeft"
+      | "landscapeRight"
+      | "all"
+      | "allButUpsideDown"
+
+    /**
+     * Network interface information
+     */
+    type NetworkInterface = {
+      address: string
+      netmask: string | null
+      family: 'IPv4' | 'IPv6'
+      mac: string | null
+      isInternal: boolean
+      cidr: string | null
+    }
+
+    /**
+     * A type that represents the state of the battery.
+     */
+    type BatteryState = "full" | "charging" | "unplugged" | "unknown"
+
+    /**
      * Model of the device, e.g. "iPhone".
      */
     const model: string
+    /**
+     * Localized model of the device, e.g. "iPhone".
+     */
+    const localizedModel: string
     /**
      * The current version of the operating system.
      */
@@ -69,11 +111,44 @@ declare global {
       height: number
       scale: number
     }
-    const batteryState: "full" | "charging" | "unplugged" | "unknown"
+
+    /**
+     * The current state of the battery.
+     */
+    const batteryState: BatteryState
+
+    /**
+     * The current level of the battery.
+     */
     const batteryLevel: number
+
+    /**
+     * A boolean value that indicates whether the proximity sensor is close to the user.
+     */
+    const proximityState: boolean
+
+    /**
+     * Whether the device is in a landscape orientation.
+     */
     const isLandscape: boolean
+
+    /**
+     * Whether the device is in a portrait orientation.
+     */
     const isPortrait: boolean
+
+    /**
+     * Whether the device is in a flat orientation.
+     */
     const isFlat: boolean
+    /**
+     * The current orientation of the device.
+     */
+    const orientation: Orientation
+
+    /**
+     * The current color scheme of the device.
+     */
     const colorScheme: ColorScheme
     /**
      * A boolean value that indicates whether the process is an iPhone or iPad app running on a Mac.
@@ -115,22 +190,65 @@ declare global {
     const isWakeLockEnabled: Promise<boolean>
 
     /**
+     * The user configured interface orientations. You can reset the `supportedInterfaceOrientations` to this value.
+     */
+    const userConfiguredInterfaceOrientations: InterfaceOrientation[]
+
+    /**
+     * The supported interface orientations for the app.
+     * Currently, this property is only available on iPhone.
+     */
+    var supportedInterfaceOrientations: InterfaceOrientation[]
+
+    /**
      * Enable or disable the wakelock. This method is only available in Scripting app.
      * @param enabled Whether to enable or disable the wake lock.
      */
     function setWakeLockEnabled(enabled: boolean): void
 
     /**
-     * Network interface information
+     * Add a battery state listener.
+     * @param callback The callback function to be called when the battery state changes.
      */
-    type NetworkInterface = {
-      address: string
-      netmask: string | null
-      family: 'IPv4' | 'IPv6'
-      mac: string | null
-      isInternal: boolean
-      cidr: string | null
-    }
+    function addBatteryStateListener(callback: (state: BatteryState) => void): void
+    /**
+     * Remove a battery state listener.
+     * @param callback The callback function to be removed. If callback is not specified, all battery state listeners will be removed.
+     */
+    function removeBatteryStateListener(callback?: (state: BatteryState) => void): void
+    /**
+     * Add a battery level listener. 
+     * @param callback The callback function to be called when the battery level changes.
+     */
+    function addBatteryLevelListener(callback: (level: number) => void): void
+    /**
+     * Remove a battery level listener.
+     * @param callback The callback function to be removed. If callback is not specified, all battery level listeners will be removed.
+     */
+    function removeBatteryLevelListener(callback?: (level: number) => void): void
+
+    /**
+     * Add an orientation change listener. You should call this method first to begin the orientation observation.
+     * This only works when your device has disabled the orientation lock.
+     * @param callback The callback function to be called when the orientation changes.
+     */
+    function addOrientationListener(callback: (orientation: Orientation) => void): void
+    /**
+     * Remove an orientation change listener. If callback is not specified, all orientation change listeners will be removed and the orientation observation will be stopped.
+     * This only works when your device has disabled the orientation lock.
+     * @param callback The callback function to be removed.
+     */
+    function removeOrientationListener(callback?: (orientation: Orientation) => void): void
+    /**
+     * Add a proximity state listener.
+     * @param callback The callback function to be called when the proximity state changes.
+     */
+    function addProximityStateListener(callback: (state: boolean) => void): void
+    /**
+     * Remove a proximity state listener.
+     * @param callback The callback function to be removed. If callback is not specified, all proximity state listeners will be removed.
+     */
+    function removeProximityStateListener(callback?: (state: boolean) => void): void
 
     /**
      * Get the network interfaces of the device.
@@ -1178,7 +1296,7 @@ declare global {
   /**
    * The accuracy of a geographical coordinate.
    */
-  type LocationAccuracy = "best" | "tenMeters" | "hundredMeters" | "kilometer" | "threeKilometers"
+  type LocationAccuracy = "best" | "tenMeters" | "hundredMeters" | "kilometer" | "threeKilometers" | "bestForNavigation" | "reduced"
   type LocationInfo = {
     /**
      * The latitude in degrees.
@@ -1257,12 +1375,51 @@ declare global {
   namespace Location {
 
     /**
-     * A Boolean value that indicates whether a widget is eligible to receive location updates.
+     * A Heading object contains computed values for the deviceâ€™s azimuth (orientation) relative to true or magnetic north. It also includes the raw data for the three-dimensional vector used to compute those values.
      */
-    const isAuthorizedForWidgetUpdates: Promise<boolean>
+    type Heading = {
+      /**
+       * The maximum deviation (measured in degrees) between the reported heading and the true geomagnetic heading.
+       */
+      headingAccuracy: number
+      /**
+       * The heading (measured in degrees) relative to true north.
+       */
+      trueHeading: number
+      /**
+       * The heading (measured in degrees) relative to magnetic north.
+       */
+      magneticHeading: number
+      /**
+       * The time at which this heading was determined.
+       */
+      timestamp: Date
+      /**
+       * The geomagnetic data (measured in microteslas) for the x-axis.
+       */
+      x: number
+      /**
+       * The geomagnetic data (measured in microteslas) for the y-axis.
+       */
+      y: number
+      /**
+       * The geomagnetic data (measured in microteslas) for the z-axis.
+       */
+      z: number
+    }
 
     /**
-     * Set the accuracy of the location data that your app wants to receive.
+     * A Boolean value that indicates whether a widget is eligible to receive location updates.
+     */
+    const isAuthorizedForWidgetUpdates: boolean
+
+    /**
+     * The accuracy of the location data that your script wants to receive.
+     */
+    const accuracy: LocationAccuracy
+
+    /**
+     * Set the accuracy of the location data that your script wants to receive.
      */
     function setAccuracy(accuracy: LocationAccuracy): Promise<void>
     /**
@@ -1282,21 +1439,53 @@ declare global {
     function pickFromMap(): Promise<LocationInfo | null>
     /**
      * Submits a reverse-geocoding request for the specified location and locale.
+     * @param options The options for the reverse geocoding request.
+     * @param options.latitude The latitude in degrees.
+     * @param options.longitude The longitude in degrees.
+     * @param options.locale The preferred locale to use when returning the address information.
+     * @returns A promise that resolves to an array of `LocationPlacemark` objects, or rejects with an error if the request fails.
      */
     function reverseGeocode(options: {
-      /**
-       * The latitude in degrees.
-       */
       latitude: number
-      /**
-       * The longitude in degrees.
-       */
       longitude: number
-      /**
-       * The locale to use when returning the address information. You might specify a value for this parameter when you want the address returned in a locale that differs from the userâ€™s current language settings. Specify null to use the userâ€™s default locale information.
-       */
       locale?: string
     }): Promise<LocationPlacemark[] | null>
+
+    /**
+     * Submits a forward-geocoding request for the specified address and locale.
+     * @param options The options for the forward geocoding request.
+     * @param options.address The address to geocode.
+     * @param options.locale The preferred locale to use when returning the address information.
+     * @returns A promise that resolves to an array of `LocationPlacemark` objects, or rejects with an error if the request fails.
+     */
+    function geocodeAddress(options: {
+      address: string
+      locale?: string
+    }): Promise<LocationPlacemark[] | null>
+
+
+    /**
+     * Requests the most recently reported heading. The value of this property is null if heading updates have never been initiated.
+     */
+    function requestHeading(): Promise<Heading | null>
+    /**
+     * Starts updating the heading.
+     */
+    function startUpdatingHeading(): Promise<void>
+    /**
+     * Stops updating the heading.
+     */
+    function stopUpdatingHeading(): void
+    /**
+     * Add a listener to be notified when the heading changes.
+     * @param listener The listener is called when the heading changes.
+     */
+    function addHeadingListener(listener: (heading: Heading) => void): void
+    /**
+     * Remove a heading listener, if you do not specify a listener, all heading listeners will be removed.
+     * @param listener The listener is called when the heading changes.
+     */
+    function removeHeadingListener(listener?: (heading: Heading) => void): void
   }
 
   /**
@@ -1339,6 +1528,14 @@ declare global {
      * this method would throw an error, you should use `isiCloudEnabled` to check it.
      */
     const iCloudDocumentsDirectory: string
+    /**
+     * Returns a boolean value indicating whether WebDAV is available.
+     */
+    const isWebDAVAvailable: boolean
+    /**
+     * Returns the path to WebDAV's `Documents` directory, you should check `isWebDAVAvailable` first.
+     */
+    const webDAVDocumentsDirectory: string
     /**
      * Returns a boolean value indicating whether the file is targeted for storage in iCloud.
      * @param filePath The path of the file
@@ -1597,7 +1794,9 @@ declare global {
 
 
   /**
-   * Share activity item. Supports a text or an image.
+   * Share activity item. Supports text, URL strings such as `https://example.com`
+   * and `file:///path/to/file`, existing absolute file paths such as
+   * `/private/var/mobile/...`, or an image.
    */
   type ActivityItem = string | UIImage
 
@@ -1607,7 +1806,11 @@ declare global {
   namespace ShareSheet {
     /**
      * Present a ShareSheet UI.
-     * @param items The array of data on which to perform the activity. You can share text, url, or UIImage.
+     * String items are shared as text by default. If a string is a URL such as
+     * `https://example.com` or `file:///path/to/file`, it will be shared as a URL.
+     * If a string is an existing absolute file path such as `/private/var/mobile/...`,
+     * it will be shared as a file URL. Non-existing file paths are still shared as text.
+     * @param items The array of data on which to perform the activity. You can share text, a URL string, an existing absolute file path, or UIImage.
      * @returns Returns a promise, it is fulfilled with a boolean value indicates that whether the share is completed when the sheet is dismissed.
      */
     function present(items: ActivityItem[]): Promise<boolean>
@@ -1629,6 +1832,24 @@ declare global {
      * ```
      */
     function parse(filePath: string): Promise<string | null>
+
+    /**
+     * Parse QRCode image.
+     * @example
+     * const result = await QRCode.parseImage(image)
+     * if (result != null) {
+     *   // handle QRCode result
+     * }
+     */
+    function parseImage(image: UIImage): Promise<string | null>
+
+    /**
+     * Generate QRCode image.
+     * @example
+     * const image = await QRCode.generate('https://example.com')
+     */
+    function generate(text: string): Promise<UIImage | null>
+
     /**
      * Open the QRCode scan page and scan.
      * @example
@@ -2542,6 +2763,18 @@ declare global {
      */
     reload(): void
     /**
+     * Take a snapshot of the WebView's currently visible viewport and return it as a `UIImage`. Returns `null` if the WebView is not on screen (e.g. `present()` has not been called and it is not used by a `<WebView>` view), or if the snapshot fails.
+     * @param options Optional snapshot configuration.
+     * @param options.rect The rectangle (in the WebView's coordinate space, in points) to capture. Defaults to the full visible viewport.
+     * @param options.snapshotWidth The width (in points) of the resulting image. The height is scaled proportionally. Defaults to the WebView's width.
+     * @param options.afterScreenUpdates Whether to take the snapshot after pending screen updates have been applied. Defaults to `true`.
+     */
+    takeSnapshot(options?: {
+      rect?: { x: number, y: number, width: number, height: number }
+      snapshotWidth?: number
+      afterScreenUpdates?: boolean
+    }): Promise<UIImage | null>
+    /**
      * Dismiss the WebView, if the WebView is not presented, do nothing. You can presented the WebView again before it was disposed.
      */
     dismiss(): void
@@ -2549,6 +2782,83 @@ declare global {
      * Dispose the WebView controller. If the WebView is presented, it will be dismissed. You must call this method manually to avoid memory leaks.
      */
     dispose(): void
+  }
+
+  /**
+   * A lightweight scraper service.
+   */
+  namespace WebScraper {
+
+    type WaitOptions =
+      | "domComplete"
+      | "networkIdle"
+      | {
+        mode: "domComplete"
+      }
+      | {
+        mode: "networkIdle"
+        idleSeconds?: number
+      }
+      | {
+        mode: "selector"
+        selector: string
+      }
+
+    type Error = {
+      code: string
+      message: string
+    }
+
+    type Timing = {
+      totalMs: number
+    }
+
+    type Result<T = any> = {
+      ok: boolean
+      taskId: string
+      url?: string
+      html?: string
+      data?: T
+      error?: Error
+      timing?: Timing
+    }
+
+    /**
+     * Load a URL and return the final HTML.
+     */
+    function load(options: {
+      url: string
+      wait?: WaitOptions
+      timeout?: number
+      taskId?: string
+    }): Promise<Result<string>>
+
+    /**
+     * Load a URL, optionally run extractScript in page context, and return html + extracted data.
+     */
+    function scrape<T = any>(options: {
+      url: string
+      wait?: WaitOptions
+      timeout?: number
+      extractScript?: string
+      taskId?: string
+    }): Promise<Result<T>>
+
+    /**
+     * Evaluate JavaScript and return the result.
+     */
+    function eval<T = any>(options: {
+      url: string
+      script: string
+      wait?: WaitOptions
+      timeout?: number
+      taskId?: string
+    }): Promise<Result<T>>
+
+    /**
+     * Cancel a running task by taskId.
+     */
+    function cancel(taskId: string): Promise<boolean>
   }
 
   /**
@@ -2866,9 +3176,9 @@ declare global {
      */
     readonly identifier: string
     /**
-     * The calendar for the reminder.
+     * The calendar for the reminder. The calendar can be null if the reminder is not associated with a calendarm, but you must do not set the calendar to null.
      */
-    calendar: Calendar
+    calendar: Calendar | null
     /**
      * The title of the reminder.
      */
@@ -2952,6 +3262,10 @@ declare global {
      * Saves changes to a reminder.
      */
     save(): Promise<void>
+    /**
+     * Get a reminder by its identifier.
+     */
+    static get(identifier: string): Promise<Reminder | null>
     /**
      * Get all reminders. 
      */
@@ -3205,8 +3519,6 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      */
     readonly hasRecurrenceRules: boolean
 
-    new(): CalendarEvent
-
     addAlarm(alarm: EventAlarm): void
 
     removAlarm(alarm: EventAlarm): void
@@ -3231,6 +3543,10 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      */
     presentEditView(): Promise<EventEditViewAction>
     /**
+     * Get a calendar event by its identifier.
+     */
+    static get(identifier: string): Promise<CalendarEvent | null>
+    /**
      * To identify events that occur within a given date range and calendars.
      * @param startDate The start date of the range of events fetched.
      * @param endDate The end date of the range of events fetched.
@@ -3250,7 +3566,7 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
     /**
      * The WebSocket() constructor returns a new WebSocket object and immediately attempts to establish a connection to the specified WebSocket URL.
      */
-    new(url: string): WebSocket
+    constructor(url: string)
     readonly url: string
     onopen?: () => void
     onerror?: (error: Error) => void
@@ -4092,6 +4408,101 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
       | null
   }
 
+  namespace SystemMusicPlayer {
+    type PlaybackState =
+      | "stopped"
+      | "playing"
+      | "paused"
+      | "interrupted"
+      | "seekingForward"
+      | "seekingBackward"
+
+    type RepeatMode =
+      | "none"
+      | "one"
+      | "all"
+      | "default"
+
+    type ShuffleMode =
+      | "off"
+      | "songs"
+      | "albums"
+      | "default"
+
+    type EventType =
+      | "playbackStateDidChange"
+      | "nowPlayingItemDidChange"
+      | "volumeDidChange"
+
+    type EventPayloadMap = {
+      playbackStateDidChange: PlaybackState
+      nowPlayingItemDidChange: NowPlayingItem | null
+      volumeDidChange: null
+    }
+
+    type SetQueueByStoreIDsOptions = {
+      storeIDs: string[]
+      startItemID?: string
+      startTime?: number
+    }
+
+    type SetQueueByPersistentIDsOptions = {
+      persistentIDs: string[]
+      startItemID?: string
+      startTime?: number
+    }
+
+    type NowPlayingItem = {
+      persistentID: string
+      title: string
+      playbackDuration: number
+      playbackStoreID?: string
+      artist?: string
+      albumTitle?: string
+      albumArtist?: string
+      genre?: string
+      composer?: string
+    }
+
+    function setQueueByStoreIDs(
+      options: SetQueueByStoreIDsOptions
+    ): Promise<void>
+
+    function setQueueByPersistentIDs(
+      options: SetQueueByPersistentIDsOptions
+    ): Promise<void>
+
+    function prepare(): Promise<void>
+    function play(): Promise<void>
+    function pause(): Promise<void>
+    function stop(): Promise<void>
+    function skipToNextItem(): Promise<void>
+    function skipToPreviousItem(): Promise<void>
+    function seek(to: number): Promise<void>
+    function setCurrentPlaybackTime(seconds: number): Promise<void>
+    function setCurrentPlaybackRate(rate: number): Promise<void>
+    function setRepeatMode(mode: RepeatMode): Promise<void>
+    function setShuffleMode(mode: ShuffleMode): Promise<void>
+
+    function indexOfNowPlayingItem(): number
+    function getNowPlayingItem(): NowPlayingItem | null
+    function getPlaybackState(): PlaybackState
+    function getCurrentPlaybackTime(): number
+    function getCurrentPlaybackRate(): number
+    function getRepeatMode(): RepeatMode
+    function getShuffleMode(): ShuffleMode
+
+    function addEventListener<T extends EventType>(
+      type: T,
+      listener: (payload: EventPayloadMap[T]) => void
+    ): void
+
+    function removeEventListener<T extends EventType>(
+      type: T,
+      listener: (payload: EventPayloadMap[T]) => void
+    ): void
+  }
+
   enum TimeControlStatus {
     paused,
     waitingToPlayAtSpecifiedRate,
@@ -4368,7 +4779,7 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      *  - `keepSource`: Keep the color space of the source video.
      *  - `forceSDR`: Force the color space to SDR.
      */
-    type colorSpacePolicy = 'keepSource' | 'forceSDR'
+    type ColorSpacePolicy = 'keepSource' | 'forceSDR'
 
     type ExportFileType = "mp4" | "mov" | "qta" | "m4v" | "m4a" | "mobile3GPP" | "mobile3GPP2"
 
@@ -4382,7 +4793,7 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
        */
       frameRate?: number
       /**
-       * The color space policy to use when rendering the video. Defaults to `forceSDR`.
+       * The color space policy to use when rendering the video. Defaults to `fit`.
        */
       scaleMode?: VideoScaleMode
       /**
@@ -4405,6 +4816,10 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
        * The output file type to use. Defaults to `mp4`.
        */
       outputFileType?: ExportFileType
+      /**
+       * The color space policy to use when rendering the video. Defaults to `forceSDR`.
+       */
+      colorSpacePolicy?: ColorSpacePolicy
     }
 
     /**
@@ -4452,6 +4867,10 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      */
     currentTime: DurationInSeconds
     /**
+     * A default rate at which to begin playback.
+     */
+    defaultRate: number
+    /**
      * Controls the playback rate of the media.
      * Value `1.0` is normal speed, values less than `1.0` slow down playback, and values greater than `1.0` speed up playback.
      */
@@ -4473,9 +4892,10 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
     setSource(filePathOrURL: string): boolean
     /**
      * Plays the current media.
+     * @param atRate The playback rate at which to play the media.
      * @returns `true` if the media starts playing successfully, otherwise `false`.
      */
-    play(): boolean
+    play(atRate?: number): boolean
     /**
      * Pauses the current media playback.
      */
@@ -4638,182 +5058,216 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
   }
 
   /**
-   * A type that represents a camera position.
+   * A class that represents a capture session.
    */
-  type CameraPosition = "front" | "back"
+  class AVCaptureSession {
+    private constructor()
+  }
 
-  /**
-   * A type that represents a camera type.
-   */
-  type CameraType = "wide" | "ultraWide" | "telephoto" | "trueDepth" | "dual" | "dualWide" | "triple"
+  namespace VideoRecorder {
 
-  type VideoRecorderState = "idle" | "preparing" | "ready" | "recording" | "paused" | "finishing" | "finished" | "failed"
-
-  type VideoCaptureSessionPreset = "high" | "medium" | "low" | "cif352x288" | "vga640x480" | "iFrame960x540" | "iFrame1280x720" | "hd1280x720" | "hd1920x1080" | "hd4K3840x2160"
-
-  type VideoCodec = "hevc" | "h264" | "jpeg" | "JPEGXL" | "proRes4444" | "appleProRes4444XQ" | "proRes422" | "proRes422HQ" | "proRes422LT" | "proRes422Proxy" | "proResRAW" | "proResRAWHQ" | "hevcWithAlpha"
-
-  type VideoOrientation = "portrait" | "landscapeLeft" | "landscapeRight"
-
-  class VideoRecorder {
     /**
-     * Creates a video recorder with settings.
-     * @param settings The video settings to use for the recording.
-     * @param settings.camera The camera to use for the recording. Defaults to { position: "back" }. If you don't provide the preferredTypes, it will use the default types by camera position.
-     * @param settings.frameRate The frame rate to use for the recording. Supports 24, 30, 60, 120. Defaults to 30.
-     * @param settings.audioEnabled A boolean value that indicates whether audio is enabled for the recording. Defaults to true.
-     * @param settings.sessionPreset The session preset to use for the recording. Defaults to "high".
-     * @param settings.videoCodec The video codec to use for the recording. Defaults to "hevc".
-     * @param settings.videoBitRate The average bit rateâ€”as bits per secondâ€”used in compressing video.
-     * @param settings.orientation The orientation to use for the recording. Defaults to "portrait".
-     * @param settings.mirrorFrontCamera A boolean value that indicates whether the front camera is mirrored. Defaults to true.
+     * A type that represents a camera position.
      */
-    constructor(settings?: {
+    type CameraPosition = "front" | "back"
+
+    /**
+     * A type that represents a camera type.
+     */
+    type CameraType = "wide" | "ultraWide" | "telephoto" | "trueDepth" | "dual" | "dualWide" | "triple"
+
+    type State = "idle" | "preparing" | "ready" | "recording" | "paused" | "stopping" | "finished" | "failed"
+
+    type SessionPreset = "high" | "medium" | "low" | "cif352x288" | "vga640x480" | "iFrame960x540" | "iFrame1280x720" | "hd1280x720" | "hd1920x1080" | "hd4K3840x2160"
+
+    type VideoCodec = "hevc" | "h264" | "jpeg" | "JPEGXL" | "proRes4444" | "appleProRes4444XQ" | "proRes422" | "proRes422HQ" | "proRes422LT" | "proRes422Proxy" | "proResRAW" | "proResRAWHQ" | "hevcWithAlpha"
+
+    type VideoOrientation = "portrait" | "landscapeLeft" | "landscapeRight"
+
+    /**
+     * A type that represents video recorder configuration.
+     *  - `camera`: The camera to use for the recording. Defaults to { position: "back" }. If you don't provide the preferredTypes, it will use the default types by camera position.
+     * - `frameRate`: The frame rate to use for the recording. Supports 24, 30, 60, 120. Defaults to 30.
+     * - `audioEnabled`: A boolean value that indicates whether audio is enabled for the recording. Defaults to true.
+     * - `sessionPreset`: The session preset to use for the recording. Defaults to "high".
+     * - `videoCodec`: The video codec to use for the recording. Defaults to "hevc".
+     * - `videoBitRate`: The video bit rate to use for the recording. Defaults to 5000000.
+     * - `orientation`: The orientation to use for the recording. Defaults to "portrait".
+     * - `mirrorFrontCamera`: A boolean value that indicates whether the front camera should be mirrored. Defaults to false.
+     * - `autoConfigAppAudioSession`: A boolean value that indicates whether the capture session automatically changes settings in the SharedAudioSession. The value of this property defaults to true, causing the capture session to automatically configure the SharedAudioSession for optimal recording. For example, if the capture session uses a deviceâ€™s rear-facing camera, the system sets the audio sessionâ€™s microphone and polar pattern for optimal recording of sound from that direction. The audio sessionâ€™s original state isnâ€™t restored after capture finishes.If you set value to false, your app is responsible for selecting appropriate audio session settings. Recording may fail if the audio sessionâ€™s settings are incompatible with the capture session.
+     */
+    type Configuration = {
       camera?: {
         position: CameraPosition
         preferredTypes?: CameraType[]
       }
       frameRate?: number
       audioEnabled?: boolean
-      sessionPreset?: VideoCaptureSessionPreset
+      sessionPreset?: SessionPreset
       videoCodec?: VideoCodec
       videoBitRate?: number
       orientation?: VideoOrientation
       mirrorFrontCamera?: boolean
-    })
+      autoConfigAppAudioSession?: boolean
+    }
+
+    /**
+     * The current capture session for the video recorder.
+     */
+    const session: AVCaptureSession
 
     /**
      * The minimum zoom factor for the video recorder.
      */
-    readonly minZoomFactor: number
+    const minZoomFactor: number
     /**
      * The maximum zoom factor for the video recorder.
      */
-    readonly maxZoomFactor: number
+    const maxZoomFactor: number
     /**
      * The current zoom factor for the video recorder.
      */
-    readonly currentZoomFactor: number
+    const currentZoomFactor: number
     /**
      * A video zoom factor multiplier to use when displaying zoom information in a user interface.
      * @available iOS 18.0+
      */
-    readonly displayZoomFactor: number
+    const displayZoomFactor: number
     /**
      * A video zoom factor multiplier to use when displaying zoom information in a user interface.
      * @available iOS 18.0+
      */
-    readonly displayZoomFactorMultiplier: number
+    const displayZoomFactorMultiplier: number
     /**
      * A boolean value that indicates whether the current device of the video recorder has a torch.
      */
-    readonly hasTorch: boolean
+    const hasTorch: boolean
     /**
      * The current torch mode for the video recorder.
      */
-    readonly torchMode: 'auto' | 'on' | 'off'
+    const torchMode: 'auto' | 'on' | 'off'
 
     /**
-     * The current state of the video recorder.
+     * A promise that resolves to the current state of the video recorder.
      */
-    state: VideoRecorderState
+    function getState(): Promise<State>
 
     /**
-     * The callback that is called when the state of the video recorder changes.
-     * @param state The new state of the video recorder.
-     * @param details Additional details about the state change. When the state is "failed", this parameter contains the error message, and when the state is "finished", this parameter contains the path to the video file.
+     * Add a listener to receive state change notifications.
+     * @param listener The listener to add.
+     *  - `state`: The new state of the video recorder.
+     *  - `details`: Additional details about the state change. When the state is "failed", this parameter contains the error message, and when the state is "finished", this parameter contains the path to the video file.
      */
-    onStateChanged?:
-      | ((state: VideoRecorderState, details?: string) => void)
-      | null
+    function addStateListener(listener: (state: State, details?: string) => void): void
+    /**
+     * Remove a listener from receiving state change notifications, or remove all listeners.
+     * @param listener The listener to remove.
+     */
+    function removeStateListener(listener?: (state: State, details?: string) => void): void
 
     /**
      * Prepares the video recorder for recording.
+     * @param configuration The configuration for the video recorder.
      * @returns A promise that resolves when the video recorder is ready for recording, or rejects with an error.
      */
-    prepare(): Promise<void>
+    function prepare(configuration?: Configuration): Promise<void>
 
     /**
      * Starts a video recording, saving it to the specified path.
      * @param toPath The path to save the video recording to.
-     * @throws An error if the video recording could not be started.
+     * @returns A promise that resolves when the video recording is started, or rejects with an error.
      */
-    startRecording(toPath: string): void
+    function start(toPath: string): Promise<void>
 
     /**
      * Pauses a video recording.
-     * @throws An error if the video recording could not be paused.
+     * @returns A promise that resolves when the video recording is paused, or rejects with an error.
      */
-    pauseRecording(): void
+    function pause(): Promise<void>
 
     /**
      * Resumes a video recording.
-     * @throws An error if the video recording could not be resumed.
+     * @returns A promise that resolves when the video recording is resumed, or rejects with an error.
      */
-    resumeRecording(): void
+    function resume(): Promise<void>
+
+    /**
+     * Cancels a video recording, the file will be deleted.
+     * @param options The options for resuming the video recording.
+     * @param options.closeSession A boolean value that indicates whether to close the capture session.
+     * @returns A promise that resolves when the video recording is canceled.
+     */
+    function cancel(options?: {
+      closeSession?: boolean
+    }): Promise<void>
 
     /**
      * Stops a video recording.
+     * @param options The options for resuming the video recording.
+     * @param options.closeSession A boolean value that indicates whether to close the capture session.
      * @returns A promise that resolves when the video recording is stopped, or rejects with an error.
      */
-    stopRecording(): Promise<void>
+    function stop(options?: {
+      closeSession?: boolean
+    }): Promise<void>
 
     /**
-     * Resets the video recorder, resetting the state. You should call this method when the video recorder is stopped and you want to start a new recording.
-     * @returns A promise that resolves when the video recorder is reset, or rejects with an error.
+     * Resets the video recorder, the state will be reset to `idle` and the session will be closed. It's useful when you no longer need the video recorder, and you can restart the video recorder by calling the `prepare` method.
+     * @returns A promise that resolves when the video recorder is reset.
      */
-    reset(): Promise<void>
+    function reset(): Promise<void>
+
+    /**
+     * Takes a photo when the video recorder is in the `recording` state.
+     * @returns A promise that resolves to the captured image, or null if the video recorder is not in the `recording` state.
+     */
+    function takePhoto(): Promise<UIImage | null>
 
     /**
      * Sets the torch mode for the video recorder.
      * @param mode The torch mode to set.
      */
-    setTorchMode(mode: 'auto' | 'off' | 'on'): void
+    function setTorchMode(mode: 'auto' | 'off' | 'on'): void
 
     /**
      * Sets the focus point.
      * @param focusPoint The focus point to set.
      */
-    setFocusPoint(focusPoint: { x: number; y: number }): void
+    function setFocusPoint(focusPoint: { x: number; y: number }): void
 
     /**
      * Sets the exposure point.
      * @param focusPoint The exposure point to set.
      */
-    setExposurePoint(focusPoint: { x: number; y: number }): void
+    function setExposurePoint(focusPoint: { x: number; y: number }): void
 
     /**
      * Resets the focus point.
      */
-    resetFocus(): void
+    function resetFocus(): void
 
     /**
      * Resets the exposure point.
      */
-    resetExposure(): void
+    function resetExposure(): void
 
     /**
      * Sets the zoom factor for the video recorder.
      * @param factor The zoom factor to set.
      */
-    setZoomFactor(factor: number): void
+    function setZoomFactor(factor: number): void
 
     /**
      * Sets the zoom factor for the video recorder using a ramp.
      * @param toFactor The new magnification factor.
      * @param rate The rate at which to transition to the new magnification factor, specified in powers of two per second.
      */
-    rampZoomFactor(toFactor: number, rate: number): void
+    function rampZoomFactor(toFactor: number, rate: number): void
 
     /**
      * Resets the zoom factor for the video recorder.
      */
-    resetZoom(): void
-
-    /**
-     * Disposes the video recorder. You should call this method when the video recorder is no longer needed. After this method is called, the video recorder will be destroyed and cannot be used again.
-     */
-    dispose(): Promise<void>
+    function resetZoom(): void
   }
 
   type SocketIOStatus =
@@ -5326,6 +5780,160 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      * @returns A promise that resolves when the SSH connection is successfully closed.
      */
     close(): Promise<void>
+  }
+
+  /**
+   * JWT signing and verification algorithm names.
+   */
+  type JWTAlgorithm =
+    | "HS256" | "HS384" | "HS512"
+    | "RS256" | "RS384" | "RS512"
+    | "PS256" | "PS384" | "PS512"
+    | "ES256" | "ES384" | "ES512"
+    | "EdDSA"
+
+  type JWTAudience = string | string[]
+
+  type JWTKeyInput = string | Data
+
+  type JWTHeader = {
+    alg: JWTAlgorithm
+    typ?: "JWT"
+    kid?: string
+    [key: string]: any
+  }
+
+  type JWTPayload = Record<string, any> & {
+    iss?: string
+    sub?: string
+    aud?: JWTAudience
+    exp?: number
+    nbf?: number
+    iat?: number
+    jti?: string
+  }
+
+  /**
+   * Optional values to inject standard claims and custom header fields when signing.
+   * Time-related values use **seconds**.
+   */
+  type JWTSignOptions = {
+    algorithm?: JWTAlgorithm
+    header?: Partial<JWTHeader>
+    issuer?: string
+    subject?: string
+    audience?: JWTAudience
+    expiresIn?: number
+    notBefore?: number
+    issuedAt?: number
+    jwtID?: string
+  }
+
+  /**
+   * Verification options for claim validation.
+   * Time-related values use **seconds**.
+   */
+  type JWTVerifyOptions = {
+    algorithm?: JWTAlgorithm | JWTAlgorithm[]
+    issuer?: string
+    subject?: string
+    audience?: JWTAudience
+    clockTolerance?: number
+    now?: number
+  }
+
+  type JWTDecodedResult = {
+    header: JWTHeader
+    payload: JWTPayload
+    signature: string
+    signingInput: string
+  }
+
+  type JWTVerifiedResult = {
+    header: JWTHeader
+    payload: JWTPayload
+  }
+
+  /**
+   * JSON Web Token helper for signing, verifying, and decoding JWT strings.
+   *
+   * Supported algorithms:
+   * - HMAC: `HS256`, `HS384`, `HS512`
+   * - RSA PKCS#1 v1.5: `RS256`, `RS384`, `RS512`
+   * - RSA-PSS: `PS256`, `PS384`, `PS512`
+   * - ECDSA: `ES256`, `ES384`, `ES512`
+   * - EdDSA: `EdDSA`
+   *
+   * For RSA/ECDSA, `privateKey` and `publicKey` are usually PEM strings.
+   * For EdDSA, both raw/base64url and PEM are supported.
+   *
+   * @example
+   * ```ts
+   * const jwt = new JWT({
+   *   algorithm: "HS256",
+   *   secret: "my-secret"
+   * })
+   *
+   * const token = jwt.sign({ userId: "u_123" }, {
+   *   issuer: "Scripting",
+   *   audience: ["app", "web"],
+   *   expiresIn: 3600
+   * })
+   *
+   * const verified = jwt.verify(token, {
+   *   issuer: "Scripting",
+   *   audience: "app",
+   *   clockTolerance: 5
+   * })
+   *
+   * console.log(verified.header.alg)   // HS256
+   * console.log(verified.payload.userId)
+   * ```
+   *
+   * @example
+   * ```ts
+   * // Decode only (no signature verification)
+   * const decoded = jwt.decode(token)
+   * console.log(decoded.header)
+   * console.log(decoded.payload)
+   * ```
+   */
+  class JWT {
+    /**
+     * Create a JWT helper instance.
+     * @param options.algorithm Default algorithm used by `sign` when omitted from sign options.
+     * @param options.secret Secret key for `HS*` algorithms.
+     * @param options.privateKey Private key for signing with `RS*`, `PS*`, `ES*`, `EdDSA`.
+     * @param options.publicKey Public key for verifying with `RS*`, `PS*`, `ES*`, `EdDSA`.
+     * @param options.passphrase Optional passphrase field reserved for encrypted-key workflows.
+     * @param options.kid Optional key id written into JWT header as `kid`.
+     */
+    constructor(options?: {
+      algorithm?: JWTAlgorithm
+      secret?: JWTKeyInput
+      privateKey?: JWTKeyInput
+      publicKey?: JWTKeyInput
+      passphrase?: string
+      kid?: string
+    })
+
+    /**
+     * Sign payload and return a JWT string.
+     * @throws Error when key/algorithm/options are invalid.
+     */
+    sign(payload: JWTPayload, options?: JWTSignOptions): string
+
+    /**
+     * Verify JWT and return decoded header/payload.
+     * @throws Error when signature or claims are invalid.
+     */
+    verify(token: string, options?: JWTVerifyOptions): JWTVerifiedResult
+
+    /**
+     * Decode JWT without verifying signature.
+     * @throws Error when token format is invalid.
+     */
+    decode(token: string): JWTDecodedResult
   }
 
   /**
@@ -6115,10 +6723,20 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
    * Provides an interface for obtaining weather data.
    */
   namespace Weather {
+    type Location = {
+      /**
+     * The latitude in degrees.
+     */
+      latitude: number
+      /**
+       * The longitude in degrees.
+       */
+      longitude: number
+    }
     /**
      * Query current weather by speficeid location.
      */
-    function requestCurrent(location: LocationInfo): Promise<CurrentWeather>
+    function requestCurrent(location: Location): Promise<CurrentWeather>
     /**
      * Query the daily forecast by specified location. This returns 10 contiguous days, beginning with the current day.
      * @param location The location to query.
@@ -6127,7 +6745,7 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      * @param options.endDate The end date for the forecast.
      * @returns A promise that resolves to the daily forecast.
      */
-    function requestDailyForecast(location: LocationInfo, options?: {
+    function requestDailyForecast(location: Location, options?: {
       startDate: Date
       endDate: Date
     }): Promise<WeatherDailyForecast>
@@ -6139,7 +6757,7 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      * @param options.endDate The end date for the forecast.
      * @returns A promise that resolves to the hourly forecast.
      */
-    function requestHourlyForecast(location: LocationInfo, options?: {
+    function requestHourlyForecast(location: Location, options?: {
       startDate: Date
       endDate: Date
     }): Promise<WeatherHourlyForecast>
@@ -6185,6 +6803,17 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
     }
 
     /**
+     * An image content output from the assistant.
+     */
+    type StreamImageContent = {
+      type: 'image'
+      content: {
+        data: string
+        mediaType: string
+      }
+    }
+
+    /**
      * A chunk of reasoning output from the assistant.
      */
     type StreamReasoningChunk = {
@@ -6221,7 +6850,7 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
       }
     }
 
-    type StreamChunk = StreamTextChunk | StreamReasoningChunk | StreamUsageChunk
+    type StreamChunk = StreamTextChunk | StreamReasoningChunk | StreamImageContent | StreamUsageChunk
 
     /**
      * The text content of a message.
@@ -6406,6 +7035,17 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
   }
 
   /**
+   * Represents a replace instruction within the script editor.
+   */
+  type ScriptEditorReplaceInstruction = {
+    existingBlock: string
+    newBlock: string
+    contextBefore?: string
+    contextAfter?: string
+    startLineHint?: number
+  }
+
+  /**
    * Represents a lint error in a script.
    */
   type ScriptLintError = {
@@ -6413,6 +7053,18 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      * The line number where the error occurred.
      */
     line: number
+    /**
+     * The column number where the error occurred.
+     */
+    column: number
+    /**
+     * The range start of characters where the error occurred.
+     */
+    from: number
+    /**
+     * The range end of characters where the error occurred.
+     */
+    to: number
     /**
      * A message describing the linting issue.
      */
@@ -6471,10 +7123,10 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
     /**
      * Replaces content in the specified file based on the provided operations.
      * @param relativePath - The relative path to the file.
-     * @param operations - An array of operations describing where and what content to replace.
+     * @param instructions - An array of instructions describing where and what content to replace.
      * @returns A promise that resolves with a boolean indicating success.
      */
-    replaceInFile(relativePath: string, operations: ScriptEditorFileOperation[]): Promise<boolean>
+    replaceInFile(relativePath: string, instructions: ScriptEditorReplaceInstruction[]): Promise<boolean>
     /**
      * Opens a diff editor for the specified file, comparing its current content with the provided content.
      * @param relativePath - The relative path to the file.
@@ -6554,6 +7206,52 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
     secondaryConfirmed: boolean
   }
 
+  type AssistantToolOutputTextPart = {
+    type: "text"
+    text: string
+  }
+
+  type AssistantToolOutputImagePart = {
+    type: "image"
+    base64: string
+    mimeType?: string
+  }
+
+  type AssistantToolOutputPart = string | AssistantToolOutputTextPart | AssistantToolOutputImagePart
+
+  type AssistantToolDeprecatedExecutionResult = {
+    /**
+     * Indicates whether the tool execution was successful.
+     */
+    success: boolean
+    /**
+     * The response message to be returned to the assistant.
+     */
+    message: string
+  }
+
+  type AssistantToolResponseResult = {
+    /**
+     * Indicates whether the tool execution was successful.
+     */
+    success: boolean
+    /**
+     * Structured output parts returned by the tool.
+     */
+    output: {
+      /**
+       * The parts of the response to be displayed to the user.
+       */
+      userParts?: AssistantToolOutputPart[]
+      /**
+       * The parts of the response to be sent to the assistant.
+       */
+      assistantParts?: AssistantToolOutputPart[]
+    }
+  }
+
+  type AssistantToolExecutionResult = AssistantToolDeprecatedExecutionResult | AssistantToolResponseResult
+
   /**
    * Function to execute the tool after receiving user approval.
    */
@@ -6571,16 +7269,7 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      * to allow communication with the editor.
      */
     scriptEditorProvider?: ScriptEditorProvider
-  ) => Promise<{
-    /**
-     * Indicates whether the tool execution was successful.
-     */
-    success: boolean
-    /**
-     * The response message to be returned to the assistant.
-     */
-    message: string
-  }>
+  ) => Promise<AssistantToolExecutionResult>
 
   /**
    * Test function for executing the tool with approval.
@@ -6609,16 +7298,7 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      * to allow communication with the editor.
      */
     scriptEditorProvider?: ScriptEditorProvider
-  ) => Promise<{
-    /**
-     * Indicates whether the tool execution was successful.
-     */
-    success: boolean
-    /**
-     * The response message to be returned to the assistant.
-     */
-    message: string
-  }>
+  ) => Promise<AssistantToolExecutionResult>
 
   /**
    * Test function for executing the tool.
@@ -6626,6 +7306,58 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
   type AssistantToolExecuteTestFn<P> = (params: P) => void
 
   namespace AssistantTool {
+
+    type OnCancel = () => string | null | undefined
+
+    type UIRenderResponse = (result: AssistantToolResponseResult) => void
+
+    type UIProps<P> = {
+      params: P
+      response: UIRenderResponse
+      /**
+       * Indicates whether the current tool call is auto-approved.
+       */
+      isAutoApprove: boolean
+      scriptEditorProvider?: ScriptEditorProvider
+    }
+
+    type UIRenderTestOptions = {
+      /**
+       * Simulate tool call auto-approval behavior in test mode.
+       */
+      isAutoApprove?: boolean
+      /**
+       * Initial storage state used during test.
+       */
+      initialState?: Record<string, any>
+      /**
+       * Whether to capture screenshot in test mode.
+       */
+      screenshot?: boolean
+    }
+
+    type UIRenderTestFn<P> = (params: P, options?: UIRenderTestOptions) => void
+
+    /**
+     * Registers the function that renders the interactive UI for the tool.
+     * @param view - The function component that renders the UI.
+     * @returns A test function for the UI rendering.
+     */
+    function registerUIView<P>(view: FunctionComponent<UIProps<P>>): UIRenderTestFn<P>
+
+    /**
+     * The function to be called when the tool is cancelled by the user.
+     * Returns a message to the assistant. 
+     * 
+     * This function will be set to `null` after it is called, you should set this function in your tool execution function.
+     */
+    var onCancel: OnCancel | null | undefined
+
+    /**
+     * Indicates whether the tool has been cancelled by the user.
+     */
+    const isCancelled: boolean
+
     /**
      * Registers the function that generates an approval request prompt for the user.
      * @param requestFn - The function that creates the approval request.
@@ -6653,8 +7385,25 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
     /**
      * Reports a message when the tool is executing.
      * @param message - The message to report.
+     * @param id - The id of the report message, you can replace the message with the same id. It is useful when you want to update the message.
      */
-    function report(message: string): void
+    function report(message: string, id?: string): void
+    /**
+     * Gets a stored state value by key.
+     */
+    function getState<T = any>(key: string): T | null
+    /**
+     * Stores a state value by key.
+     */
+    function setState(key: string, value: any): void
+    /**
+     * Removes a stored state value by key.
+     */
+    function removeState(key: string): void
+    /**
+     * Clears all stored state values for this tool call.
+     */
+    function clearState(): void
   }
 
   /**
@@ -7470,7 +8219,6 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
   type TimeZoneIdentifier = "current" | "autoupdatingCurrent" | "gmt" | string
 
   class DateFormatter {
-    new(): DateFormatter
 
     static localizedString(date: Date, options: {
       dateStyle: DateFormatterStyle
@@ -9412,73 +10160,76 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
     /**
      * The text before the cursor, or null if there is no text before the cursor.
      */
-    const textBeforeCursor: Promise<string | null>
+    const textBeforeCursor: string | null
     /**
      * The text after the cursor, or null if there is no text after the cursor.
      */
-    const textAfterCursor: Promise<string | null>
+    const textAfterCursor: string | null
+    /**
+     * The currently entered text.
+     */
+    const allText: string
     /**
      * The currently selected text, or null if there is no selected text.
      */
-    const selectedText: Promise<string | null>
+    const selectedText: string | null
     /**
      * A Boolean value that indicates whether the text input object has any text.
      */
-    const hasText: Promise<boolean>
+    const hasText: boolean
 
     /**
      * Sets the visibility of the dictation key of the system.
      * @param value A boolean value indicating whether the dictation key should be shown (true) or hidden (false).
-     * @returns A promise that resolves when the dictation key visibility is successfully set.
      */
-    function setHasDictationKey(value: boolean): Promise<void>
+    function setHasDictationKey(value: boolean): void
 
     /**
      * Dismisses the custom keyboard.
      */
-    function dismiss(): Promise<void>
+    function dismiss(): void
     /**
      * Switches to the next keyboard in the list of enabled keyboards.
      */
-    function nextKeyboard(): Promise<void>
+    function nextKeyboard(): void
     /**
      * Moves the cursor by the specified offset.
      * @param offset The number of characters to move the cursor. A positive value moves the cursor to the right, while a negative value moves it to the left.
      */
-    function moveCursor(offset: number): Promise<void>
+    function moveCursor(offset: number): void
     /**
      * Inserts the specified text at the current cursor position.
      * @param text The text to insert.
      */
-    function insertText(text: string): Promise<void>
+    function insertText(text: string): void
     /**
      * Deletes a character before the current cursor position.
      */
-    function deleteBackward(): Promise<void>
+    function deleteBackward(): void
     /**
      * Inserts the provided text and marks it to indicate that itâ€™s part of an active input session.
      * @param text The text to be marked.
      * @param location The starting position of the marked text.
      * @param length The length of the marked text.
      */
-    function setMarkedText(text: string, location: number, length: number): Promise<void>
+    function setMarkedText(text: string, location: number, length: number): void
     /**
      * Unmarks the currently marked text.
      */
-    function unmarkText(): Promise<void>
+    function unmarkText(): void
 
     /**
      * Requests the system to adjust the height of the custom keyboard.
      * @param height The desired height in points.
      * Note: The system may ignore this request if the height is too small or too large.
      */
-    function requestHeight(height: number): Promise<void>
+    function requestHeight(height: number): void
 
     /**
      * Sets the visibility of the custom keyboard's toolbar. The toolbar defaults to visible, and it is useful for debugging.
      * @param visible A boolean value indicating whether the toolbar should be visible (true) or hidden (false).
      */
-    function setToolbarVisible(visible: boolean): Promise<void>
+    function setToolbarVisible(visible: boolean): void
 
     /**
      *  Play keyboard clicks sound.
@@ -9494,10 +10245,10 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      *
      * Example:
      * ```ts
-     * await CustomKeyboard.dismissToHome()
+     * CustomKeyboard.dismissToHome()
      * ```
      */
-    function dismissToHome(): Promise<void>
+    function dismissToHome(): void
 
     /**
      * Adds an event listener for the specified event.
@@ -9534,6 +10285,39 @@ If the eventâ€™s calendar does not support availability settings, this propertyâ
      */
     function present(node: VirtualNode): void
 
+  }
+
+  /**
+   * Access the current Translation UI Provider session and present a scripted UI.
+   * @available iOS 18.4+
+   */
+  namespace TranslationUIProvider {
+
+    /**
+     * The source text selected by the host app, or null when unavailable.
+     */
+    const inputText: string | null
+
+    /**
+     * Indicates whether the host app allows replacing the original text with a translation.
+     */
+    const allowsReplacement: boolean
+
+    /**
+     * Requests the system sheet to expand.
+     */
+    function expandSheet(): void
+
+    /**
+     * Finishes the current translation session and optionally returns translated text to the host.
+     * Pass `null` or omit the parameter to close without replacement.
+     */
+    function finish(translation?: string | null): void
+
+    /**
+     * Presents the scripted translation UI.
+     */
+    function present(node: VirtualNode): void
   }
 
   type BluetoothCharacteristicProperty =
@@ -11553,6 +12337,436 @@ If the length of the value parameter exceeds the length of the `maximumUpdateVal
      * Dismiss the modal that was opened using `presentApp`.
      */
     function dismissApp(): Promise<void>
+  }
+
+  namespace SQLite {
+    type Configuration = {
+      foreignKeysEnabled: boolean
+      readonly: boolean
+      label: string | null
+      busyMode: "immediateError" | DurationInSeconds
+      journalMode: "wal" | "default"
+      maximumReaderCount: number
+    }
+
+    type ColumnInfo = {
+      name: string
+      type: string
+      defaultValueSQL: string | null
+      isNotNull: boolean
+      primaryKeyIndex: number
+    }
+
+    type PrimaryKeyInfo = {
+      columns: string[]
+      rowIDColumn: string | null
+      isRowID: boolean
+    }
+
+    type ForeignKeyInfo = {
+      id: number
+      originColumns: string[]
+      destinationTable: string
+      destinationColumns: string[]
+      mapping: {
+        origin: string
+        destination: string
+      }[]
+    }
+
+    type IndexInfo = {
+      name: string
+      columns: string[]
+      isUnique: boolean
+      origin: "createIndex" | "primaryKeyConstraint" | "uniqueConstraint"
+    }
+
+    type DatabaseValue = string | number | boolean | Data | Date | null
+
+    type DatabaseCollation = "binary" | "rtrim" | "nocase" | "caseInsensitiveCompare" | "localizedCaseInsensitiveCompare" | "localizedCompare" | "localizedStandardCompare" | "unicodeCompare"
+
+    type ForeignKeyAction = "cascade" | "restrict" | "setNull" | "setDefault"
+
+    type ColumnReferences = {
+      table: string
+      column?: string
+      onDelete?: ForeignKeyAction
+      onUpdate?: ForeignKeyAction
+      deferred?: boolean
+    }
+
+    type ColumnDefinition = {
+      name: string
+      type: string
+      primaryKey?: boolean
+      autoIncrement?: boolean
+      notNull?: boolean
+      unique?: boolean
+      indexed?: boolean
+      checkSQL?: string
+      collation?: DatabaseCollation
+      defaultValue?: DatabaseValue
+      defaultSQL?: string
+      references?: ColumnReferences
+    }
+
+    type Arguments = DatabaseValue[] | Record<string, DatabaseValue>
+
+    type TransactionStep = {
+      sql: string
+      args?: Arguments | null
+    }
+
+    class Database {
+      private constructor()
+
+      schemaVersion(): Promise<number>
+
+      tableExists(tableName: string, schemaName?: string): Promise<boolean>
+      isTableHasUniqueKeys(tableName: string, uniqueKeys: string[]): Promise<boolean>
+
+      columnsIn(tableName: string, schemaName?: string): Promise<ColumnInfo[]>
+
+      primaryKey(tableName: string, schemaName?: string): Promise<PrimaryKeyInfo>
+      foreignKeys(tableName: string, schemaName?: string): Promise<ForeignKeyInfo[]>
+      indexes(tableName: string, schemaName?: string): Promise<IndexInfo[]>
+
+      execute(sql: string, arguments?: Arguments): Promise<void>
+
+      transaction(steps: TransactionStep, options?: {
+        kind?: "deferred" | "immediate" | "exclusive"
+      }): Promise<void>
+
+      fetchAll<T>(sql: string, arguments?: Arguments): Promise<T[]>
+      fetchSet<T>(sql: string, arguments?: Arguments): Promise<T[]>
+      fetchOne<T>(sql: string, arguments?: Arguments): Promise<T>
+
+      createTable(name: string, options: {
+        columns: ColumnDefinition[]
+        ifNotExists?: boolean
+      }): Promise<void>
+      renameTable(name: string, newName: string): Promise<void>
+      dropTable(name: string): Promise<void>
+
+      createIndex(name: string, options: {
+        table: string
+        columns: string[]
+        unique?: boolean
+        ifNotExists?: boolean
+        condition?: string
+      }): Promise<void>
+      dropIndex(name: string): Promise<void>
+      dropIndexOn(tableName: string, columns: string[]): Promise<void>
+    }
+
+    function open(path: string, configuration?: Configuration): Database
+    function openInMemory(name: string, configuration?: Configuration): Database
+  }
+
+  /**
+   * Apple Intelligence Language Model Session.
+   */
+  class LanguageModelSession {
+
+    /**
+     * Whether the language model session is available on the current device.
+     */
+    static readonly isAvailable: boolean
+
+    /**
+     * Creates a new language model session.
+     * @param options The options for the language model session.
+     * @param options.instructions Instructions that control the modelâ€™s behavior.
+     */
+    constructor(options?: {
+      instructions?: string
+    })
+
+    /**
+     * A Boolean value that indicates a response is being generated.
+     */
+    readonly isResponding: boolean
+
+    /**
+     * Requests that the system eagerly load the resources required for this session into memory and optionally caches a prefix of your prompt.
+     * @param promptPrefix The prompt prefix to cache.
+     */
+    prewarm(promptPrefix?: string): void
+
+    /**
+     * Produces a response to a prompt.
+     * @param prompt A prompt for the model to respond to.
+     * @param options GenerationOptions that control how tokens are sampled from the distribution the model produces.
+     * @param options.temperature The temperature (0.0 ~ 1.0) to use when sampling from the distribution. A higher temperature results in more random output.
+     * @param options.maxResponseTokens The maximum number of tokens to generate in the response.
+     * @param options.schema The expected output JSON schema.
+     * @returns A response to the prompt. `content` is the text response and `json` is the parsed JSON response, the `json` could be `null` if the response not contains valid JSON.
+     */
+    respond<T>(prompt: string, options?: {
+      temperature?: number
+      maxResponseTokens?: number
+      schema?: JSONSchemaObject
+    }): Promise<{
+      content: string
+      json: T | null
+    }>
+
+    /**
+     * Produces a stream of responses to a prompt.
+     * @param prompt A prompt for the model to respond to.
+     * @param options GenerationOptions that control how tokens are sampled from the distribution the model produces.
+     * @param options.temperature The temperature (0.0 ~ 1.0) to use when sampling from the distribution. A higher temperature results in more random output.
+     * @param options.maxResponseTokens The maximum number of tokens to generate in the response.
+     * @returns A stream of responses to the prompt.
+     */
+    streamResponse(prompt: string, options?: {
+      temperature?: number
+      maxResponseTokens?: number
+    }): Promise<ReadableStream>
+
+    /**
+     * Releases resources associated with the language model session.
+     */
+    dispose(): void
+  }
+
+  namespace AlarmManager {
+    type AlarmState = "scheduled" | "countdown" | "paused" | "alerting"
+    type SecondaryButtonBehavior = "countdown" | "custom"
+    type AlarmAppIntent = AppIntent<any, AppIntentProtocol.LiveActivityIntent>
+    type AlarmUpdateListener = (alarms: Alarm[]) => void
+
+    class Alarm {
+      readonly id: string
+      readonly state: AlarmState
+      readonly schedule?: Schedule | null
+      readonly countdownDuration?: Countdown | null
+    }
+
+    class Schedule {
+      readonly type: "fixed" | "relative"
+      readonly date?: Date | null
+      readonly hour?: number | null
+      readonly minute?: number | null
+      readonly weekdays?: number[] | null
+
+      static fixed(date: Date): Schedule
+      static relative(hour: number, minute: number): Schedule
+      static weekly(hour: number, minute: number, weekdays: number[]): Schedule
+    }
+
+    class Countdown {
+      readonly preAlert?: number | null
+      readonly postAlert?: number | null
+
+      static create(options?: {
+        preAlert?: DurationInSeconds | null
+        postAlert?: DurationInSeconds | null
+      }): Countdown
+    }
+
+    class Button {
+      static create(options: {
+        title?: string
+        textColor?: Color
+        systemImageName?: string
+      }): Button
+    }
+
+    class Sound {
+      static default(): Sound
+      static named(name: string): Sound
+    }
+
+    class AlertPresentation {
+      static create(options: {
+        title: string
+        /**
+         * @deprecated The stop button on the alarm's alert UI is now
+         * managed by the system as a slider (iOS 26.1+). Custom buttons
+         * passed here are ignored on iOS 26.1 and later, and are only
+         * used as a fallback on iOS 26.0. Prefer omitting this field.
+         */
+        stopButton?: Button | null
+        secondaryButton?: Button | null
+        secondaryBehavior?: SecondaryButtonBehavior | null
+      }): AlertPresentation
+    }
+
+    class CountdownPresentation {
+      static create(title?: string | null, pauseButton?: Button | null): CountdownPresentation
+    }
+
+    class PausedPresentation {
+      static create(title?: string | null, resumeButton?: Button | null): PausedPresentation | null
+    }
+
+    class Attributes {
+      static create(options: {
+        alert: AlertPresentation
+        countdown?: CountdownPresentation | null
+        paused?: PausedPresentation | null
+        tintColor?: Color
+        metadata?: Record<string, string>
+      }): Attributes | null
+    }
+    class Configuration {
+      static alarm(options: {
+        schedule?: Schedule | null
+        attributes: Attributes
+        sound?: Sound | null
+        stopIntent?: AlarmAppIntent | null
+        secondaryIntent?: AlarmAppIntent | null
+      }): Configuration | null
+
+      static timer(options: {
+        duration: DurationInSeconds
+        attributes: Attributes
+        sound?: Sound | null
+        stopIntent?: AlarmAppIntent | null
+        secondaryIntent?: AlarmAppIntent | null
+      }): Configuration | null
+
+      static countdown(options: {
+        countdown?: Countdown | null
+        schedule?: Schedule | null
+        attributes: Attributes
+        sound?: Sound | null
+        stopIntent?: AlarmAppIntent | null
+        secondaryIntent?: AlarmAppIntent | null
+      }): Configuration | null
+    }
+
+    const isAvailable: boolean
+
+    function alarms(): Promise<Alarm[]>
+    function schedule(id: string, configuration: Configuration): Promise<Alarm>
+    function cancel(id: string): Promise<boolean>
+    function stop(id: string): Promise<boolean>
+    function pause(id: string): Promise<boolean>
+    function resume(id: string): Promise<boolean>
+    function startCountdown(id: string): Promise<boolean>
+    function addAlarmUpdateListener(listener: AlarmUpdateListener): void
+    function removeAlarmUpdateListener(listener?: AlarmUpdateListener): void
+  }
+
+  namespace MediaLibrary {
+    type Item = {
+      title: string
+      persistentID: string
+      artist?: string
+      albumTitle?: string
+      albumArtist?: string
+      genre?: string
+      composer?: string
+      albumTrackNumber?: number
+      albumTrackCount?: number
+      discNumber?: number
+      discCount?: number
+      playbackDuration?: number
+      playbackStoreID?: string
+      isCloudItem?: boolean
+      hasProtectedAsset?: boolean
+    }
+
+    type Playlist = {
+      persistentID: string
+      name: string
+      trackCount: number
+    }
+
+    type Album = {
+      title: string
+      artist?: string
+      persistentID?: string
+      trackCount?: number
+    }
+
+    type SongQueryOptions = {
+      limit?: number
+      sortBy?:
+      | "title"
+      | "artist"
+      | "albumTitle"
+      | "playbackDuration"
+      | "albumTrackNumber"
+      ascending?: boolean
+    }
+
+    type AlbumQueryOptions = {
+      limit?: number
+      sortBy?:
+      | "title"
+      | "artist"
+      | "trackCount"
+      ascending?: boolean
+    }
+
+    type PlaylistQueryOptions = {
+      limit?: number
+      sortBy?:
+      | "name"
+      | "trackCount"
+      ascending?: boolean
+    }
+
+    type ArtistQueryOptions = {
+      limit?: number
+      ascending?: boolean
+    }
+
+    type SongFilter = {
+      title?: string
+      artist?: string
+      albumTitle?: string
+      genre?: string
+      composer?: string
+      persistentID?: string
+    }
+
+    function getSongs(
+      filter?: SongFilter,
+      options?: SongQueryOptions
+    ): Promise<Item[]>
+
+    function getSongByPersistentID(
+      persistentID: string
+    ): Promise<Item | null>
+
+    function getAlbums(
+      options?: AlbumQueryOptions
+    ): Promise<Album[]>
+
+    function getAlbumSongs(
+      albumTitle: string,
+      options?: SongQueryOptions
+    ): Promise<Item[]>
+
+    function getArtists(
+      options?: ArtistQueryOptions
+    ): Promise<string[]>
+
+    function getArtistSongs(
+      artist: string,
+      options?: SongQueryOptions
+    ): Promise<Item[]>
+
+    function getPlaylists(
+      options?: PlaylistQueryOptions
+    ): Promise<Playlist[]>
+
+    function getPlaylistSongs(
+      playlistPersistentID: string,
+      options?: SongQueryOptions
+    ): Promise<Item[]>
+
+    function getArtwork(
+      persistentID: string,
+      size?: {
+        width: number
+        height: number
+      }
+    ): Promise<UIImage | null>
   }
 }
 

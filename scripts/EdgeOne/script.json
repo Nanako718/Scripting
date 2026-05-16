@@ -6,8 +6,8 @@
   "localizedDescriptions" : {
     "fr" : "",
     "es" : "",
-    "zh" : "腾讯云 EdgeOne 七层监控小组件，显示流量、请求数、带宽与命中流量。",
-    "en" : "Tencent Cloud EdgeOne L7 monitoring widget: flux, request count, bandwidth, hit flux.",
+    "zh" : "腾讯云 EdgeOne：总流量、总请求、带宽峰值、命中率。",
+    "en" : "Tencent EdgeOne L7 timing analysis widget (DescribeTimingL7AnalysisData).",
     "de" : "",
     "ja" : "",
     "it" : "",
@@ -21,7 +21,7 @@
     "email" : "2753086015@qq.com"
   },
   "remoteResource" : null,
-  "description" : "腾讯云 EdgeOne 七层监控小组件，显示流量、请求数、带宽与命中流量。需配置 Secret ID、Secret Key 和站点 ID。",
+  "description" : "腾讯云 EdgeOne：总流量、总请求、带宽峰值、缓存命中率（与控制台同源）；分析+回源双接口。需 Secret ID、Secret Key；可选 Zone ID（不填为 *）。",
   "localizedNames" : {
     "fr" : "",
     "es" : "",

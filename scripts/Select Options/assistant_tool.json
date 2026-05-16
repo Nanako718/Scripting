@@ -1,0 +1,98 @@
+{
+  "displayName": "Select Options",
+  "id": "select_options",
+  "description": "Ask the user to choose one or more options before the assistant continues.",
+  "icon": "checklist",
+  "color": "systemTeal",
+  "parameters": [
+    {
+      "type": "string",
+      "required": true,
+      "name": "title",
+      "enumValues": null,
+      "hint": "Choose deployment environments",
+      "description": "The title shown in the tool UI.",
+      "visible": true
+    },
+    {
+      "type": "string",
+      "required": false,
+      "name": "description",
+      "enumValues": null,
+      "hint": "Select where this release should be deployed.",
+      "description": "Optional subtitle/description shown under title.",
+      "visible": false
+    },
+    {
+      "type": "array",
+      "required": true,
+      "name": "options",
+      "enumValues": null,
+      "hint": "[{\"id\":\"dev\",\"label\":\"Development\"},{\"id\":\"prod\",\"label\":\"Production\"}]",
+      "description": "Selectable options. Each item supports id, label, optional description, optional disabled.",
+      "visible": false
+    },
+    {
+      "type": "enumeration",
+      "required": true,
+      "name": "selectionMode",
+      "enumValues": [
+        "single",
+        "multiple"
+      ],
+      "hint": "single",
+      "description": "single: user can choose one option. multiple: user can choose multiple options.",
+      "visible": false
+    },
+    {
+      "type": "number",
+      "required": false,
+      "name": "minSelection",
+      "enumValues": null,
+      "hint": "1",
+      "description": "Minimum required selected options.",
+      "visible": false
+    },
+    {
+      "type": "number",
+      "required": false,
+      "name": "maxSelection",
+      "enumValues": null,
+      "hint": "2",
+      "description": "Maximum allowed selected options. Only valid when selectionMode is multiple.",
+      "visible": false
+    },
+    {
+      "type": "array",
+      "required": false,
+      "name": "defaultSelectedIds",
+      "enumValues": null,
+      "hint": "[\"dev\"]",
+      "description": "Optional initial selected option ids.",
+      "visible": false
+    },
+    {
+      "type": "string",
+      "required": false,
+      "name": "submitLabel",
+      "enumValues": null,
+      "hint": "Confirm",
+      "description": "Optional submit button label.",
+      "visible": false
+    },
+    {
+      "type": "string",
+      "required": false,
+      "name": "cancelLabel",
+      "enumValues": null,
+      "hint": "Cancel",
+      "description": "Optional cancel button label.",
+      "visible": false
+    }
+  ],
+  "requireApproval": false,
+  "autoApprove": true,
+  "scriptEditorOnly": false,
+  "supportsUIRender": true,
+  "keepRenderingAfterComplete": false
+}
