@@ -105,7 +105,7 @@ function SettingsPage() {
     <VStack>
       <Form>
         <Section
-          title="登录凭证"
+          header={<Text>登录凭证</Text>}
           footer={<Text>请在此处粘贴您获取的联通营业厅 App 的 Cookie。</Text>}
         >
           <TextField
@@ -117,7 +117,7 @@ function SettingsPage() {
         </Section>
 
         <Section
-          title="刷新设置"
+          header={<Text>刷新设置</Text>}
           footer={<Text>设置小组件自动刷新的频率（分钟）。</Text>}
         >
           <TextField
@@ -131,7 +131,7 @@ function SettingsPage() {
         </Section>
 
         <Section
-          title="流量显示设置"
+          header={<Text>流量显示设置</Text>}
           footer={<Text>配置是否显示通用流量和其他流量。</Text>}
         >
           <Toggle
@@ -142,7 +142,7 @@ function SettingsPage() {
         </Section>
 
         <Section
-          title="其他流量设置"
+          header={<Text>其他流量设置</Text>}
           footer={<Text>配置是否显示其他流量（如省内流量、闲时流量等）。可通过 flowType 或 addupItemCode 来匹配。</Text>}
         >
           <Toggle
@@ -179,7 +179,7 @@ function SettingsPage() {
         </Section>
 
         <Section
-          title="BoxJs 配置"
+          header={<Text>BoxJs 配置</Text>}
           footer={<Text>开启后将从 BoxJs 读取 10010.cookie 作为 Cookie。如果开启，将优先使用 BoxJs 中的 Cookie。</Text>}
         >
           <Toggle
@@ -201,14 +201,6 @@ function SettingsPage() {
       </Form>
       <Spacer />
       <VStack alignment="center" spacing={4} padding={{ bottom: 10 }}>
-        <HStack alignment="center" spacing={4}>
-          <Text font="caption2" foregroundStyle="secondaryLabel">
-            ©界面样式修改自
-          </Text>
-          <Link url="mailto:627908664@qq.com">
-            <Text font="caption2" foregroundStyle="accentColor">@王大大</Text>
-          </Link>
-        </HStack>
         <HStack alignment="center" spacing={4}>
           <Text font="caption2" foregroundStyle="secondaryLabel">
             优化开发：

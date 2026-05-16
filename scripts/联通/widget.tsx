@@ -7,10 +7,8 @@ import {
   Color,
   Spacer,
   fetch,
-  DynamicShapeStyle,
   WidgetReloadPolicy,
   ZStack,
-  Gauge,
 } from "scripting"
 
 // 设置结构定义
@@ -37,19 +35,19 @@ const SETTINGS_KEY = "chinaUnicomSettings"
 const API_URL = "https://m.client.10010.com/mobileserviceimportant/home/queryUserInfoSeven?version=iphone_c@10.0100&desmobiel=13232135179&showType=0"
 const API_DETAIL_URL = "https://m.client.10010.com/servicequerybusiness/operationservice/queryOcsPackageFlowLeftContentRevisedInJune"
 
-// 组件数据结构
-type UnicomData = {
-  fee: { title: string; balance: string; unit: string }
-  voice: { title: string; balance: string; unit: string; used?: number; total?: number }
-  flow: { title: string; balance: string; unit: string; used?: number; total?: number }
-  otherFlow?: { title: string; balance: string; unit: string; used?: number; total?: number }
-}
-
 // 话费数据类型
 type FeeData = {
   title: string
   balance: string
   unit: string
+}
+
+// 组件数据结构
+type UnicomData = {
+  fee: FeeData
+  voice: { title: string; balance: string; unit: string; used?: number; total?: number }
+  flow: { title: string; balance: string; unit: string; used?: number; total?: number }
+  otherFlow?: { title: string; balance: string; unit: string; used?: number; total?: number }
 }
 
 // 详细 API 响应结构
@@ -90,8 +88,7 @@ type DetailApiResponse = {
 async function fetchCookieFromBoxJs(boxJsUrl: string): Promise<string | null> {
   try {
     const url = `${boxJsUrl.replace(/\/$/, "")}/query/data/10010.cookie`
-    console.log("📡 从 BoxJs 读取 Cookie:", url)
-    
+
     const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
@@ -103,13 +100,8 @@ async function fetchCookieFromBoxJs(boxJsUrl: string): Promise<string | null> {
       // BoxJs 返回格式: { "key": "10010.cookie", "val": "cookie值" }
       const cookie = data?.val
       if (cookie && typeof cookie === 'string' && cookie.trim()) {
-        console.log("✅ 从 BoxJs 成功读取 Cookie")
         return cookie.trim()
-      } else {
-        console.warn("⚠️ BoxJs 返回的数据格式不正确:", data)
       }
-    } else {
-      console.error("❌ 从 BoxJs 读取 Cookie 失败，状态码:", response.status)
     }
   } catch (error) {
     console.error("🚨 从 BoxJs 读取 Cookie 异常:", error)
@@ -130,21 +122,16 @@ async function fetchFeeData(cookie: string): Promise<FeeData | null> {
 
     if (response.ok) {
       const data = await response.json()
-      
+
       if (data.code === 'Y') {
         const { feeResource } = data
-        const feeData = {
+        const feeData: FeeData = {
           title: feeResource?.dynamicFeeTitle || "剩余话费",
           balance: feeResource?.feePersent || "0",
           unit: feeResource?.newUnit || "元",
         }
-        console.log("💰 话费数据:", `${feeData.balance}${feeData.unit}`)
         return feeData
-      } else {
-        console.warn("⚠️ API 返回非成功状态:", data.code, data.msg || data.message)
       }
-    } else {
-      console.error("❌ HTTP 请求失败，状态码:", response.status)
     }
   } catch (error) {
     console.error("🚨 请求异常:", error)
@@ -230,10 +217,7 @@ function extractVoiceAndFlowData(detailData: DetailApiResponse): {
         total: flowTotalMB,
       },
     }
-    
-    console.log("📞 语音:", `已用${voiceUsed}${voiceUnit} 剩余${voiceRemain}${voiceUnit} 总计${voiceTotal}${voiceUnit}`)
-    console.log("📶 通用流量:", `已用${formatFlowValue(flowUsedMB, "MB").balance}${formatFlowValue(flowUsedMB, "MB").unit} 剩余${flowFormatted.balance}${flowFormatted.unit} 总计${formatFlowValue(flowTotalMB, "MB").balance}${formatFlowValue(flowTotalMB, "MB").unit}`)
-    
+
     return result
   } catch (error) {
     console.error("❌ 提取数据失败:", error)
@@ -255,345 +239,207 @@ function formatFlowValue(value: number, unit: string = "MB"): { balance: string;
   }
 }
 
-// 卡片主题配置 - Catppuccin 配色方案
-const cardThemes = {
-  fee: {
-    background: { light: "rgba(140, 170, 238, 0.12)", dark: "rgba(140, 170, 238, 0.18)" } as DynamicShapeStyle,
-    iconColor: { light: "#8caaee", dark: "#8caaee" } as DynamicShapeStyle,
-    titleColor: { light: "#737994", dark: "#99d1db" } as DynamicShapeStyle,
-    descColor: { light: "#51576d", dark: "#c6d0f5" } as DynamicShapeStyle,
-    icon: "creditcard.fill"
-  },
-  voice: {
-    background: { light: "rgba(166, 209, 137, 0.12)", dark: "rgba(166, 209, 137, 0.18)" } as DynamicShapeStyle,
-    iconColor: { light: "#a6d189", dark: "#a6d189" } as DynamicShapeStyle,
-    titleColor: { light: "#626880", dark: "#81c8be" } as DynamicShapeStyle,
-    descColor: { light: "#51576d", dark: "#c6d0f5" } as DynamicShapeStyle,
-    icon: "phone.fill"
-  },
-  flow: {
-    background: { light: "rgba(239, 159, 118, 0.12)", dark: "rgba(239, 159, 118, 0.18)" } as DynamicShapeStyle,
-    iconColor: { light: "#ef9f76", dark: "#ef9f76" } as DynamicShapeStyle,
-    titleColor: { light: "#737994", dark: "#e5c890" } as DynamicShapeStyle,
-    descColor: { light: "#51576d", dark: "#c6d0f5" } as DynamicShapeStyle,
-    icon: "antenna.radiowaves.left.and.right"
-  },
-  otherFlow: {
-    background: { light: "rgba(202, 158, 230, 0.12)", dark: "rgba(202, 158, 230, 0.18)" } as DynamicShapeStyle,
-    iconColor: { light: "#ca9ee6", dark: "#ca9ee6" } as DynamicShapeStyle,
-    titleColor: { light: "#737994", dark: "#babbf1" } as DynamicShapeStyle,
-    descColor: { light: "#51576d", dark: "#c6d0f5" } as DynamicShapeStyle,
-    icon: "wifi.circle.fill"
-  }
+// 与 EdgeOne 小组件一致的系统级配色
+const theme = {
+  /** 深色整卡背景：系统级深灰，避免纯黑（纯黑为 #000000） */
+  bg: { light: "#F2F2F7", dark: "#1C1C1E" } as any,
+  /** 指标卡片：半透明毛玻璃感，底层水印可微微透出 */
+  card: { light: "rgba(255, 255, 255, 0.52)", dark: "rgba(44, 44, 46, 0.55)" } as any,
+  text: { light: "#000000", dark: "#FFFFFF" } as any,
+  secondary: { light: "#8E8E93", dark: "#8E8E93" } as any,
+  blue: { light: "#007AFF", dark: "#0A84FF" } as any,
+  mauve: { light: "#AF52DE", dark: "#BF5AF2" } as any,
+  green: { light: "#34C759", dark: "#32D74B" } as any,
+  yellow: { light: "#FF9500", dark: "#FF9F0A" } as any,
 }
 
-// 可复用卡片组件
-function DataCard({
-  title,
-  value,
-  unit,
-  theme,
-  titleStyle,
-  descStyle,
-  showLogo,
-  progressUsed,
-  progressTotal
-}: {
-  title: string
-  value: string
-  unit: string
-  theme: typeof cardThemes.fee
-  titleStyle: DynamicShapeStyle
-  descStyle: DynamicShapeStyle
-  showLogo?: boolean
-  progressUsed?: number
-  progressTotal?: number
-}) {
-  const showProgress = progressUsed !== undefined && progressTotal !== undefined && progressTotal > 0
-  const progressPercentage = showProgress ? progressUsed / progressTotal! : 0
-  const percentageText = showProgress ? `${Math.round(progressPercentage * 100)}%` : "0%"
-  const cardTitleStyle = theme.titleColor || titleStyle
-  const cardDescStyle = theme.descColor || descStyle
-  
+/** 仓库内 10010 品牌图，作背景水印 */
+const UNICOM_LOGO_URL =
+  "https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10010.png"
+
+function UnicomLogoWatermark({ compact }: { compact?: boolean }) {
+  const size = compact ? 80 : 128
   return (
-    <ZStack>
-      <VStack
-        alignment="center"
-        padding={{ top: 8, leading: 6, bottom: 8, trailing: 6 }}
-        frame={{ minWidth: 0, maxWidth: Infinity }}
-        widgetBackground={{
-          style: theme.background,
-          shape: {
-            type: "rect",
-            cornerRadius: 15,
-            style: "continuous"
-          }
-        }}
-      >
-        <Image 
-          systemName={theme.icon} 
-          font={13}
-          fontWeight="medium"
-          foregroundStyle={theme.iconColor} 
-        />
-        <Spacer minLength={3} />
-        <VStack alignment="center" spacing={2}>
-          <Text 
-            font={8} 
-            fontWeight="medium" 
-            foregroundStyle={cardTitleStyle}
-            lineLimit={1}
-            minScaleFactor={0.8}
-          >{title}</Text>
-          <Text
-            font={13}
-            fontWeight="bold"
-            foregroundStyle={cardDescStyle}
-            lineLimit={1}
-            minScaleFactor={0.7}
-          >{`${value}${unit}`}</Text>
-        </VStack>
-      </VStack>
-      {showProgress ? (
-        <VStack alignment="center">
-          <Spacer />
-          <VStack
-            alignment="center"
-            frame={{ width: 28, height: 28 }}
-          >
-            <Gauge
-              value={progressPercentage}
-              min={0}
-              max={1}
-              label={<Text font={1}> </Text>}
-              currentValueLabel={
-                <Text 
-                  font={10}
-                  fontWeight="semibold"
-                  foregroundStyle={theme.descColor || descStyle}
-                >
-                  {percentageText}
-                </Text>
-              }
-              gaugeStyle="accessoryCircularCapacity"
-              tint={theme.iconColor}
-              scaleEffect={0.7}
-            />
-          </VStack>
-          <Spacer />
-        </VStack>
-      ) : null}
-      {showLogo ? (
-        <VStack alignment="center">
-          <Spacer />
-          <Image 
-            imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10010.png" 
-            frame={{ width: 32, height: 32 }} 
-            resizable 
-          />
-          <Spacer />
-        </VStack>
-      ) : null}
-    </ZStack>
+    <VStack alignment="center" frame={{ maxWidth: Infinity, maxHeight: Infinity }}>
+      <Spacer />
+      <Image
+        imageUrl={UNICOM_LOGO_URL}
+        frame={{ width: size, height: size }}
+        resizable
+        opacity={compact ? 0.1 : 0.075}
+      />
+      <Spacer />
+    </VStack>
   )
 }
 
-// 小尺寸组件卡片
-function SmallDataCard({
-  title,
-  value,
-  unit,
-  theme,
-  titleStyle,
-  descStyle,
-  showLogo,
-  useLogoAsIcon
+function MetricCard({
+  icon,
+  label,
+  parts,
+  color,
+  compact,
 }: {
-  title: string
-  value: string
-  unit: string
-  theme: typeof cardThemes.fee
-  titleStyle: DynamicShapeStyle
-  descStyle: DynamicShapeStyle
-  showLogo?: boolean
-  useLogoAsIcon?: boolean
+  icon: string
+  label: string
+  parts: { val: string; unit: string }
+  color: any
+  compact?: boolean
 }) {
-  const cardTitleStyle = theme.titleColor || titleStyle
-  const cardDescStyle = theme.descColor || descStyle
-  
+  const valFont = compact ? 14 : 17
+  const unitFont = compact ? 9 : 10
+  const labelFont = compact ? 8 : 9
+  const iconFont = compact ? 9 : 10
+
   return (
-    <ZStack>
-      <HStack
-        alignment="center"
-        padding={{ top: 6, leading: 8, bottom: 6, trailing: 8 }}
-        spacing={6}
-        frame={{ minWidth: 0, maxWidth: Infinity }}
-        widgetBackground={{
-          style: theme.background,
-          shape: {
-            type: "rect",
-            cornerRadius: 12,
-            style: "continuous"
-          }
-        }}
-      >
-        <HStack alignment="center" frame={{ width: 20, height: 20 }}>
-          {useLogoAsIcon ? (
-            <Image 
-              imageUrl="https://raw.githubusercontent.com/Enjoyee/Scriptable/v2/img/ic_logo_10010.png" 
-              frame={{ width: 16, height: 16 }} 
-              resizable 
+    <VStack
+      alignment="leading"
+      spacing={compact ? 4 : 6}
+      padding={compact ? 8 : 10}
+      frame={{ minWidth: 0, maxWidth: Infinity }}
+      widgetBackground={{
+        style: theme.card,
+        shape: { type: "rect", cornerRadius: compact ? 12 : 14, style: "continuous" } as any,
+      }}
+    >
+      <HStack alignment="center" spacing={4}>
+        <Image systemName={icon} font={iconFont} foregroundStyle={color} />
+        <Text font={labelFont} fontWeight="bold" foregroundStyle={theme.secondary}>
+          {label}
+        </Text>
+        <Spacer />
+      </HStack>
+      <HStack alignment="lastTextBaseline" spacing={2}>
+        <Text font={valFont} fontWeight="bold" foregroundStyle={theme.text} lineLimit={1}>
+          {parts.val}
+        </Text>
+        <Text
+          font={unitFont}
+          fontWeight="bold"
+          foregroundStyle={theme.secondary}
+          lineLimit={1}
+          padding={{ bottom: 1 }}
+        >
+          {parts.unit}
+        </Text>
+      </HStack>
+    </VStack>
+  )
+}
+
+/** 中型：EdgeOne 同款 ZStack 背景 + 2×2 指标卡 */
+function MediumWidgetView({ data, settings }: { data: UnicomData; settings: ChinaUnicomSettings }) {
+  const showFlow = settings?.showFlow !== false
+  const showOther = settings?.showOtherFlow !== false && data.otherFlow
+
+  const flowParts = showFlow
+    ? { val: data.flow.balance, unit: data.flow.unit }
+    : { val: "—", unit: "" }
+
+  const otherParts = showOther
+    ? { val: data.otherFlow!.balance, unit: data.otherFlow!.unit }
+    : { val: "—", unit: "" }
+
+  return (
+    <ZStack
+      frame={{ maxWidth: Infinity, maxHeight: Infinity }}
+      widgetBackground={{
+        style: theme.bg,
+        shape: { type: "rect", cornerRadius: 24, style: "continuous" } as any,
+      }}
+    >
+      <UnicomLogoWatermark />
+      <VStack padding={{ top: 16, leading: 16, bottom: 16, trailing: 16 }} spacing={0}>
+        <VStack spacing={6}>
+          <HStack spacing={6}>
+            <MetricCard
+              icon="creditcard.fill"
+              label={data.fee.title}
+              parts={{ val: data.fee.balance, unit: data.fee.unit }}
+              color={theme.green}
             />
-          ) : (
-            <Image 
-              systemName={theme.icon} 
-              font={12}
-              fontWeight="medium"
-              foregroundStyle={theme.iconColor} 
-            />
-          )}
-        </HStack>
-        <VStack alignment="leading" spacing={2} frame={{ minWidth: 0, maxWidth: Infinity }}>
-          <Text 
-            font={9} 
-            fontWeight="medium" 
-            foregroundStyle={cardTitleStyle}
-            lineLimit={1}
-            minScaleFactor={0.8}
-          >
-            {title}
-          </Text>
-          <Text
-            font={14}
-            fontWeight="bold"
-            foregroundStyle={cardDescStyle}
-            lineLimit={1}
-            minScaleFactor={0.7}
-          >
-            {`${value}${unit}`}
-          </Text>
-        </VStack>
-        {showLogo && !useLogoAsIcon ? (
-          <HStack alignment="center" frame={{ width: 20, height: 20 }}>
-            <Image 
-              imageUrl="https://raw.githubusercontent.com/Enjoyee/Scriptable/v2/img/ic_logo_10010.png" 
-              frame={{ width: 16, height: 16 }} 
-              resizable 
+            <MetricCard
+              icon="phone.fill"
+              label={data.voice.title}
+              parts={{ val: data.voice.balance, unit: data.voice.unit }}
+              color={theme.blue}
             />
           </HStack>
-        ) : null}
-      </HStack>
+          <HStack spacing={6}>
+            <MetricCard
+              icon="antenna.radiowaves.left.and.right"
+              label={data.flow.title}
+              parts={flowParts}
+              color={theme.yellow}
+            />
+            <MetricCard
+              icon="wifi.circle.fill"
+              label={data.otherFlow?.title ?? "其他流量"}
+              parts={otherParts}
+              color={theme.mauve}
+            />
+          </HStack>
+        </VStack>
+      </VStack>
     </ZStack>
   )
 }
 
-// 小尺寸组件视图
-function SmallWidgetView({ data, titleStyle, descStyle }: { 
-  data: UnicomData
-  titleStyle: DynamicShapeStyle
-  descStyle: DynamicShapeStyle
-}) {
-  // 计算总流量剩余（通用流量 + 其他流量）
-  const flowRemain = (data.flow?.total && data.flow?.used !== undefined) 
-    ? Math.max(0, data.flow.total - data.flow.used) : 0
-  const otherFlowRemain = (data.otherFlow?.total && data.otherFlow?.used !== undefined)
-    ? Math.max(0, data.otherFlow.total - data.otherFlow.used) : 0
-  const totalFlowFormatted = formatFlowValue(flowRemain + otherFlowRemain, "MB")
-  
+/** 小型：同套配色，纵向三张卡 */
+function SmallWidgetView({ data, settings }: { data: UnicomData; settings: ChinaUnicomSettings }) {
+  const flowRemain =
+    data.flow?.total != null && data.flow?.used != null
+      ? Math.max(0, data.flow.total - data.flow.used)
+      : 0
+  const otherRemain =
+    data.otherFlow?.total != null && data.otherFlow?.used != null
+      ? Math.max(0, data.otherFlow.total - data.otherFlow.used)
+      : 0
+  const totalFlowFormatted = formatFlowValue(flowRemain + otherRemain, "MB")
+
+  const showFlow = settings?.showFlow !== false
+
   return (
-    <VStack alignment="leading" padding={{ top: 8, leading: 8, bottom: 8, trailing: 8 }} spacing={6}>
-      <SmallDataCard
-        title={data.fee.title}
-        value={data.fee.balance}
-        unit={data.fee.unit}
-        theme={cardThemes.fee}
-        titleStyle={titleStyle}
-        descStyle={descStyle}
-        useLogoAsIcon={true}
-      />
-      <SmallDataCard
-        title="剩余总流量"
-        value={totalFlowFormatted.balance}
-        unit={totalFlowFormatted.unit}
-        theme={cardThemes.flow}
-        titleStyle={titleStyle}
-        descStyle={descStyle}
-      />
-      <SmallDataCard
-        title={data.voice.title}
-        value={data.voice.balance}
-        unit="MIN"
-        theme={cardThemes.voice}
-        titleStyle={titleStyle}
-        descStyle={descStyle}
-      />
-    </VStack>
+    <ZStack
+      frame={{ maxWidth: Infinity, maxHeight: Infinity }}
+      widgetBackground={{
+        style: theme.bg,
+        shape: { type: "rect", cornerRadius: 20, style: "continuous" } as any,
+      }}
+    >
+      <UnicomLogoWatermark compact />
+      <VStack padding={{ top: 12, leading: 12, bottom: 12, trailing: 12 }} spacing={6}>
+        <MetricCard
+          icon="creditcard.fill"
+          label={data.fee.title}
+          parts={{ val: data.fee.balance, unit: data.fee.unit }}
+          color={theme.green}
+          compact
+        />
+        <MetricCard
+          icon="antenna.radiowaves.left.and.right"
+          label="剩余总流量"
+          parts={showFlow ? { val: totalFlowFormatted.balance, unit: totalFlowFormatted.unit } : { val: "—", unit: "" }}
+          color={theme.yellow}
+          compact
+        />
+        <MetricCard
+          icon="phone.fill"
+          label={data.voice.title}
+          parts={{ val: data.voice.balance, unit: data.voice.unit }}
+          color={theme.blue}
+          compact
+        />
+      </VStack>
+    </ZStack>
   )
 }
 
 function WidgetView({ data, settings }: { data: UnicomData; settings: ChinaUnicomSettings }) {
-  const titleStyle: DynamicShapeStyle = {
-    light: settings.titleDayColor,
-    dark: settings.titleNightColor,
-  }
-  const descStyle: DynamicShapeStyle = {
-    light: settings.descDayColor,
-    dark: settings.descNightColor,
-  }
-
   if (Widget.family === "systemSmall") {
-    return <SmallWidgetView data={data} titleStyle={titleStyle} descStyle={descStyle} />
+    return <SmallWidgetView data={data} settings={settings} />
   }
-
-  return (
-    <VStack alignment="leading" padding={{ top: 10, leading: 10, bottom: 10, trailing: 10 }} spacing={8}>
-      <HStack alignment="center" spacing={6}>
-        <DataCard
-          title={data.fee.title}
-          value={data.fee.balance}
-          unit={data.fee.unit}
-          theme={cardThemes.fee}
-          titleStyle={titleStyle}
-          descStyle={descStyle}
-          showLogo={true}
-        />
-        <DataCard
-          title={data.voice.title}
-          value={data.voice.balance}
-          unit={data.voice.unit}
-          theme={cardThemes.voice}
-          titleStyle={titleStyle}
-          descStyle={descStyle}
-          progressUsed={data.voice.used}
-          progressTotal={data.voice.total}
-        />
-        {settings?.showFlow !== false ? (
-          <DataCard
-            title={data.flow.title}
-            value={data.flow.balance}
-            unit={data.flow.unit}
-            theme={cardThemes.flow}
-            titleStyle={titleStyle}
-            descStyle={descStyle}
-            progressUsed={data.flow.used}
-            progressTotal={data.flow.total}
-          />
-        ) : null}
-        {data.otherFlow && settings?.showOtherFlow !== false ? (
-          <DataCard
-            title={data.otherFlow.title}
-            value={data.otherFlow.balance}
-            unit={data.otherFlow.unit}
-            theme={cardThemes.otherFlow}
-            titleStyle={titleStyle}
-            descStyle={descStyle}
-            progressUsed={data.otherFlow.used}
-            progressTotal={data.otherFlow.total}
-          />
-        ) : null}
-      </HStack>
-    </VStack>
-  )
+  return <MediumWidgetView data={data} settings={settings} />
 }
 
 async function render() {
@@ -613,9 +459,6 @@ async function render() {
     const boxJsCookie = await fetchCookieFromBoxJs(settings.boxJsUrl)
     if (boxJsCookie) {
       cookie = boxJsCookie
-      console.log("✅ 使用 BoxJs 中的 Cookie")
-    } else {
-      console.warn("⚠️ 从 BoxJs 读取 Cookie 失败，使用配置的 Cookie")
     }
   }
 
@@ -707,12 +550,6 @@ async function render() {
         used: totalUsedMB,
         total: totalMB
       }
-      
-      console.log("🌐 其他流量:", 
-        `已用${formatFlowValue(totalUsedMB, "MB").balance}${formatFlowValue(totalUsedMB, "MB").unit} ` +
-        `剩余${formatted.balance}${formatted.unit} ` +
-        `总计${formatFlowValue(totalMB, "MB").balance}${formatFlowValue(totalMB, "MB").unit}`
-      )
     }
   }
 
