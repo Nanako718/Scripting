@@ -32,7 +32,7 @@
   },
   "icon" : "antenna.radiowaves.left.and.right",
   "description" : "",
-  "name" : "中国联通",
+  "name" : "联通",
   "author" : {
     "email" : "2753086015@qq.com",
     "name" : "DTZSGHNR",
@@ -42,5 +42,5 @@
 
   ],
   "runInApp" : false,
-  "version" : "1.0.5"
+  "version" : "1.0.6"
 }
