@@ -253,6 +253,10 @@ const theme = {
   yellow: { light: "#FF9500", dark: "#FF9F0A" } as any,
 }
 
+/** 内容区距小组件四边的统一边距；卡片之间的间距 */
+const WIDGET_INSET = { medium: 14, small: 12 }
+const CARD_GAP = 6
+
 /** 仓库内 10010 品牌图，作背景水印 */
 const UNICOM_LOGO_URL =
   "https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10010.png"
@@ -349,9 +353,14 @@ function MediumWidgetView({ data, settings }: { data: UnicomData; settings: Chin
       }}
     >
       <UnicomLogoWatermark />
-      <VStack padding={{ top: 16, leading: 16, bottom: 16, trailing: 16 }} spacing={0}>
-        <VStack spacing={6}>
-          <HStack spacing={6}>
+      <VStack
+        frame={{ maxWidth: Infinity, maxHeight: Infinity }}
+        padding={WIDGET_INSET.medium}
+        spacing={0}
+      >
+        <Spacer />
+        <VStack spacing={CARD_GAP} frame={{ maxWidth: Infinity }}>
+          <HStack spacing={CARD_GAP}>
             <MetricCard
               icon="creditcard.fill"
               label={data.fee.title}
@@ -365,7 +374,7 @@ function MediumWidgetView({ data, settings }: { data: UnicomData; settings: Chin
               color={theme.blue}
             />
           </HStack>
-          <HStack spacing={6}>
+          <HStack spacing={CARD_GAP}>
             <MetricCard
               icon="antenna.radiowaves.left.and.right"
               label={data.flow.title}
@@ -380,6 +389,7 @@ function MediumWidgetView({ data, settings }: { data: UnicomData; settings: Chin
             />
           </HStack>
         </VStack>
+        <Spacer />
       </VStack>
     </ZStack>
   )
@@ -408,28 +418,36 @@ function SmallWidgetView({ data, settings }: { data: UnicomData; settings: China
       }}
     >
       <UnicomLogoWatermark compact />
-      <VStack padding={{ top: 12, leading: 12, bottom: 12, trailing: 12 }} spacing={6}>
-        <MetricCard
-          icon="creditcard.fill"
-          label={data.fee.title}
-          parts={{ val: data.fee.balance, unit: data.fee.unit }}
-          color={theme.green}
-          compact
-        />
-        <MetricCard
-          icon="antenna.radiowaves.left.and.right"
-          label="剩余总流量"
-          parts={showFlow ? { val: totalFlowFormatted.balance, unit: totalFlowFormatted.unit } : { val: "—", unit: "" }}
-          color={theme.yellow}
-          compact
-        />
-        <MetricCard
-          icon="phone.fill"
-          label={data.voice.title}
-          parts={{ val: data.voice.balance, unit: data.voice.unit }}
-          color={theme.blue}
-          compact
-        />
+      <VStack
+        frame={{ maxWidth: Infinity, maxHeight: Infinity }}
+        padding={WIDGET_INSET.small}
+        spacing={0}
+      >
+        <Spacer />
+        <VStack spacing={CARD_GAP} frame={{ maxWidth: Infinity }}>
+          <MetricCard
+            icon="creditcard.fill"
+            label={data.fee.title}
+            parts={{ val: data.fee.balance, unit: data.fee.unit }}
+            color={theme.green}
+            compact
+          />
+          <MetricCard
+            icon="antenna.radiowaves.left.and.right"
+            label="剩余总流量"
+            parts={showFlow ? { val: totalFlowFormatted.balance, unit: totalFlowFormatted.unit } : { val: "—", unit: "" }}
+            color={theme.yellow}
+            compact
+          />
+          <MetricCard
+            icon="phone.fill"
+            label={data.voice.title}
+            parts={{ val: data.voice.balance, unit: data.voice.unit }}
+            color={theme.blue}
+            compact
+          />
+        </VStack>
+        <Spacer />
       </VStack>
     </ZStack>
   )
