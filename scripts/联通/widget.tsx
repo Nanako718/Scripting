@@ -8,8 +8,7 @@ import {
   Spacer,
   fetch,
   WidgetReloadPolicy,
-  ZStack,
-  GeometryReader,
+  DynamicShapeStyle,
 } from "scripting"
 
 // 设置结构定义
@@ -240,57 +239,48 @@ function formatFlowValue(value: number, unit: string = "MB"): { balance: string;
   }
 }
 
-// 与 EdgeOne 小组件一致的系统级配色
 const theme = {
-  /** 深色整卡背景：系统级深灰，避免纯黑（纯黑为 #000000） */
-  bg: { light: "#F2F2F7", dark: "#1C1C1E" } as any,
-  /** 指标卡片：半透明毛玻璃感，底层水印可微微透出 */
-  card: { light: "rgba(255, 255, 255, 0.52)", dark: "rgba(44, 44, 46, 0.55)" } as any,
-  text: { light: "#000000", dark: "#FFFFFF" } as any,
-  secondary: { light: "#8E8E93", dark: "#8E8E93" } as any,
-  blue: { light: "#007AFF", dark: "#0A84FF" } as any,
-  mauve: { light: "#AF52DE", dark: "#BF5AF2" } as any,
-  green: { light: "#34C759", dark: "#32D74B" } as any,
-  yellow: { light: "#FF9500", dark: "#FF9F0A" } as any,
+  bg: { light: "#F2F2F7", dark: "#000000" } as DynamicShapeStyle,
+  card: { light: "#FFFFFF", dark: "#1C1C1E" } as DynamicShapeStyle,
+  text: { light: "#000000", dark: "#FFFFFF" } as DynamicShapeStyle,
+  secondary: { light: "#8E8E93", dark: "#8E8E93" } as DynamicShapeStyle,
+  green: { light: "#34C759", dark: "#30D158" } as DynamicShapeStyle,
+  blue: { light: "#007AFF", dark: "#0A84FF" } as DynamicShapeStyle,
+  orange: { light: "#FF9500", dark: "#FF9F0A" } as DynamicShapeStyle,
+  purple: { light: "#AF52DE", dark: "#BF5AF2" } as DynamicShapeStyle,
 }
 
-/** 内容区距小组件四边相同边距（pt）；卡片间距 */
 const WIDGET_INSET = 12
 const CARD_GAP = 6
 
-/** 按小组件实际尺寸铺满，四边仅由统一 inset 控制（避免 Spacer 导致上下偏大） */
-function WidgetInsetBody({ children }: { children: any }) {
-  return (
-    <GeometryReader>
-      {(geo) => (
-        <VStack
-          frame={{ width: geo.size.width, height: geo.size.height }}
-          padding={WIDGET_INSET}
-          spacing={CARD_GAP}
-        >
-          {children}
-        </VStack>
-      )}
-    </GeometryReader>
-  )
+function continuousRectShape(cornerRadius: number) {
+  return {
+    type: "rect" as const,
+    cornerRadius,
+    style: "continuous" as const,
+  }
 }
 
-/** 仓库内 10010 品牌图，作背景水印 */
-const UNICOM_LOGO_URL =
-  "https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/10010.png"
+function widgetContainerCornerRadius(): number {
+  const { width, height } = Widget.displaySize
+  const shortEdge = Math.min(width, height)
+  return Math.round(Math.min(24, Math.max(18, shortEdge * 0.14)))
+}
 
-function UnicomLogoWatermark({ compact }: { compact?: boolean }) {
-  const size = compact ? 80 : 128
+function metricCardCornerRadius(compact?: boolean): number {
+  const outer = widgetContainerCornerRadius()
+  const ratio = compact ? 0.5 : 0.55
+  return Math.round(Math.max(10, Math.min(14, outer * ratio)))
+}
+
+function WidgetInsetBody({ children }: { children: any }) {
   return (
-    <VStack alignment="center" frame={{ maxWidth: Infinity, maxHeight: Infinity }}>
-      <Spacer />
-      <Image
-        imageUrl={UNICOM_LOGO_URL}
-        frame={{ width: size, height: size }}
-        resizable
-        opacity={compact ? 0.1 : 0.075}
-      />
-      <Spacer />
+    <VStack
+      frame={{ maxWidth: Infinity, maxHeight: Infinity }}
+      padding={WIDGET_INSET}
+      spacing={CARD_GAP}
+    >
+      {children}
     </VStack>
   )
 }
@@ -305,7 +295,7 @@ function MetricCard({
   icon: string
   label: string
   parts: { val: string; unit: string }
-  color: any
+  color: DynamicShapeStyle
   compact?: boolean
 }) {
   const valFont = compact ? 14 : 17
@@ -321,35 +311,36 @@ function MetricCard({
       frame={{ minWidth: 0, maxWidth: Infinity, maxHeight: Infinity }}
       widgetBackground={{
         style: theme.card,
-        shape: { type: "rect", cornerRadius: compact ? 12 : 14, style: "continuous" } as any,
+        shape: continuousRectShape(metricCardCornerRadius(compact)),
       }}
     >
       <HStack alignment="center" spacing={4}>
         <Image systemName={icon} font={iconFont} foregroundStyle={color} />
-        <Text font={labelFont} fontWeight="bold" foregroundStyle={theme.secondary}>
+        <Text font={labelFont} fontWeight="semibold" foregroundStyle={theme.secondary} lineLimit={1}>
           {label}
         </Text>
         <Spacer minLength={0} />
       </HStack>
       <HStack alignment="lastTextBaseline" spacing={2}>
-        <Text font={valFont} fontWeight="bold" foregroundStyle={theme.text} lineLimit={1}>
+        <Text font={valFont} fontWeight="bold" foregroundStyle={theme.text} lineLimit={1} minScaleFactor={0.7}>
           {parts.val}
         </Text>
-        <Text
-          font={unitFont}
-          fontWeight="bold"
-          foregroundStyle={theme.secondary}
-          lineLimit={1}
-          padding={{ bottom: 1 }}
-        >
-          {parts.unit}
-        </Text>
+        {parts.unit ? (
+          <Text
+            font={unitFont}
+            fontWeight="semibold"
+            foregroundStyle={theme.secondary}
+            lineLimit={1}
+            padding={{ bottom: 1 }}
+          >
+            {parts.unit}
+          </Text>
+        ) : null}
       </HStack>
     </VStack>
   )
 }
 
-/** 中型：EdgeOne 同款 ZStack 背景 + 2×2 指标卡 */
 function MediumWidgetView({ data, settings }: { data: UnicomData; settings: ChinaUnicomSettings }) {
   const showFlow = settings?.showFlow !== false
   const showOther = settings?.showOtherFlow !== false && data.otherFlow
@@ -363,14 +354,13 @@ function MediumWidgetView({ data, settings }: { data: UnicomData; settings: Chin
     : { val: "—", unit: "" }
 
   return (
-    <ZStack
+    <VStack
       frame={{ maxWidth: Infinity, maxHeight: Infinity }}
       widgetBackground={{
         style: theme.bg,
-        shape: { type: "rect", cornerRadius: 24, style: "continuous" } as any,
+        shape: continuousRectShape(widgetContainerCornerRadius()),
       }}
     >
-      <UnicomLogoWatermark />
       <WidgetInsetBody>
         <HStack spacing={CARD_GAP} frame={{ maxWidth: Infinity, maxHeight: Infinity }}>
           <MetricCard
@@ -391,21 +381,20 @@ function MediumWidgetView({ data, settings }: { data: UnicomData; settings: Chin
             icon="antenna.radiowaves.left.and.right"
             label={data.flow.title}
             parts={flowParts}
-            color={theme.yellow}
+            color={theme.orange}
           />
           <MetricCard
             icon="wifi.circle.fill"
             label={data.otherFlow?.title ?? "其他流量"}
             parts={otherParts}
-            color={theme.mauve}
+            color={theme.purple}
           />
         </HStack>
       </WidgetInsetBody>
-    </ZStack>
+    </VStack>
   )
 }
 
-/** 小型：同套配色，纵向三张卡 */
 function SmallWidgetView({ data, settings }: { data: UnicomData; settings: ChinaUnicomSettings }) {
   const flowRemain =
     data.flow?.total != null && data.flow?.used != null
@@ -420,14 +409,13 @@ function SmallWidgetView({ data, settings }: { data: UnicomData; settings: China
   const showFlow = settings?.showFlow !== false
 
   return (
-    <ZStack
+    <VStack
       frame={{ maxWidth: Infinity, maxHeight: Infinity }}
       widgetBackground={{
         style: theme.bg,
-        shape: { type: "rect", cornerRadius: 20, style: "continuous" } as any,
+        shape: continuousRectShape(widgetContainerCornerRadius()),
       }}
     >
-      <UnicomLogoWatermark compact />
       <WidgetInsetBody>
         <MetricCard
           icon="creditcard.fill"
@@ -440,7 +428,7 @@ function SmallWidgetView({ data, settings }: { data: UnicomData; settings: China
           icon="antenna.radiowaves.left.and.right"
           label="剩余总流量"
           parts={showFlow ? { val: totalFlowFormatted.balance, unit: totalFlowFormatted.unit } : { val: "—", unit: "" }}
-          color={theme.yellow}
+          color={theme.orange}
           compact
         />
         <MetricCard
@@ -451,7 +439,7 @@ function SmallWidgetView({ data, settings }: { data: UnicomData; settings: China
           compact
         />
       </WidgetInsetBody>
-    </ZStack>
+    </VStack>
   )
 }
 
