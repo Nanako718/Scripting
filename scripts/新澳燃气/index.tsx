@@ -172,15 +172,34 @@ type Settings = {
   token: string
 }
 
+type LogEntry = {
+  ts: string
+  api: string
+  ok: boolean
+  detail: string
+}
+
+const LOG_KEY = "xinao_gas_logs"
+
 function SettingsPage() {
   const saved = Storage.get<Settings>(SETTINGS_KEY)
   const [enableBoxJs, setEnableBoxJs] = useState(saved?.enableBoxJs ?? false)
   const [boxJsUrl, setBoxJsUrl] = useState(saved?.boxJsUrl ?? "http://boxjs.com")
   const [token, setToken] = useState(saved?.token ?? "")
+  const [logs, setLogs] = useState<LogEntry[]>(Storage.get<LogEntry[]>(LOG_KEY) ?? [])
 
   function handleSave() {
     Storage.set<Settings>(SETTINGS_KEY, { enableBoxJs, boxJsUrl, token })
     Script.exit()
+  }
+
+  function refreshLogs() {
+    setLogs(Storage.get<LogEntry[]>(LOG_KEY) ?? [])
+  }
+
+  function clearLogs() {
+    Storage.set<LogEntry[]>(LOG_KEY, [])
+    setLogs([])
   }
 
   return (
@@ -204,6 +223,36 @@ function SettingsPage() {
         </Section>
 
         <Button title="保存设置" action={handleSave} />
+
+        <Section
+          header={<Text>请求日志</Text>}
+          footer={<Text>显示最近 20 条 API 请求记录</Text>}
+        >
+          <Button title="刷新日志" action={refreshLogs} />
+          {logs.length === 0 ? (
+            <Text foregroundStyle="secondaryLabel">暂无日志</Text>
+          ) : (
+            logs.slice().reverse().map((log, i) => (
+              <HStack key={i} frame={{ maxWidth: Infinity }}>
+                <VStack alignment="leading" spacing={2}>
+                  <HStack spacing={4}>
+                    <Text font="caption2" foregroundStyle={log.ok ? "systemGreen" : "systemRed"}>
+                      {log.ok ? "✓" : "✗"}
+                    </Text>
+                    <Text font="caption2" fontWeight="medium">{log.api}</Text>
+                    <Text font="caption2" foregroundStyle="tertiaryLabel">{log.ts}</Text>
+                  </HStack>
+                  <Text font="caption2" foregroundStyle="secondaryLabel" lineLimit={1}>
+                    {log.detail}
+                  </Text>
+                </VStack>
+              </HStack>
+            ))
+          )}
+          {logs.length > 0 ? (
+            <Button title="清空日志" action={clearLogs} foregroundStyle="systemRed" />
+          ) : null}
+        </Section>
       </Form>
       <Spacer />
       <VStack alignment="center" spacing={4} padding={{ bottom: 10 }}>

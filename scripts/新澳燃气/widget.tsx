@@ -1,27 +1,25 @@
 import {
   HStack,
   Image,
-  LinearGradient,
-  Rectangle,
   Spacer,
   Text,
   VStack,
   Widget,
-  ZStack,
 } from "scripting"
+import { SmallWidget, BarChart, formatDate } from "./small_widget"
 
 const API_BASE = "https://wechatapp.ecej.com/livingpay/v3/xcx"
 const SALT = "8796135e9f8349d998345f9f13d8bd95"
 const SETTINGS_KEY = "xinao_gas_settings"
-const PADDING = 16
+const CACHE_FILE = "xinao_gas_readings.json"
+const PADDING = 14
 
-// MD5 简易实现
+// MD5
 function md5(str: string): string {
   function L(k: number, d: number): number { return (k << d) | (k >>> (32 - d)) }
   function K(G: number, k: number): number {
     var I, d, F, H, x
-    F = (G & 2147483648); H = (k & 2147483648)
-    I = (G & 1073741824); d = (k & 1073741824)
+    F = (G & 2147483648); H = (k & 2147483648); I = (G & 1073741824); d = (k & 1073741824)
     x = (G & 1073741823) + (k & 1073741823)
     if (I & d) return (x ^ 2147483648 ^ F ^ H)
     if (I | d) { if (x & 1073741824) return (x ^ 3221225472 ^ F ^ H); else return (x ^ 1073741824 ^ F ^ H) }
@@ -60,7 +58,7 @@ function md5(str: string): string {
   Y = 1732584193; X = 4023233417; V = 2562383102; U = 271733878
   for (P = 0; P < i.length; P += 16) {
     h = Y; E = X; v = V; g = U
-    Y = u(Y, X, V, U, i[P + 0], S, 3614090360); U = u(U, Y, X, V, i[P + 1], Q, 3905402710)
+    Y = u(Y, X, V, U, i[P], S, 3614090360); U = u(U, Y, X, V, i[P + 1], Q, 3905402710)
     V = u(V, U, Y, X, i[P + 2], N, 606105819); X = u(X, V, U, Y, i[P + 3], M, 3250441966)
     Y = u(Y, X, V, U, i[P + 4], S, 4118548399); U = u(U, Y, X, V, i[P + 5], Q, 1200080426)
     V = u(V, U, Y, X, i[P + 6], N, 2821735955); X = u(X, V, U, Y, i[P + 7], M, 4249261313)
@@ -69,7 +67,7 @@ function md5(str: string): string {
     Y = u(Y, X, V, U, i[P + 12], S, 1804603682); U = u(U, Y, X, V, i[P + 13], Q, 4254626195)
     V = u(V, U, Y, X, i[P + 14], N, 2792965006); X = u(X, V, U, Y, i[P + 15], M, 1236535329)
     Y = f(Y, X, V, U, i[P + 1], A, 4129170786); U = f(U, Y, X, V, i[P + 6], z, 3225465664)
-    V = f(V, U, Y, X, i[P + 11], y, 643717713); X = f(X, V, U, Y, i[P + 0], w, 3921069994)
+    V = f(V, U, Y, X, i[P + 11], y, 643717713); X = f(X, V, U, Y, i[P], w, 3921069994)
     Y = f(Y, X, V, U, i[P + 5], A, 3593408605); U = f(U, Y, X, V, i[P + 10], z, 38016083)
     V = f(V, U, Y, X, i[P + 15], y, 3634488961); X = f(X, V, U, Y, i[P + 4], w, 3889429448)
     Y = f(Y, X, V, U, i[P + 9], A, 568446438); U = f(U, Y, X, V, i[P + 14], z, 3275163606)
@@ -80,11 +78,11 @@ function md5(str: string): string {
     V = D(V, U, Y, X, i[P + 11], l, 1839030562); X = D(X, V, U, Y, i[P + 14], j, 4259657740)
     Y = D(Y, X, V, U, i[P + 1], o, 2763975236); U = D(U, Y, X, V, i[P + 4], m, 1272893353)
     V = D(V, U, Y, X, i[P + 7], l, 4139469664); X = D(X, V, U, Y, i[P + 10], j, 3200236656)
-    Y = D(Y, X, V, U, i[P + 13], o, 681279174); U = D(U, Y, X, V, i[P + 0], m, 3936430074)
+    Y = D(Y, X, V, U, i[P + 13], o, 681279174); U = D(U, Y, X, V, i[P], m, 3936430074)
     V = D(V, U, Y, X, i[P + 3], l, 3572445317); X = D(X, V, U, Y, i[P + 6], j, 76029189)
     Y = D(Y, X, V, U, i[P + 9], o, 3654602809); U = D(U, Y, X, V, i[P + 12], m, 3873151461)
     V = D(V, U, Y, X, i[P + 15], l, 530742520); X = D(X, V, U, Y, i[P + 2], j, 3299628645)
-    Y = t(Y, X, V, U, i[P + 0], W, 4096336452); U = t(U, Y, X, V, i[P + 7], T, 1126891415)
+    Y = t(Y, X, V, U, i[P], W, 4096336452); U = t(U, Y, X, V, i[P + 7], T, 1126891415)
     V = t(V, U, Y, X, i[P + 14], R, 2878612391); X = t(X, V, U, Y, i[P + 5], O, 4237533241)
     Y = t(Y, X, V, U, i[P + 12], W, 1700485571); U = t(U, Y, X, V, i[P + 3], T, 2399980690)
     V = t(V, U, Y, X, i[P + 10], R, 4293915773); X = t(X, V, U, Y, i[P + 1], O, 2240044497)
@@ -114,44 +112,79 @@ function makeHeaders(token: string) {
   }
 }
 
+// ========== 日志 ==========
+
+type LogEntry = {
+  ts: string
+  api: string
+  ok: boolean
+  detail: string
+}
+
+const LOG_KEY = "xinao_gas_logs"
+
+function addLog(api: string, ok: boolean, detail: string) {
+  try {
+    const now = new Date()
+    const pad = (n: number) => n < 10 ? "0" + n : "" + n
+    const ts = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+    const entry: LogEntry = { ts, api, ok, detail }
+
+    console.log(`[${ts}] ${ok ? "✓" : "✗"} ${api} — ${detail}`)
+
+    const existing = Storage.get<LogEntry[]>(LOG_KEY)
+    const logs = Array.isArray(existing) ? existing : []
+    logs.push(entry)
+    Storage.set<LogEntry[]>(LOG_KEY, logs.slice(-20))
+  } catch (_) { }
+}
+
+// ========== API ==========
+
 async function getCards(token: string) {
   const appKey = genAppKey()
-  const res = await fetch(`${API_BASE}/getBingCardListV2.json`, {
+  const url = `${API_BASE}/getBingCardListV2.json`
+  const body = `token=${token}&appKey=${appKey}&clientType=gaswx&moduleCode=0`
+  const res = await fetch(url, {
     method: "POST",
     headers: makeHeaders(token),
-    body: `token=${token}&appKey=${appKey}&clientType=gaswx&moduleCode=0`,
+    body,
   })
   const json = await res.json()
-  if (json.resultCode !== 200) throw new Error(json.message || "获取卡列表失败")
+  const ok = json.resultCode === 200
+  addLog("getBingCardListV2", ok, ok ? `cards=${json.data?.length ?? 0}` : json.message || "failed")
+  if (!ok) throw new Error(json.message || "获取卡列表失败")
   return json.data as any[]
 }
 
 async function getBill(token: string, companyCode: string, platformCardNo: string) {
   const appKey = genAppKey()
   const params = `token=${token}&clientType=gaswx&appKey=${appKey}&companyCode=${companyCode}&platformOnlyCardNo=${platformCardNo}`
-  const res = await fetch(`${API_BASE}/getBillV2.json?${params}`, {
+  const url = `${API_BASE}/getBillV2.json?${params}`
+  const res = await fetch(url, {
     method: "GET",
-    headers: {
-      "token": token, "token-type": "2",
-      "Content-Type": "application/json;charset=UTF-8",
-      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X)",
-      "Referer": "https://servicewechat.com/wxd722317df8c566fe/258/page-frame.html",
-    },
+    headers: { "token": token, "token-type": "2", "Content-Type": "application/json;charset=UTF-8", "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X)", "Referer": "https://servicewechat.com/wxd722317df8c566fe/258/page-frame.html" },
   })
   const json = await res.json()
-  if (json.resultCode !== 200) throw new Error(json.message || "获取账单失败")
+  const ok = json.resultCode === 200
+  addLog("getBillV2", ok, ok ? `balance=${json.data?.totalBalance}` : json.message || "failed")
+  if (!ok) throw new Error(json.message || "获取账单失败")
   return json.data
 }
 
 async function getMeterInfo(token: string, contractNo: string) {
   const appKey = genAppKey()
-  const res = await fetch(`${API_BASE}/iot/meterGasInfo.json`, {
+  const url = `${API_BASE}/iot/meterGasInfo.json`
+  const body = `refreshFlag=false&appKey=${appKey}&clientType=gaswx&token=${token}&contractNo=${contractNo}`
+  const res = await fetch(url, {
     method: "POST",
     headers: makeHeaders(token),
-    body: `refreshFlag=false&appKey=${appKey}&clientType=gaswx&token=${token}&contractNo=${contractNo}`,
+    body,
   })
   const json = await res.json()
-  if (json.resultCode !== 200) return null
+  const ok = json.resultCode === 200
+  addLog("meterGasInfo", ok, ok ? `monthTotal=${json.data?.currentMonthTotal}` : json.message || "failed")
+  if (!ok) return null
   return json.data
 }
 
@@ -164,171 +197,146 @@ async function fetchTokenFromBoxJs(boxJsUrl: string): Promise<string | null> {
       const token = data?.val
       if (token && typeof token === "string" && token.trim()) return token.trim()
     }
-  } catch (error) { }
+  } catch (_) { }
   return null
 }
 
-// ========== 小型组件 ==========
+// ========== 每日读数存储 ==========
 
-function SmallWidget({ bill, meter }: { bill: any; meter: any }) {
-  const monthTotal = meter?.currentMonthTotal
-  const hasUsage = monthTotal != null && parseFloat(monthTotal) > 0
-  const usage = hasUsage ? parseFloat(monthTotal) : 0
-  const avg = hasUsage ? (usage / new Date().getDate()).toFixed(1) : "--"
+type DailyReading = { date: string; value: number }
 
-  // 模拟近期每日用量（柱形图高度比例）
-  const barCount = 7
-  const bars = hasUsage
-    ? Array.from({ length: barCount }, (_, i) => {
-      const v = usage / barCount * (0.6 + Math.random() * 0.8)
-      return Math.min(v / (usage / barCount * 1.2), 1)
-    })
-    : Array.from({ length: barCount }, () => 0.3)
+function todayStr(): string {
+  const d = new Date()
+  const pad = (n: number) => n < 10 ? "0" + n : "" + n
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
 
-  return (
-    <VStack padding={PADDING} spacing={0}>
-      {/* 标题行 */}
-      <HStack>
-        <Image systemName="flame.fill" foregroundStyle="#FF8C38" font="footnote" />
-        <Text font="footnote" fontWeight="semibold" foregroundStyle="label"> 用气量</Text>
-        <Spacer />
-      </HStack>
+function loadReadings(): DailyReading[] {
+  try {
+    const path = FileManager.appGroupDocumentsDirectory + "/" + CACHE_FILE
+    if (FileManager.existsSync(path)) {
+      const data = FileManager.readAsStringSync(path)
+      const arr = JSON.parse(data)
+      if (Array.isArray(arr)) return arr
+    }
+  } catch (_) { }
+  return []
+}
 
-      <Spacer minLength={6} />
+function saveReadings(readings: DailyReading[]) {
+  try {
+    const path = FileManager.appGroupDocumentsDirectory + "/" + CACHE_FILE
+    // 只保留最近 31 天
+    const trimmed = readings.slice(-31)
+    FileManager.writeAsStringSync(path, JSON.stringify(trimmed))
+  } catch (_) { }
+}
 
-      {/* 本月气量 */}
-      <Text font="title" fontWeight="bold" foregroundStyle="label">
-        {hasUsage ? usage.toFixed(1) : "--"}
-        <Text font="footnote" fontWeight="regular" foregroundStyle="secondaryLabel"> 立方</Text>
-      </Text>
+function updateReadings(currentMonthTotal: number): DailyReading[] {
+  const readings = loadReadings()
+  const today = todayStr()
+  const existing = readings.find(r => r.date === today)
+  if (existing) {
+    existing.value = currentMonthTotal
+  } else {
+    readings.push({ date: today, value: currentMonthTotal })
+  }
+  saveReadings(readings)
+  return readings
+}
 
-      <Spacer minLength={2} />
-
-      {/* 日均 */}
-      <Text font="caption" foregroundStyle="secondaryLabel">
-        平均 {avg} 立方/天
-      </Text>
-
-      <Spacer />
-
-      {/* 柱形图 */}
-      <HStack alignment="bottom" spacing={4} frame={{ height: 40 }}>
-        {bars.map((h, i) => (
-          <VStack key={i} frame={{ maxWidth: Infinity }}>
-            <Spacer />
-            <Rectangle
-              fill={{
-                light: `rgba(255, 140, 56, ${0.4 + h * 0.6})`,
-                dark: `rgba(255, 140, 56, ${0.4 + h * 0.6})`,
-              }}
-              frame={{ height: Math.max(h * 36, 4), width: Infinity }}
-              clipShape={{ type: "rect", cornerRadius: 3, style: "continuous" }}
-            />
-          </VStack>
-        ))}
-      </HStack>
-    </VStack>
-  )
+function calcDeltas(readings: DailyReading[], count: number): { deltas: number[]; startDate: string; endDate: string } {
+  const sorted = [...readings].sort((a, b) => a.date.localeCompare(b.date))
+  const recent = sorted.slice(-(count + 1))
+  const deltas: number[] = []
+  for (let i = 1; i < recent.length; i++) {
+    const d = recent[i].value - recent[i - 1].value
+    deltas.push(d > 0 ? d : 0)
+  }
+  while (deltas.length < count) deltas.unshift(0)
+  const result = deltas.slice(-count)
+  const start = recent.length > 1 ? recent[1].date : todayStr()
+  const end = recent.length > 0 ? recent[recent.length - 1].date : todayStr()
+  return { deltas: result, startDate: start, endDate: end }
 }
 
 // ========== 中型组件 ==========
 
-function MediumWidget({ bill, meter }: { bill: any; meter: any }) {
+function MediumWidget({ bill, deltas, usage, avg }: { bill: any; deltas: number[]; usage: number; avg: string }) {
   const balance = bill.totalBalance ?? bill.balance ?? 0
   const arrears = bill.totalArrears ?? 0
   const hasArrears = arrears > 0
-  const monthTotal = meter?.currentMonthTotal
-  const hasUsage = monthTotal != null && parseFloat(monthTotal) > 0
-  const usage = hasUsage ? parseFloat(monthTotal) : 0
-  const avg = hasUsage ? (usage / new Date().getDate()).toFixed(1) : "--"
+  const displayBalance = hasArrears ? -arrears : balance
+  const hasUsage = usage > 0
+  const usageStr = hasUsage ? usage.toFixed(1) : "--"
+  const statusColor = hasArrears ? "systemRed" : "systemGreen"
 
-  const barCount = 12
-  const bars = hasUsage
-    ? Array.from({ length: barCount }, (_, i) => {
-      const v = usage / barCount * (0.5 + Math.random() * 1.0)
-      return Math.min(v / (usage / barCount * 1.3), 1)
-    })
-    : Array.from({ length: barCount }, () => 0.25)
+  // 日期范围：今天往前推14天（共15天）
+  const now = new Date()
+  const startDay = new Date(now.getTime() - 14 * 86400000)
+  const startStr = `${startDay.getFullYear()}-${String(startDay.getMonth() + 1).padStart(2, "0")}-${String(startDay.getDate()).padStart(2, "0")}`
+  const endStr = todayStr()
 
   return (
     <VStack padding={PADDING} spacing={0}>
-      {/* 顶部标题栏 */}
-      <HStack>
+      {/* 顶部：标题 + 状态 */}
+      <HStack frame={{ maxWidth: Infinity }}>
         <HStack spacing={4}>
-          <Image systemName="flame.fill" foregroundStyle="#FF8C38" font="body" />
+          <Image systemName="flame.fill" foregroundStyle="#FF8C38" font="callout" />
           <Text font="callout" fontWeight="semibold" foregroundStyle="label">新澳燃气</Text>
         </HStack>
         <Spacer />
-        <HStack spacing={3}>
+        <HStack spacing={4}>
           <Image
             systemName={hasArrears ? "exclamationmark.circle.fill" : "checkmark.circle.fill"}
-            foregroundStyle={hasArrears ? "systemRed" : "systemGreen"}
-            font="caption"
+            foregroundStyle={statusColor}
+            font="caption2"
           />
-          <Text font="caption" foregroundStyle={hasArrears ? "systemRed" : "systemGreen"}>
+          <Text font="caption2" foregroundStyle={statusColor}>
             {hasArrears ? "有欠费" : "正常"}
           </Text>
         </HStack>
       </HStack>
 
-      <Spacer minLength={12} />
+      <Spacer minLength={10} />
 
-      {/* 余额 + 欠费 */}
-      <HStack alignment="top" spacing={20}>
-        <VStack alignment="leading" spacing={2}>
+      {/* 余额 + 用气数据 */}
+      <HStack alignment="top" frame={{ maxWidth: Infinity }}>
+        {/* 左侧：余额 */}
+        <VStack alignment="leading" spacing={4}>
           <Text font="caption2" foregroundStyle="tertiaryLabel">余额</Text>
-          <Text font="title2" fontWeight="bold" foregroundStyle="label">¥{balance.toFixed(2)}</Text>
-        </VStack>
-        <VStack alignment="leading" spacing={2}>
-          <Text font="caption2" foregroundStyle="tertiaryLabel">欠费</Text>
           <Text font="title2" fontWeight="bold" foregroundStyle={hasArrears ? "systemRed" : "label"}>
-            ¥{arrears.toFixed(2)}
+            {"¥" + displayBalance.toFixed(2)}
           </Text>
         </VStack>
-      </HStack>
 
-      <Spacer minLength={12} />
-
-      {/* 用气量 + 日均 */}
-      <HStack>
-        <VStack alignment="leading" spacing={2}>
-          <Text font="caption2" foregroundStyle="tertiaryLabel">本月用气</Text>
-          <HStack alignment="firstTextBaseline" spacing={2}>
-            <Text font="title3" fontWeight="bold" foregroundStyle="label">
-              {hasUsage ? usage.toFixed(1) : "--"}
-            </Text>
-            <Text font="caption" foregroundStyle="secondaryLabel">立方</Text>
-          </HStack>
-        </VStack>
         <Spacer />
-        <VStack alignment="trailing" spacing={2}>
-          <Text font="caption2" foregroundStyle="tertiaryLabel">日均</Text>
-          <HStack alignment="firstTextBaseline" spacing={2}>
-            <Text font="title3" fontWeight="bold" foregroundStyle="label">
-              {avg}
+
+        {/* 右侧：本月用气 + 日均 */}
+        <VStack alignment="trailing" spacing={8}>
+          <VStack alignment="trailing" spacing={2}>
+            <Text font="caption2" foregroundStyle="tertiaryLabel">本月用气</Text>
+            <Text font="callout" fontWeight="bold" foregroundStyle="label">
+              {usageStr + " m³"}
             </Text>
-            <Text font="caption" foregroundStyle="secondaryLabel">立方/天</Text>
-          </HStack>
+          </VStack>
+          <VStack alignment="trailing" spacing={2}>
+            <Text font="caption2" foregroundStyle="tertiaryLabel">日均</Text>
+            <Text font="callout" fontWeight="bold" foregroundStyle="label">
+              {avg + " m³/天"}
+            </Text>
+          </VStack>
         </VStack>
       </HStack>
 
-      <Spacer minLength={8} />
+      <Spacer />
 
-      {/* 柱形图 */}
-      <HStack alignment="bottom" spacing={3} frame={{ height: 32 }}>
-        {bars.map((h, i) => (
-          <VStack key={i} frame={{ maxWidth: Infinity }}>
-            <Spacer />
-            <Rectangle
-              fill={{
-                light: `rgba(255, 140, 56, ${0.3 + h * 0.7})`,
-                dark: `rgba(255, 140, 56, ${0.3 + h * 0.7})`,
-              }}
-              frame={{ height: Math.max(h * 28, 3), width: Infinity }}
-              clipShape={{ type: "rect", cornerRadius: 2, style: "continuous" }}
-            />
-          </VStack>
-        ))}
+      {/* 底部：柱形图 + 日期 */}
+      <BarChart deltas={deltas} barHeight={24} />
+      <HStack frame={{ maxWidth: Infinity }}>
+        <Text font="caption2" foregroundStyle="tertiaryLabel">{formatDate(startStr)}</Text>
+        <Spacer />
+        <Text font="caption2" foregroundStyle="#FF8C38">{formatDate(endStr)}</Text>
       </HStack>
     </VStack>
   )
@@ -376,15 +384,33 @@ async function main() {
       getMeterInfo(token, card.contractNo),
     ])
 
-    const family = Widget.family
+    // 处理气量数据
+    const monthTotal = meter?.currentMonthTotal
+    const hasUsage = monthTotal != null && !isNaN(parseFloat(String(monthTotal))) && parseFloat(String(monthTotal)) > 0
+    const usage = hasUsage ? parseFloat(String(monthTotal)) : 0
+    const avg = hasUsage ? (usage / new Date().getDate()).toFixed(1) : "--"
 
-    if (family === "systemSmall") {
-      Widget.present(<SmallWidget bill={bill} meter={meter} />)
-    } else if (family === "systemMedium" || family === "systemLarge") {
-      Widget.present(<MediumWidget bill={bill} meter={meter} />)
+    // 更新每日读数并计算差值
+    let deltas: number[] = []
+    let startDate = todayStr()
+    let endDate = todayStr()
+    if (hasUsage) {
+      const readings = updateReadings(usage)
+      const barCount = Widget.family === "systemSmall" ? 7 : 15
+      const result = calcDeltas(readings, barCount)
+      deltas = result.deltas
+      startDate = result.startDate
+      endDate = result.endDate
     } else {
-      // 锁屏等
-      Widget.present(<SmallWidget bill={bill} meter={meter} />)
+      const barCount = Widget.family === "systemSmall" ? 7 : 15
+      deltas = Array.from({ length: barCount }, () => 0)
+    }
+
+    const family = Widget.family
+    if (family === "systemSmall") {
+      Widget.present(<SmallWidget deltas={deltas} usage={usage} avg={avg} />)
+    } else {
+      Widget.present(<MediumWidget bill={bill} deltas={deltas} usage={usage} avg={avg} />)
     }
   } catch (e) {
     Widget.present(
