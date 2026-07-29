@@ -1,44 +1,23 @@
 /*
   新澳燃气 Token 抓取
-  功能：自动抓取新澳燃气小程序的 Token，存入持久化存储
+  功能：从任意 ecej.com 请求头中抓取 Token，存入持久化存储
   触发：打开新澳燃气小程序时自动获取
 */
 
 (function () {
   try {
-    if (typeof $request === "undefined") {
+    if (typeof $request === "undefined" || !$request.headers) {
       console.log("[新澳燃气] 未检测到请求信息");
       return $done({});
     }
 
-    // 从响应体提取 token
-    let body = $response.body;
-    if (!body) {
-      console.log("[新澳燃气] 响应体为空");
+    const token = $request.headers["token"] || $request.headers["Token"] || "";
+    if (!token) {
+      console.log("[新澳燃气] 请求头中未包含 token");
       return $done({});
     }
 
-    let json;
-    try {
-      json = JSON.parse(body);
-    } catch (e) {
-      console.log("[新澳燃气] 响应解析失败:", e);
-      return $done({});
-    }
-
-    if (json.resultCode !== 200 || !json.data || !json.data.token) {
-      console.log("[新澳燃气] 响应中未包含 token:", JSON.stringify(json));
-      return $done({});
-    }
-
-    let token = json.data.token;
-    let mobileNo = json.data.maskedMobileNo || json.data.mobileNo || "";
-    let tokenTtl = json.data.tokenTtl || 0;
-    let days = Math.floor(tokenTtl / 86400);
-
-    console.log("[新澳燃气] token:", token);
-    console.log("[新澳燃气] 手机号:", mobileNo);
-    console.log("[新澳燃气] 有效期:", days, "天");
+    console.log("[新澳燃气] 捕获到 token:", token);
 
     // 写入存储（全平台兼容）
     function write(key, value) {
@@ -70,16 +49,9 @@
       return $done({});
     }
 
-    // 保存 token
     write("xinao_gas.token", token);
-    write("xinao_gas.mobile", mobileNo);
-    write("xinao_gas.ttl", String(tokenTtl));
 
-    notify(
-      "新澳燃气 Token 已更新",
-      `${mobileNo} | 有效期 ${days} 天`,
-      token
-    );
+    notify("新澳燃气 Token 已更新", "Token 已自动抓取", token);
 
     console.log("[新澳燃气] Token 已写入 xinao_gas.token");
 
