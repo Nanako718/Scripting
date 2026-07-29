@@ -51,6 +51,20 @@
           "https://raw.githubusercontent.com/Nanako718/Scripting/main/images/10099.png",
           "https://raw.githubusercontent.com/Nanako718/Scripting/main/images/10099.png"
         ]
+      },
+      {
+        "id": "xinao_gas",
+        "name": "新澳燃气 Token",
+        "keys": [
+          "xinao_gas.token"
+        ],
+        "descs_html": [
+          "<h4 align=\"center\">点击查看抓取到的新澳燃气 Token</h4>"
+        ],
+        "icons": [
+          "https://raw.githubusercontent.com/Nanako718/Scripting/main/images/xinao_gas.png",
+          "https://raw.githubusercontent.com/Nanako718/Scripting/main/images/xinao_gas.png"
+        ]
       }
     ]
   }

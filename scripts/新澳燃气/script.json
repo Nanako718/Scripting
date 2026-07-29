@@ -1,0 +1,20 @@
+{
+  "name": "新澳燃气",
+  "runInApp": false,
+  "color": "rgba(255, 120, 50, 1)",
+  "icon": "flame.fill",
+  "description": "查看新澳燃气余额、欠费和户号信息。",
+  "version": "1.0.0",
+  "author": {
+    "name": "Scripting"
+  },
+  "contributors": [],
+  "intentInputTypes": [],
+  "remoteResource": null,
+  "localizedNames": {
+    "zh": "新澳燃气"
+  },
+  "localizedDescriptions": {
+    "zh": "查看新澳燃气余额、欠费和户号信息。"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "HomeKit 演示",
+  "runInApp": false,
+  "color": "rgba(255, 159, 10, 1)",
+  "icon": "house.fill",
+  "description": "HomeKit 演示脚本：浏览家、配件、服务、特征值与场景，并在脚本里读写控制。",
+  "version": "1.0.0",
+  "author": {
+    "name": "Thom Fang",
+    "email": "tilfon@live.com",
+    "homepage": "https://x.com/thomfang"
+  },
+  "contributors": [],
+  "intentInputTypes": [],
+  "remoteResource": null,
+  "localizedNames": {
+    "zh": "HomeKit 演示",
+    "fr": "Démonstration HomeKit",
+    "de": "HomeKit-Demo",
+    "es": "Demostración de HomeKit",
+    "it": "Demo HomeKit",
+    "ja": "HomeKit デモ",
+    "ru": "Демонстрация HomeKit",
+    "pt": "Demonstração HomeKit"
+  },
+  "localizedDescriptions": {
+    "zh": "HomeKit 演示脚本：浏览家、配件、服务、特征值与场景，并在脚本里读写控制。",
+    "fr": "Démo HomeKit : parcourir maisons, accessoires, services, caractéristiques et scènes.",
+    "de": "HomeKit-Demo: Häuser, Zubehör, Dienste, Merkmale und Szenen durchsuchen und steuern.",
+    "es": "Demo de HomeKit: explorar y controlar hogares, accesorios, servicios, características y escenas.",
+    "it": "Demo HomeKit: esplora case, accessori, servizi, caratteristiche e scene.",
+    "ja": "HomeKit デモ: 家、アクセサリ、サービス、キャラクタリスティック、シーンを参照・操作。",
+    "ru": "Демо HomeKit: просмотр и управление домами, аксессуарами, сервисами, характеристиками и сценами.",
+    "pt": "Demo HomeKit: explorar e controlar casas, acessórios, serviços, características e cenas."
+  }
+}
