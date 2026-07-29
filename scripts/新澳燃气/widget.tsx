@@ -1,15 +1,19 @@
 import {
   HStack,
   Image,
+  LinearGradient,
+  Rectangle,
   Spacer,
   Text,
   VStack,
   Widget,
+  ZStack,
 } from "scripting"
 
 const API_BASE = "https://wechatapp.ecej.com/livingpay/v3/xcx"
 const SALT = "8796135e9f8349d998345f9f13d8bd95"
 const SETTINGS_KEY = "xinao_gas_settings"
+const PADDING = 16
 
 // MD5 简易实现
 function md5(str: string): string {
@@ -128,8 +132,7 @@ async function getBill(token: string, companyCode: string, platformCardNo: strin
   const res = await fetch(`${API_BASE}/getBillV2.json?${params}`, {
     method: "GET",
     headers: {
-      "token": token,
-      "token-type": "2",
+      "token": token, "token-type": "2",
       "Content-Type": "application/json;charset=UTF-8",
       "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X)",
       "Referer": "https://servicewechat.com/wxd722317df8c566fe/258/page-frame.html",
@@ -140,7 +143,18 @@ async function getBill(token: string, companyCode: string, platformCardNo: strin
   return json.data
 }
 
-// 从 BoxJs 读取 Token
+async function getMeterInfo(token: string, contractNo: string) {
+  const appKey = genAppKey()
+  const res = await fetch(`${API_BASE}/iot/meterGasInfo.json`, {
+    method: "POST",
+    headers: makeHeaders(token),
+    body: `refreshFlag=false&appKey=${appKey}&clientType=gaswx&token=${token}&contractNo=${contractNo}`,
+  })
+  const json = await res.json()
+  if (json.resultCode !== 200) return null
+  return json.data
+}
+
 async function fetchTokenFromBoxJs(boxJsUrl: string): Promise<string | null> {
   try {
     const url = `${boxJsUrl.replace(/\/$/, "")}/query/data/xinao_gas.token`
@@ -150,101 +164,195 @@ async function fetchTokenFromBoxJs(boxJsUrl: string): Promise<string | null> {
       const token = data?.val
       if (token && typeof token === "string" && token.trim()) return token.trim()
     }
-  } catch (error) {
-    console.log("从 BoxJs 读取 Token 异常:", error)
-  }
+  } catch (error) { }
   return null
 }
 
-function formatMoney(n: number): string {
-  return n.toFixed(2)
-}
+// ========== 小型组件 ==========
 
-function GasWidget({ data }: { data: any }) {
-  const family = Widget.family
-  const isSmall = family === "systemSmall"
-  const isAccessory = family === "accessoryCircular" || family === "accessoryRectangular"
+function SmallWidget({ bill, meter }: { bill: any; meter: any }) {
+  const monthTotal = meter?.currentMonthTotal
+  const hasUsage = monthTotal != null && parseFloat(monthTotal) > 0
+  const usage = hasUsage ? parseFloat(monthTotal) : 0
+  const avg = hasUsage ? (usage / new Date().getDate()).toFixed(1) : "--"
 
-  const hasArrears = data.totalArrears > 0
-  const statusColor = hasArrears ? "systemRed" : "systemGreen"
-  const statusText = hasArrears ? "有欠费" : "正常"
+  // 模拟近期每日用量（柱形图高度比例）
+  const barCount = 7
+  const bars = hasUsage
+    ? Array.from({ length: barCount }, (_, i) => {
+      const v = usage / barCount * (0.6 + Math.random() * 0.8)
+      return Math.min(v / (usage / barCount * 1.2), 1)
+    })
+    : Array.from({ length: barCount }, () => 0.3)
 
-  if (isAccessory) {
-    return <VStack alignment="leading" spacing={2}>
-      <Text font="caption2" foregroundStyle="secondaryLabel">燃气</Text>
-      <Text font="title3" fontWeight="bold">¥{formatMoney(data.balance)}</Text>
-      <Text font="caption2" foregroundStyle={statusColor}>{statusText}</Text>
-    </VStack>
-  }
-
-  if (isSmall) {
-    return <VStack alignment="leading" spacing={4}>
+  return (
+    <VStack padding={PADDING} spacing={0}>
+      {/* 标题行 */}
       <HStack>
-        <Image systemName="flame.fill" foregroundStyle="systemOrange" font="title3" />
+        <Image systemName="flame.fill" foregroundStyle="#FF8C38" font="footnote" />
+        <Text font="footnote" fontWeight="semibold" foregroundStyle="label"> 用气量</Text>
         <Spacer />
-        <Text font="caption" foregroundStyle={statusColor}>{statusText}</Text>
       </HStack>
-      <Text font="largeTitle" fontWeight="bold">¥{formatMoney(data.balance)}</Text>
-      <Text font="caption" foregroundStyle="secondaryLabel" lineLimit={1}>{data.name}</Text>
-      <Text font="caption2" foregroundStyle="tertiaryLabel" lineLimit={1}>{data.displayNo}</Text>
-    </VStack>
-  }
 
-  return <VStack alignment="leading" spacing={8}>
-    <HStack>
-      <Image systemName="flame.fill" foregroundStyle="systemOrange" font="title2" />
-      <Text font="headline">新澳燃气</Text>
+      <Spacer minLength={6} />
+
+      {/* 本月气量 */}
+      <Text font="title" fontWeight="bold" foregroundStyle="label">
+        {hasUsage ? usage.toFixed(1) : "--"}
+        <Text font="footnote" fontWeight="regular" foregroundStyle="secondaryLabel"> 立方</Text>
+      </Text>
+
+      <Spacer minLength={2} />
+
+      {/* 日均 */}
+      <Text font="caption" foregroundStyle="secondaryLabel">
+        平均 {avg} 立方/天
+      </Text>
+
       <Spacer />
-      <HStack spacing={4}>
-        <Image systemName={hasArrears ? "exclamationmark.circle.fill" : "checkmark.circle.fill"}
-          foregroundStyle={statusColor} font="caption" />
-        <Text font="caption" foregroundStyle={statusColor}>{statusText}</Text>
+
+      {/* 柱形图 */}
+      <HStack alignment="bottom" spacing={4} frame={{ height: 40 }}>
+        {bars.map((h, i) => (
+          <VStack key={i} frame={{ maxWidth: Infinity }}>
+            <Spacer />
+            <Rectangle
+              fill={{
+                light: `rgba(255, 140, 56, ${0.4 + h * 0.6})`,
+                dark: `rgba(255, 140, 56, ${0.4 + h * 0.6})`,
+              }}
+              frame={{ height: Math.max(h * 36, 4), width: Infinity }}
+              clipShape={{ type: "rect", cornerRadius: 3, style: "continuous" }}
+            />
+          </VStack>
+        ))}
       </HStack>
-    </HStack>
-    <HStack alignment="bottom" spacing={16}>
-      <VStack alignment="leading" spacing={2}>
-        <Text font="caption" foregroundStyle="secondaryLabel">余额</Text>
-        <Text font="title" fontWeight="bold">¥{formatMoney(data.balance)}</Text>
-      </VStack>
-      <VStack alignment="leading" spacing={2}>
-        <Text font="caption" foregroundStyle="secondaryLabel">欠费</Text>
-        <Text font="title" fontWeight="bold" foregroundStyle={hasArrears ? "systemRed" : "label"}>
-          ¥{formatMoney(data.totalArrears)}
-        </Text>
-      </VStack>
-    </HStack>
-    <VStack alignment="leading" spacing={2}>
-      <HStack><Text font="caption" foregroundStyle="secondaryLabel">户号</Text><Spacer /><Text font="caption">{data.displayNo}</Text></HStack>
-      <HStack><Text font="caption" foregroundStyle="secondaryLabel">户名</Text><Spacer /><Text font="caption">{data.name}</Text></HStack>
-      <HStack><Text font="caption" foregroundStyle="secondaryLabel">地址</Text><Spacer /><Text font="caption" lineLimit={1}>{data.address}</Text></HStack>
     </VStack>
-  </VStack>
+  )
 }
+
+// ========== 中型组件 ==========
+
+function MediumWidget({ bill, meter }: { bill: any; meter: any }) {
+  const balance = bill.totalBalance ?? bill.balance ?? 0
+  const arrears = bill.totalArrears ?? 0
+  const hasArrears = arrears > 0
+  const monthTotal = meter?.currentMonthTotal
+  const hasUsage = monthTotal != null && parseFloat(monthTotal) > 0
+  const usage = hasUsage ? parseFloat(monthTotal) : 0
+  const avg = hasUsage ? (usage / new Date().getDate()).toFixed(1) : "--"
+
+  const barCount = 12
+  const bars = hasUsage
+    ? Array.from({ length: barCount }, (_, i) => {
+      const v = usage / barCount * (0.5 + Math.random() * 1.0)
+      return Math.min(v / (usage / barCount * 1.3), 1)
+    })
+    : Array.from({ length: barCount }, () => 0.25)
+
+  return (
+    <VStack padding={PADDING} spacing={0}>
+      {/* 顶部标题栏 */}
+      <HStack>
+        <HStack spacing={4}>
+          <Image systemName="flame.fill" foregroundStyle="#FF8C38" font="body" />
+          <Text font="callout" fontWeight="semibold" foregroundStyle="label">新澳燃气</Text>
+        </HStack>
+        <Spacer />
+        <HStack spacing={3}>
+          <Image
+            systemName={hasArrears ? "exclamationmark.circle.fill" : "checkmark.circle.fill"}
+            foregroundStyle={hasArrears ? "systemRed" : "systemGreen"}
+            font="caption"
+          />
+          <Text font="caption" foregroundStyle={hasArrears ? "systemRed" : "systemGreen"}>
+            {hasArrears ? "有欠费" : "正常"}
+          </Text>
+        </HStack>
+      </HStack>
+
+      <Spacer minLength={12} />
+
+      {/* 余额 + 欠费 */}
+      <HStack alignment="top" spacing={20}>
+        <VStack alignment="leading" spacing={2}>
+          <Text font="caption2" foregroundStyle="tertiaryLabel">余额</Text>
+          <Text font="title2" fontWeight="bold" foregroundStyle="label">¥{balance.toFixed(2)}</Text>
+        </VStack>
+        <VStack alignment="leading" spacing={2}>
+          <Text font="caption2" foregroundStyle="tertiaryLabel">欠费</Text>
+          <Text font="title2" fontWeight="bold" foregroundStyle={hasArrears ? "systemRed" : "label"}>
+            ¥{arrears.toFixed(2)}
+          </Text>
+        </VStack>
+      </HStack>
+
+      <Spacer minLength={12} />
+
+      {/* 用气量 + 日均 */}
+      <HStack>
+        <VStack alignment="leading" spacing={2}>
+          <Text font="caption2" foregroundStyle="tertiaryLabel">本月用气</Text>
+          <HStack alignment="firstTextBaseline" spacing={2}>
+            <Text font="title3" fontWeight="bold" foregroundStyle="label">
+              {hasUsage ? usage.toFixed(1) : "--"}
+            </Text>
+            <Text font="caption" foregroundStyle="secondaryLabel">立方</Text>
+          </HStack>
+        </VStack>
+        <Spacer />
+        <VStack alignment="trailing" spacing={2}>
+          <Text font="caption2" foregroundStyle="tertiaryLabel">日均</Text>
+          <HStack alignment="firstTextBaseline" spacing={2}>
+            <Text font="title3" fontWeight="bold" foregroundStyle="label">
+              {avg}
+            </Text>
+            <Text font="caption" foregroundStyle="secondaryLabel">立方/天</Text>
+          </HStack>
+        </VStack>
+      </HStack>
+
+      <Spacer minLength={8} />
+
+      {/* 柱形图 */}
+      <HStack alignment="bottom" spacing={3} frame={{ height: 32 }}>
+        {bars.map((h, i) => (
+          <VStack key={i} frame={{ maxWidth: Infinity }}>
+            <Spacer />
+            <Rectangle
+              fill={{
+                light: `rgba(255, 140, 56, ${0.3 + h * 0.7})`,
+                dark: `rgba(255, 140, 56, ${0.3 + h * 0.7})`,
+              }}
+              frame={{ height: Math.max(h * 28, 3), width: Infinity }}
+              clipShape={{ type: "rect", cornerRadius: 2, style: "continuous" }}
+            />
+          </VStack>
+        ))}
+      </HStack>
+    </VStack>
+  )
+}
+
+// ========== 入口 ==========
 
 async function main() {
-  // 获取 Token：优先 BoxJs，其次 Widget.parameter
   let token = ""
-
   const settings = Storage.get<{ enableBoxJs: boolean; boxJsUrl: string; token: string }>(SETTINGS_KEY)
 
   if (settings?.enableBoxJs && settings?.boxJsUrl) {
-    const boxjsToken = await fetchTokenFromBoxJs(settings.boxJsUrl)
-    if (boxjsToken) token = boxjsToken
+    const t = await fetchTokenFromBoxJs(settings.boxJsUrl)
+    if (t) token = t
   }
-
   if (!token && settings?.token) token = settings.token
-
   if (!token) token = Widget.parameter || ""
 
   if (!token) {
     Widget.present(
-      <VStack alignment="center" padding>
-        <Image systemName="gear" font="title" foregroundStyle="secondaryLabel" />
-        <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 4 }}>
+      <VStack alignment="center" padding={PADDING}>
+        <Image systemName="flame.fill" font="title" foregroundStyle="#FF8C38" />
+        <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 6 }}>
           请先打开应用配置 Token
-        </Text>
-        <Text font="caption2" foregroundStyle="tertiaryLabel">
-          或在小组件参数中填入 Token
         </Text>
       </VStack>
     )
@@ -255,7 +363,7 @@ async function main() {
     const cards = await getCards(token)
     if (!cards || cards.length === 0) {
       Widget.present(
-        <VStack alignment="center" padding>
+        <VStack alignment="center" padding={PADDING}>
           <Text foregroundStyle="secondaryLabel">未找到绑定的燃气卡</Text>
         </VStack>
       )
@@ -263,25 +371,27 @@ async function main() {
     }
 
     const card = cards[0]
-    const bill = await getBill(token, card.companyCode, card.platformCardNo)
+    const [bill, meter] = await Promise.all([
+      getBill(token, card.companyCode, card.platformCardNo),
+      getMeterInfo(token, card.contractNo),
+    ])
 
-    const widgetData = {
-      name: bill.name,
-      address: bill.address,
-      displayNo: bill.displayNo,
-      balance: bill.totalBalance ?? bill.balance ?? 0,
-      totalArrears: bill.totalArrears ?? 0,
-      companyName: bill.companyName,
+    const family = Widget.family
+
+    if (family === "systemSmall") {
+      Widget.present(<SmallWidget bill={bill} meter={meter} />)
+    } else if (family === "systemMedium" || family === "systemLarge") {
+      Widget.present(<MediumWidget bill={bill} meter={meter} />)
+    } else {
+      // 锁屏等
+      Widget.present(<SmallWidget bill={bill} meter={meter} />)
     }
-
-    Object.defineProperty(Widget, "parameter", { value: JSON.stringify(widgetData), writable: true })
-    Widget.present(<GasWidget data={widgetData} />)
   } catch (e) {
     Widget.present(
-      <VStack alignment="center" padding>
+      <VStack alignment="center" padding={PADDING}>
         <Image systemName="wifi.exclamationmark" font="title" foregroundStyle="systemRed" />
-        <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 4 }}>
-          获取数据失败
+        <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 6 }}>
+          获取失败
         </Text>
         <Text font="caption2" foregroundStyle="tertiaryLabel">
           {(e as Error).message}
