@@ -130,7 +130,15 @@ function addLog(api: string, ok: boolean, detail: string) {
     const ts = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
     const entry: LogEntry = { ts, api, ok, detail }
 
-    console.log(`[${ts}] ${ok ? "✓" : "✗"} ${api} — ${detail}`)
+    if (ok) {
+      console.log(`┌─ [${ts}] API: ${api}`)
+      console.log(`│  状态: 成功`)
+      console.log(`└─ 数据: ${detail}`)
+    } else {
+      console.log(`┌─ [${ts}] API: ${api}`)
+      console.log(`│  状态: 失败`)
+      console.log(`└─ 原因: ${detail}`)
+    }
 
     const existing = Storage.get<LogEntry[]>(LOG_KEY)
     const logs = Array.isArray(existing) ? existing : []
@@ -152,7 +160,13 @@ async function getCards(token: string) {
   })
   const json = await res.json()
   const ok = json.resultCode === 200
-  addLog("getBingCardListV2", ok, ok ? `cards=${json.data?.length ?? 0}` : json.message || "failed")
+  if (ok) {
+    const count = json.data?.length ?? 0
+    const cards = json.data?.map((c: any) => c.platformCardNo || c.cardNo || "?").join(", ") || "无"
+    addLog("getBingCardListV2", true, `找到 ${count} 张卡: ${cards}`)
+  } else {
+    addLog("getBingCardListV2", false, json.message || "未知错误")
+  }
   if (!ok) throw new Error(json.message || "获取卡列表失败")
   return json.data as any[]
 }
@@ -167,7 +181,14 @@ async function getBill(token: string, companyCode: string, platformCardNo: strin
   })
   const json = await res.json()
   const ok = json.resultCode === 200
-  addLog("getBillV2", ok, ok ? `balance=${json.data?.totalBalance}` : json.message || "failed")
+  if (ok) {
+    const d = json.data || {}
+    const balance = d.totalBalance ?? d.balance ?? 0
+    const arrears = d.totalArrears ?? 0
+    addLog("getBillV2", true, `余额: ¥${balance}, 欠费: ¥${arrears}`)
+  } else {
+    addLog("getBillV2", false, json.message || "未知错误")
+  }
   if (!ok) throw new Error(json.message || "获取账单失败")
   return json.data
 }
@@ -183,7 +204,15 @@ async function getMeterInfo(token: string, contractNo: string) {
   })
   const json = await res.json()
   const ok = json.resultCode === 200
-  addLog("meterGasInfo", ok, ok ? `monthTotal=${json.data?.currentMonthTotal}` : json.message || "failed")
+  if (ok) {
+    const d = json.data || {}
+    const monthTotal = d.currentMonthTotal ?? "null"
+    const lastReading = d.lastReading ?? d.meterReading ?? "无"
+    const meterNo = d.meterNo ?? d.meterNumber ?? "未知"
+    addLog("meterGasInfo", true, `本月用气: ${monthTotal} m³, 表号: ${meterNo}, 上期读数: ${lastReading}`)
+  } else {
+    addLog("meterGasInfo", false, json.message || "未知错误")
+  }
   if (!ok) return null
   return json.data
 }
@@ -262,7 +291,7 @@ function calcDeltas(readings: DailyReading[], count: number): { deltas: number[]
 
 // ========== 中型组件 ==========
 
-function MediumWidget({ bill, deltas, usage, avg }: { bill: any; deltas: number[]; usage: number; avg: string }) {
+function MediumWidget({ bill, deltas, usage, avg, startDate, endDate }: { bill: any; deltas: number[]; usage: number; avg: string; startDate?: string; endDate?: string }) {
   const balance = bill.totalBalance ?? bill.balance ?? 0
   const arrears = bill.totalArrears ?? 0
   const hasArrears = arrears > 0
@@ -271,11 +300,12 @@ function MediumWidget({ bill, deltas, usage, avg }: { bill: any; deltas: number[
   const usageStr = hasUsage ? usage.toFixed(1) : "--"
   const statusColor = hasArrears ? "systemRed" : "systemGreen"
 
-  // 日期范围：今天往前推14天（共15天）
   const now = new Date()
-  const startDay = new Date(now.getTime() - 14 * 86400000)
-  const startStr = `${startDay.getFullYear()}-${String(startDay.getMonth() + 1).padStart(2, "0")}-${String(startDay.getDate()).padStart(2, "0")}`
-  const endStr = todayStr()
+  const endStr = endDate || todayStr()
+  const startStr = startDate || (() => {
+    const d = new Date(now.getTime() - 14 * 86400000)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  })()
 
   return (
     <VStack padding={PADDING} spacing={0}>
@@ -408,9 +438,9 @@ async function main() {
 
     const family = Widget.family
     if (family === "systemSmall") {
-      Widget.present(<SmallWidget deltas={deltas} usage={usage} avg={avg} />)
+      Widget.present(<SmallWidget deltas={deltas} usage={usage} avg={avg} startDate={startDate} endDate={endDate} />)
     } else {
-      Widget.present(<MediumWidget bill={bill} deltas={deltas} usage={usage} avg={avg} />)
+      Widget.present(<MediumWidget bill={bill} deltas={deltas} usage={usage} avg={avg} startDate={startDate} endDate={endDate} />)
     }
   } catch (e) {
     Widget.present(

@@ -48,11 +48,13 @@ export function BarChart({ deltas, barHeight }: { deltas: number[]; barHeight: n
 
 // ========== 小型组件 ==========
 
-export function SmallWidget({ deltas, usage, avg }: { deltas: number[]; usage: number; avg: string }) {
+export function SmallWidget({ deltas, usage, avg, startDate, endDate }: { deltas: number[]; usage: number; avg: string; startDate?: string; endDate?: string }) {
   const now = new Date()
-  const weekAgo = new Date(now.getTime() - 6 * 86400000)
-  const startStr = `${weekAgo.getFullYear()}-${String(weekAgo.getMonth() + 1).padStart(2, "0")}-${String(weekAgo.getDate()).padStart(2, "0")}`
-  const endStr = todayStr()
+  const endStr = endDate || todayStr()
+  const startStr = startDate || (() => {
+    const d = new Date(now.getTime() - 6 * 86400000)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  })()
 
   return (
     <VStack padding={{ leading: PADDING, trailing: PADDING, bottom: PADDING, top: 8 }} alignment="leading" spacing={4}>
