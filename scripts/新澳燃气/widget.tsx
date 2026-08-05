@@ -5,6 +5,7 @@ import {
   Text,
   VStack,
   Widget,
+  fetch,
 } from "scripting"
 import { SmallWidget, BarChart, formatDate } from "./small_widget"
 
@@ -48,7 +49,7 @@ function md5(str: string): string {
     k = (I - (I % 4)) / 4; d = (I % 4) * 8; aa[k] = aa[k] | (128 << d); aa[H - 2] = F << 3; aa[H - 1] = F >>> 29; return aa
   }
   function B(x: number): string {
-    var k = ""; var F = ""; var Z: number
+    var k = ""; var F: number = 0; var Z: number
     for (Z = 0; Z <= 3; Z++) { F = (x >>> (Z * 8)) & 255; var d = "0" + F.toString(16); k = k + d.substr(d.length - 2, 2) }
     return k
   }
