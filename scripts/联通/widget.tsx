@@ -1,4 +1,5 @@
 import {
+  Color,
   HStack,
   Image,
   Rectangle,
@@ -327,7 +328,8 @@ function BarChart({ deltas, barHeight }: { deltas: number[]; barHeight: number }
         const ratio = d / max
         const h = Math.max(ratio * barHeight, 2)
         const isLast = i === lastIndex
-        const color = isLast ? "rgba(255, 140, 56, 0.9)" : `rgba(160, 160, 170, ${0.2 + ratio * 0.35})`
+        const opacity = 0.2 + ratio * 0.35
+        const color: Color = isLast ? "rgba(255,140,56,0.9)" : `rgba(160,160,170,${opacity})` as Color
         return (
           <Rectangle
             key={i}

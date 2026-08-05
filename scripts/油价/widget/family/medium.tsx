@@ -39,7 +39,7 @@ export function View({ data }: { data: any }) {
   const shadowSize = 6;
   
   return (
-    <VStack padding alignment="leading" spacing={1}>
+    <VStack padding alignment="leading" spacing={1} background="clear">
       <Link url={"https://cx.sinopecsales.com/yjkqiantai"} buttonStyle={"plain"}>
         <VStack alignment={"leading"} spacing={1} padding={{ bottom: 0 }}>
           <HStack alignment="center" spacing={3}>
