@@ -1,25 +1,24 @@
 import {
-  Widget,
-  VStack,
   HStack,
-  Text,
   Image,
-  Color,
+  Rectangle,
   Spacer,
-  fetch,
+  Text,
+  VStack,
+  Widget,
   WidgetReloadPolicy,
-  DynamicShapeStyle,
+  fetch,
 } from "scripting"
 
 // 设置结构定义
 type ChinaUnicomSettings = {
   cookie: string
-  titleDayColor: Color
-  titleNightColor: Color
-  descDayColor: Color
-  descNightColor: Color
-  refreshTimeDayColor: Color
-  refreshTimeNightColor: Color
+  titleDayColor: string
+  titleNightColor: string
+  descDayColor: string
+  descNightColor: string
+  refreshTimeDayColor: string
+  refreshTimeNightColor: string
   refreshInterval: number
   showFlow?: boolean
   showOtherFlow?: boolean
@@ -27,9 +26,12 @@ type ChinaUnicomSettings = {
   otherFlowMatchValue?: string
   enableBoxJs?: boolean
   boxJsUrl?: string
+  chartMode?: "flow" | "voice"
 }
 
 const SETTINGS_KEY = "chinaUnicomSettings"
+const CACHE_FILE = "china_unicom_readings.json"
+const PADDING = 14
 
 // API 地址
 const API_URL = "https://m.client.10010.com/mobileserviceimportant/home/queryUserInfoSeven?version=iphone_c@10.0100&desmobiel=13232135179&showType=0"
@@ -70,11 +72,10 @@ type DetailApiResponse = {
   canuseFlowAllUnit?: string
   canuseVoiceAllUnit?: string
   canuseSmsAllUnit?: string
-  // 流量汇总列表：flowtype=1通用流量，2定向流量，3其他流量
   flowSumList?: Array<{
-    flowtype: string      // 流量类型
-    xcanusevalue: string  // 剩余流量（MB）
-    xusedvalue: string    // 已用流量（MB）
+    flowtype: string
+    xcanusevalue: string
+    xusedvalue: string
     elemtype?: string
   }>
   fresSumList?: Array<{
@@ -84,32 +85,131 @@ type DetailApiResponse = {
   }>
 }
 
+// ========== 日期工具 ==========
+
+function todayStr(): string {
+  const d = new Date()
+  const pad = (n: number) => n < 10 ? "0" + n : "" + n
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function formatDate(dateStr: string): string {
+  const parts = dateStr.split("-")
+  if (parts.length < 3) return dateStr
+  return parseInt(parts[1]) + "月" + parseInt(parts[2]) + "日"
+}
+
+// 格式化流量值
+function formatFlowValue(value: number, unit: string = "MB"): { balance: string; unit: string } {
+  if (value >= 1024) {
+    return { balance: (value / 1024).toFixed(2), unit: "GB" }
+  }
+  return { balance: value.toFixed(2), unit }
+}
+
+// ========== 每日读数存储（与新澳燃气一致） ==========
+
+type DailyReading = { date: string; flowValue: number; voiceValue: number }
+
+function loadReadings(): DailyReading[] {
+  try {
+    const path = FileManager.appGroupDocumentsDirectory + "/" + CACHE_FILE
+    if (FileManager.existsSync(path)) {
+      const data = FileManager.readAsStringSync(path)
+      const arr = JSON.parse(data)
+      if (Array.isArray(arr)) return arr
+    }
+  } catch (_) { }
+  return []
+}
+
+function saveReadings(readings: DailyReading[]) {
+  try {
+    const path = FileManager.appGroupDocumentsDirectory + "/" + CACHE_FILE
+    const trimmed = readings.slice(-31)
+    FileManager.writeAsStringSync(path, JSON.stringify(trimmed))
+  } catch (_) { }
+}
+
+function updateReadings(flowUsed: number, voiceUsed: number): DailyReading[] {
+  const readings = loadReadings()
+  const today = todayStr()
+  const existing = readings.find(r => r.date === today)
+  if (existing) {
+    existing.flowValue = flowUsed
+    existing.voiceValue = voiceUsed
+  } else {
+    readings.push({ date: today, flowValue: flowUsed, voiceValue: voiceUsed })
+  }
+  saveReadings(readings)
+  return readings
+}
+
+function daysAgoDateStr(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - days)
+  const pad = (n: number) => n < 10 ? "0" + n : "" + n
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function calcDeltas(readings: DailyReading[], count: number, mode: "flow" | "voice"): { deltas: number[]; startDate: string; endDate: string } {
+  const sorted = [...readings].sort((a, b) => a.date.localeCompare(b.date))
+  const endDate = todayStr()
+  const startDate = daysAgoDateStr(count - 1)
+
+  // 构建日期到读数的映射
+  const map = new Map<string, DailyReading>()
+  for (const r of sorted) map.set(r.date, r)
+
+  // 按固定日期范围逐天计算差值
+  const deltas: number[] = []
+  for (let i = 0; i < count; i++) {
+    const d = new Date()
+    d.setDate(d.getDate() - (count - 1) + i)
+    const pad = (n: number) => n < 10 ? "0" + n : "" + n
+    const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    const prevDate = new Date(d)
+    prevDate.setDate(prevDate.getDate() - 1)
+    const prevStr = `${prevDate.getFullYear()}-${pad(prevDate.getMonth() + 1)}-${pad(prevDate.getDate())}`
+
+    const curr = map.get(dateStr)
+    const prev = map.get(prevStr)
+    if (curr && prev) {
+      const currVal = mode === "flow" ? curr.flowValue : curr.voiceValue
+      const prevVal = mode === "flow" ? prev.flowValue : prev.voiceValue
+      const diff = currVal - prevVal
+      deltas.push(diff > 0 ? diff : 0)
+    } else {
+      deltas.push(0)
+    }
+  }
+
+  return { deltas, startDate, endDate }
+}
+
+// ========== API ==========
+
 // 从 BoxJs 读取 Cookie
 async function fetchCookieFromBoxJs(boxJsUrl: string): Promise<string | null> {
   try {
     const url = `${boxJsUrl.replace(/\/$/, "")}/query/data/10010.cookie`
-
     const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-      }
+      headers: { 'Accept': 'application/json' }
     })
-    
     if (response.ok) {
       const data = await response.json()
-      // BoxJs 返回格式: { "key": "10010.cookie", "val": "cookie值" }
       const cookie = data?.val
       if (cookie && typeof cookie === 'string' && cookie.trim()) {
         return cookie.trim()
       }
     }
   } catch (error) {
-    console.error("🚨 从 BoxJs 读取 Cookie 异常:", error)
+    console.error("从 BoxJs 读取 Cookie 异常:", error)
   }
   return null
 }
 
-// 获取话费数据（仅从第一个 API）
+// 获取话费数据
 async function fetchFeeData(cookie: string): Promise<FeeData | null> {
   try {
     const response = await fetch(API_URL, {
@@ -119,27 +219,24 @@ async function fetchFeeData(cookie: string): Promise<FeeData | null> {
         'cookie': cookie,
       }
     })
-
     if (response.ok) {
       const data = await response.json()
-
       if (data.code === 'Y') {
         const { feeResource } = data
-        const feeData: FeeData = {
-          title: feeResource?.dynamicFeeTitle || "剩余话费",
+        return {
+          title: feeResource?.dynamicFeeTitle || "余额",
           balance: feeResource?.feePersent || "0",
           unit: feeResource?.newUnit || "元",
         }
-        return feeData
       }
     }
   } catch (error) {
-    console.error("🚨 请求异常:", error)
+    console.error("请求异常:", error)
   }
   return null
 }
 
-// 获取详细数据（从第二个 API）
+// 获取详细数据
 async function fetchDetailData(cookie: string): Promise<DetailApiResponse | null> {
   try {
     const response = await fetch(API_DETAIL_URL, {
@@ -156,7 +253,7 @@ async function fetchDetailData(cookie: string): Promise<DetailApiResponse | null
       }
     }
   } catch (error) {
-    console.error("❌ 获取详细数据失败:", error)
+    console.error("获取详细数据失败:", error)
   }
   return null
 }
@@ -167,28 +264,24 @@ function extractVoiceAndFlowData(detailData: DetailApiResponse): {
   flow: { title: string; balance: string; unit: string; used?: number; total?: number }
 } | null {
   try {
-    // 提取语音数据
     const voiceResource = detailData.resources?.find(r => r.type === "Voice")
     const voiceRemain = voiceResource?.remainResource || "0"
     const voiceUsed = voiceResource?.userResource || "0"
     const voiceTotal = parseFloat(voiceRemain) + parseFloat(voiceUsed)
     const voiceUnit = detailData.canuseVoiceAllUnit || "分钟"
-    
-    // 提取流量数据：优先从 flowSumList 获取通用流量（flowtype="1"）
+
     const generalFlow = detailData.flowSumList?.find(item => item.flowtype === "1")
     let flowRemainMB = 0
     let flowUsedMB = 0
-    
+
     if (generalFlow?.xcanusevalue) {
       flowRemainMB = parseFloat(generalFlow.xcanusevalue)
       flowUsedMB = parseFloat(generalFlow.xusedvalue || "0")
     } else {
-      // 兼容：从 resources 获取
       const flowResource = detailData.resources?.find(r => r.type === "Flow")
       const remainStr = flowResource?.remainResource || "0"
       const usedStr = flowResource?.userResource || "0"
       const unit = detailData.canuseFlowAllUnit || "GB"
-      
       if (unit === "MB") {
         flowRemainMB = parseFloat(remainStr)
         flowUsedMB = parseFloat(usedStr)
@@ -197,11 +290,11 @@ function extractVoiceAndFlowData(detailData: DetailApiResponse): {
         flowUsedMB = parseFloat(usedStr) * 1024
       }
     }
-    
+
     const flowFormatted = formatFlowValue(flowRemainMB, "MB")
     const flowTotalMB = flowRemainMB + flowUsedMB
-    
-    const result = {
+
+    return {
       voice: {
         title: "剩余语音",
         balance: voiceRemain,
@@ -217,185 +310,44 @@ function extractVoiceAndFlowData(detailData: DetailApiResponse): {
         total: flowTotalMB,
       },
     }
-
-    return result
   } catch (error) {
-    console.error("❌ 提取数据失败:", error)
+    console.error("提取数据失败:", error)
     return null
   }
 }
 
-// 格式化流量值（自动转换单位）
-function formatFlowValue(value: number, unit: string = "MB"): { balance: string; unit: string } {
-  if (value >= 1024) {
-    return {
-      balance: (value / 1024).toFixed(2),
-      unit: "GB"
-    }
-  }
-  return {
-    balance: value.toFixed(2),
-    unit
-  }
-}
+// ========== 柱形图（与新澳燃气一致） ==========
 
-const theme = {
-  bg: { light: "#F2F2F7", dark: "#000000" } as DynamicShapeStyle,
-  card: { light: "#FFFFFF", dark: "#1C1C1E" } as DynamicShapeStyle,
-  text: { light: "#000000", dark: "#FFFFFF" } as DynamicShapeStyle,
-  secondary: { light: "#8E8E93", dark: "#8E8E93" } as DynamicShapeStyle,
-  green: { light: "#34C759", dark: "#30D158" } as DynamicShapeStyle,
-  blue: { light: "#007AFF", dark: "#0A84FF" } as DynamicShapeStyle,
-  orange: { light: "#FF9500", dark: "#FF9F0A" } as DynamicShapeStyle,
-  purple: { light: "#AF52DE", dark: "#BF5AF2" } as DynamicShapeStyle,
-}
-
-const WIDGET_INSET = 12
-const CARD_GAP = 6
-
-function continuousRectShape(cornerRadius: number) {
-  return {
-    type: "rect" as const,
-    cornerRadius,
-    style: "continuous" as const,
-  }
-}
-
-function widgetContainerCornerRadius(): number {
-  const { width, height } = Widget.displaySize
-  const shortEdge = Math.min(width, height)
-  return Math.round(Math.min(24, Math.max(18, shortEdge * 0.14)))
-}
-
-function metricCardCornerRadius(compact?: boolean): number {
-  const outer = widgetContainerCornerRadius()
-  const ratio = compact ? 0.5 : 0.55
-  return Math.round(Math.max(10, Math.min(14, outer * ratio)))
-}
-
-function WidgetInsetBody({ children }: { children: any }) {
+function BarChart({ deltas, barHeight }: { deltas: number[]; barHeight: number }) {
+  const max = Math.max(...deltas, 0.1)
+  const lastIndex = deltas.length - 1
   return (
-    <VStack
-      frame={{ maxWidth: Infinity, maxHeight: Infinity }}
-      padding={WIDGET_INSET}
-      spacing={CARD_GAP}
-    >
-      {children}
-    </VStack>
+    <HStack alignment="bottom" spacing={2} frame={{ height: barHeight }}>
+      {deltas.map((d, i) => {
+        const ratio = d / max
+        const h = Math.max(ratio * barHeight, 2)
+        const isLast = i === lastIndex
+        const color = isLast ? "rgba(255, 140, 56, 0.9)" : `rgba(160, 160, 170, ${0.2 + ratio * 0.35})`
+        return (
+          <Rectangle
+            key={i}
+            fill={color}
+            frame={{ height: h, width: 10 }}
+            clipShape={{ type: "rect", cornerRadius: 2, style: "continuous" }}
+          />
+        )
+      })}
+      <Spacer />
+    </HStack>
   )
 }
 
-function MetricCard({
-  icon,
-  label,
-  parts,
-  color,
-  compact,
-}: {
-  icon: string
-  label: string
-  parts: { val: string; unit: string }
-  color: DynamicShapeStyle
-  compact?: boolean
-}) {
-  const valFont = compact ? 14 : 17
-  const unitFont = compact ? 9 : 10
-  const labelFont = compact ? 8 : 9
-  const iconFont = compact ? 9 : 10
+// ========== 中型组件 ==========
 
-  return (
-    <VStack
-      alignment="leading"
-      spacing={compact ? 4 : 6}
-      padding={compact ? 8 : 10}
-      frame={{ minWidth: 0, maxWidth: Infinity, maxHeight: Infinity }}
-      widgetBackground={{
-        style: theme.card,
-        shape: continuousRectShape(metricCardCornerRadius(compact)),
-      }}
-    >
-      <HStack alignment="center" spacing={4}>
-        <Image systemName={icon} font={iconFont} foregroundStyle={color} />
-        <Text font={labelFont} fontWeight="semibold" foregroundStyle={theme.secondary} lineLimit={1}>
-          {label}
-        </Text>
-        <Spacer minLength={0} />
-      </HStack>
-      <HStack alignment="lastTextBaseline" spacing={2}>
-        <Text font={valFont} fontWeight="bold" foregroundStyle={theme.text} lineLimit={1} minScaleFactor={0.7}>
-          {parts.val}
-        </Text>
-        {parts.unit ? (
-          <Text
-            font={unitFont}
-            fontWeight="semibold"
-            foregroundStyle={theme.secondary}
-            lineLimit={1}
-            padding={{ bottom: 1 }}
-          >
-            {parts.unit}
-          </Text>
-        ) : null}
-      </HStack>
-    </VStack>
-  )
-}
-
-function MediumWidgetView({ data, settings }: { data: UnicomData; settings: ChinaUnicomSettings }) {
+function MediumWidget({ data, settings, deltas, startDate, endDate }: { data: UnicomData; settings: ChinaUnicomSettings; deltas: number[]; startDate: string; endDate: string }) {
   const showFlow = settings?.showFlow !== false
-  const showOther = settings?.showOtherFlow !== false && data.otherFlow
+  const hasOtherFlow = data.otherFlow != null
 
-  const flowParts = showFlow
-    ? { val: data.flow.balance, unit: data.flow.unit }
-    : { val: "—", unit: "" }
-
-  const otherParts = showOther
-    ? { val: data.otherFlow!.balance, unit: data.otherFlow!.unit }
-    : { val: "—", unit: "" }
-
-  return (
-    <VStack
-      frame={{ maxWidth: Infinity, maxHeight: Infinity }}
-      widgetBackground={{
-        style: theme.bg,
-        shape: continuousRectShape(widgetContainerCornerRadius()),
-      }}
-    >
-      <WidgetInsetBody>
-        <HStack spacing={CARD_GAP} frame={{ maxWidth: Infinity, maxHeight: Infinity }}>
-          <MetricCard
-            icon="creditcard.fill"
-            label={data.fee.title}
-            parts={{ val: data.fee.balance, unit: data.fee.unit }}
-            color={theme.green}
-          />
-          <MetricCard
-            icon="phone.fill"
-            label={data.voice.title}
-            parts={{ val: data.voice.balance, unit: data.voice.unit }}
-            color={theme.blue}
-          />
-        </HStack>
-        <HStack spacing={CARD_GAP} frame={{ maxWidth: Infinity, maxHeight: Infinity }}>
-          <MetricCard
-            icon="antenna.radiowaves.left.and.right"
-            label={data.flow.title}
-            parts={flowParts}
-            color={theme.orange}
-          />
-          <MetricCard
-            icon="wifi.circle.fill"
-            label={data.otherFlow?.title ?? "其他流量"}
-            parts={otherParts}
-            color={theme.purple}
-          />
-        </HStack>
-      </WidgetInsetBody>
-    </VStack>
-  )
-}
-
-function SmallWidgetView({ data, settings }: { data: UnicomData; settings: ChinaUnicomSettings }) {
   const flowRemain =
     data.flow?.total != null && data.flow?.used != null
       ? Math.max(0, data.flow.total - data.flow.used)
@@ -406,53 +358,109 @@ function SmallWidgetView({ data, settings }: { data: UnicomData; settings: China
       : 0
   const totalFlowFormatted = formatFlowValue(flowRemain + otherRemain, "MB")
 
-  const showFlow = settings?.showFlow !== false
-
   return (
-    <VStack
-      frame={{ maxWidth: Infinity, maxHeight: Infinity }}
-      widgetBackground={{
-        style: theme.bg,
-        shape: continuousRectShape(widgetContainerCornerRadius()),
-      }}
-    >
-      <WidgetInsetBody>
-        <MetricCard
-          icon="creditcard.fill"
-          label={data.fee.title}
-          parts={{ val: data.fee.balance, unit: data.fee.unit }}
-          color={theme.green}
-          compact
-        />
-        <MetricCard
-          icon="antenna.radiowaves.left.and.right"
-          label="剩余总流量"
-          parts={showFlow ? { val: totalFlowFormatted.balance, unit: totalFlowFormatted.unit } : { val: "—", unit: "" }}
-          color={theme.orange}
-          compact
-        />
-        <MetricCard
-          icon="phone.fill"
-          label={data.voice.title}
-          parts={{ val: data.voice.balance, unit: data.voice.unit }}
-          color={theme.blue}
-          compact
-        />
-      </WidgetInsetBody>
+    <VStack padding={PADDING} spacing={0}>
+      {/* 顶部：标题 + 状态 */}
+      <HStack frame={{ maxWidth: Infinity }}>
+        <HStack spacing={4}>
+          <Image imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/main/images/10010.png" resizable={true} frame={{ width: 16, height: 16 }} />
+          <Text font="callout" fontWeight="semibold" foregroundStyle="label">中国联通</Text>
+        </HStack>
+        <Spacer />
+        <HStack spacing={4}>
+          <Image systemName="checkmark.circle.fill" foregroundStyle="systemGreen" font="caption2" />
+          <Text font="caption2" foregroundStyle="systemGreen">正常</Text>
+        </HStack>
+      </HStack>
+
+      <Spacer minLength={10} />
+
+      {/* 余额 + 用量数据 */}
+      <HStack alignment="top" frame={{ maxWidth: Infinity }}>
+        {/* 左侧：余额 */}
+        <VStack alignment="leading" spacing={4}>
+          <Text font="caption2" foregroundStyle="tertiaryLabel">{data.fee.title}</Text>
+          <Text font="title2" fontWeight="bold" foregroundStyle="label">
+            {data.fee.balance + " " + data.fee.unit}
+          </Text>
+        </VStack>
+
+        <Spacer />
+
+        {/* 右侧：通用流量 + 其他流量(如有)/剩余语音 */}
+        <VStack alignment="trailing" spacing={8}>
+          <VStack alignment="trailing" spacing={2}>
+            <Text font="caption2" foregroundStyle="tertiaryLabel">{data.flow.title}</Text>
+            <Text font="callout" fontWeight="bold" foregroundStyle="label">
+              {showFlow ? totalFlowFormatted.balance + " " + totalFlowFormatted.unit : "--"}
+            </Text>
+          </VStack>
+          <VStack alignment="trailing" spacing={2}>
+            <Text font="caption2" foregroundStyle="tertiaryLabel">
+              {hasOtherFlow ? "其他流量" : data.voice.title}
+            </Text>
+            <Text font="callout" fontWeight="bold" foregroundStyle="label">
+              {hasOtherFlow
+                ? data.otherFlow!.balance + " " + data.otherFlow!.unit
+                : data.voice.balance + " " + data.voice.unit}
+            </Text>
+          </VStack>
+        </VStack>
+      </HStack>
+
+      <Spacer />
+
+      {/* 底部：柱形图 + 日期 */}
+      <BarChart deltas={deltas} barHeight={24} />
+      <HStack frame={{ maxWidth: Infinity }}>
+        <Text font="caption2" foregroundStyle="tertiaryLabel">{formatDate(startDate)}</Text>
+        <Spacer />
+        <Text font="caption2" foregroundStyle="#FF8C38">{formatDate(endDate)}</Text>
+      </HStack>
     </VStack>
   )
 }
 
-function WidgetView({ data, settings }: { data: UnicomData; settings: ChinaUnicomSettings }) {
-  if (Widget.family === "systemSmall") {
-    return <SmallWidgetView data={data} settings={settings} />
-  }
-  return <MediumWidgetView data={data} settings={settings} />
+// ========== 小型组件 ==========
+
+function SmallWidget({ data, settings, deltas, startDate, endDate }: { data: UnicomData; settings: ChinaUnicomSettings; deltas: number[]; startDate: string; endDate: string }) {
+  const showFlow = settings?.showFlow !== false
+
+  const flowRemain =
+    data.flow?.total != null && data.flow?.used != null
+      ? Math.max(0, data.flow.total - data.flow.used)
+      : 0
+  const otherRemain =
+    data.otherFlow?.total != null && data.otherFlow?.used != null
+      ? Math.max(0, data.otherFlow.total - data.otherFlow.used)
+      : 0
+  const totalFlowFormatted = formatFlowValue(flowRemain + otherRemain, "MB")
+
+  return (
+    <VStack padding={{ leading: PADDING, trailing: PADDING, bottom: PADDING, top: 8 }} alignment="leading" spacing={4}>
+      <Text font="caption" foregroundStyle="secondaryLabel">剩余流量</Text>
+      <Text font="title3" fontWeight="bold" foregroundStyle="label">
+        {showFlow ? totalFlowFormatted.balance + " " + totalFlowFormatted.unit : "--"}
+      </Text>
+      <Text font="caption2" foregroundStyle="tertiaryLabel">{"话费 " + data.fee.balance + " " + data.fee.unit}</Text>
+      <Spacer />
+      <VStack spacing={-16}>
+        <BarChart deltas={deltas} barHeight={50} />
+        <HStack frame={{ maxWidth: Infinity }}>
+          <Text font="caption2" foregroundStyle="tertiaryLabel">{formatDate(startDate)}</Text>
+          <Spacer />
+          <Text font="caption2" foregroundStyle="#FF8C38">{formatDate(endDate)}</Text>
+        </HStack>
+      </VStack>
+    </VStack>
+  )
 }
 
-async function render() {
+// ========== 入口 ==========
+
+async function main() {
   const settings = Storage.get<ChinaUnicomSettings>(SETTINGS_KEY)
-  
+
   const refreshInterval = settings?.refreshInterval ?? 15
   const nextUpdate = new Date(Date.now() + refreshInterval * 60 * 1000)
   const reloadPolicy: WidgetReloadPolicy = {
@@ -460,9 +468,8 @@ async function render() {
     date: nextUpdate
   }
 
-  // 确定使用的 Cookie：如果开启了 BoxJs，优先从 BoxJs 读取
   let cookie = settings?.cookie || ""
-  
+
   if (settings?.enableBoxJs && settings?.boxJsUrl) {
     const boxJsCookie = await fetchCookieFromBoxJs(settings.boxJsUrl)
     if (boxJsCookie) {
@@ -471,110 +478,144 @@ async function render() {
   }
 
   if (!cookie) {
-    Widget.present(<Text>请先在主应用中设置联通 Cookie，或配置 BoxJs 地址。</Text>, reloadPolicy)
+    Widget.present(
+      <VStack alignment="center" padding={PADDING}>
+        <Image imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/main/images/10010.png" resizable={true} frame={{ width: 28, height: 28 }} />
+        <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 6 }}>
+          请先打开应用配置 Cookie
+        </Text>
+      </VStack>,
+      reloadPolicy
+    )
     return
   }
 
-  // 并行获取两个 API 数据
-  const [feeData, detailData] = await Promise.all([
-    fetchFeeData(cookie),
-    fetchDetailData(cookie)
-  ])
+  try {
+    const [feeData, detailData] = await Promise.all([
+      fetchFeeData(cookie),
+      fetchDetailData(cookie)
+    ])
 
-  if (!feeData || !detailData) {
-    Widget.present(<Text>获取数据失败，请检查网络或 Cookie。</Text>, reloadPolicy)
-    return
-  }
-
-  const voiceAndFlowData = extractVoiceAndFlowData(detailData)
-  if (!voiceAndFlowData) {
-    Widget.present(<Text>提取数据失败。</Text>, reloadPolicy)
-    return
-  }
-
-  // 提取其他流量数据
-  let otherFlowData: { title: string; balance: string; unit: string; used?: number; total?: number } | undefined
-  const showOtherFlow = settings?.showOtherFlow ?? true
-  const matchType = settings?.otherFlowMatchType ?? "flowType"
-  const matchValue = settings?.otherFlowMatchValue ?? "3"
-  
-  if (showOtherFlow && detailData) {
-    let totalRemainMB = 0
-    let totalUsedMB = 0
-    
-    // 方法1：从 flowSumList 获取（flowtype="3"）
-    // flowSumList 中的值单位是 MB
-    if (matchType === "flowType" && matchValue === "3") {
-      const item = detailData.flowSumList?.find(item => item.flowtype === "3")
-      if (item) {
-        totalRemainMB = parseFloat(item.xcanusevalue || "0")
-        totalUsedMB = parseFloat(item.xusedvalue || "0")
-      }
+    if (!feeData || !detailData) {
+      Widget.present(
+        <VStack alignment="center" padding={PADDING}>
+          <Image systemName="wifi.exclamationmark" font="title" foregroundStyle="systemRed" />
+          <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 6 }}>
+            获取数据失败
+          </Text>
+          <Text font="caption2" foregroundStyle="tertiaryLabel">请检查网络或 Cookie</Text>
+        </VStack>,
+        reloadPolicy
+      )
+      return
     }
-    
-    // 方法2：从 fresSumList 获取
-    // fresSumList 中的值单位也是 MB
-    if (totalRemainMB === 0 && matchType === "flowType") {
-      const item = detailData.fresSumList?.find(item => item.flowtype === matchValue)
-      if (item) {
-        totalRemainMB = parseFloat(item.xcanusevalue || "0")
-        totalUsedMB = parseFloat(item.xusedvalue || "0")
-      }
+
+    const voiceAndFlowData = extractVoiceAndFlowData(detailData)
+    if (!voiceAndFlowData) {
+      Widget.present(
+        <VStack alignment="center" padding={PADDING}>
+          <Text foregroundStyle="secondaryLabel">提取数据失败</Text>
+        </VStack>,
+        reloadPolicy
+      )
+      return
     }
-    
-    // 方法3：从 resources 计算
-    // resources 中的值需要根据 canuseFlowAllUnit 判断单位
-    if (totalRemainMB === 0) {
-      const unit = detailData.canuseFlowAllUnit || "MB"
-      detailData.resources?.find(r => r.type === "Flow")?.details?.forEach((detail: any) => {
-        const match = matchType === "flowType" 
-          ? detail.flowType === matchValue
-          : detail.addupItemCode === matchValue
-        
-        if (match && detail.remain) {
-          const remain = parseFloat(detail.remain)
-          const used = parseFloat(detail.use || "0")
-          if (!isNaN(remain) && remain > 0) {
-            if (unit === "MB") {
-              totalRemainMB += remain
-              totalUsedMB += used
-            } else if (unit === "GB") {
-              totalRemainMB += remain * 1024
-              totalUsedMB += used * 1024
+
+    // 提取其他流量数据
+    let otherFlowData: { title: string; balance: string; unit: string; used?: number; total?: number } | undefined
+    const showOtherFlow = settings?.showOtherFlow ?? true
+    const matchType = settings?.otherFlowMatchType ?? "flowType"
+    const matchValue = settings?.otherFlowMatchValue ?? "3"
+
+    if (showOtherFlow && detailData) {
+      let totalRemainMB = 0
+      let totalUsedMB = 0
+
+      if (matchType === "flowType" && matchValue === "3") {
+        const item = detailData.flowSumList?.find(item => item.flowtype === "3")
+        if (item) {
+          totalRemainMB = parseFloat(item.xcanusevalue || "0")
+          totalUsedMB = parseFloat(item.xusedvalue || "0")
+        }
+      }
+
+      if (totalRemainMB === 0 && matchType === "flowType") {
+        const item = detailData.fresSumList?.find(item => item.flowtype === matchValue)
+        if (item) {
+          totalRemainMB = parseFloat(item.xcanusevalue || "0")
+          totalUsedMB = parseFloat(item.xusedvalue || "0")
+        }
+      }
+
+      if (totalRemainMB === 0) {
+        const unit = detailData.canuseFlowAllUnit || "MB"
+        detailData.resources?.find(r => r.type === "Flow")?.details?.forEach((detail: any) => {
+          const match = matchType === "flowType"
+            ? detail.flowType === matchValue
+            : detail.addupItemCode === matchValue
+          if (match && detail.remain) {
+            const remain = parseFloat(detail.remain)
+            const used = parseFloat(detail.use || "0")
+            if (!isNaN(remain) && remain > 0) {
+              if (unit === "MB") {
+                totalRemainMB += remain
+                totalUsedMB += used
+              } else if (unit === "GB") {
+                totalRemainMB += remain * 1024
+                totalUsedMB += used * 1024
+              }
             }
           }
+        })
+      }
+
+      if (totalRemainMB > 0 || totalUsedMB > 0) {
+        const formatted = formatFlowValue(totalRemainMB, "MB")
+        otherFlowData = {
+          title: "其他流量",
+          balance: formatted.balance,
+          unit: formatted.unit,
+          used: totalUsedMB,
+          total: totalRemainMB + totalUsedMB
         }
-      })
-    }
-    
-    if (totalRemainMB > 0 || totalUsedMB > 0) {
-      const formatted = formatFlowValue(totalRemainMB, "MB")
-      const totalMB = totalRemainMB + totalUsedMB
-      
-      otherFlowData = {
-        title: "其他流量",
-        balance: formatted.balance,
-        unit: formatted.unit,
-        used: totalUsedMB,
-        total: totalMB
       }
     }
-  }
 
-  const mergedData: UnicomData = {
-    fee: feeData,
-    voice: voiceAndFlowData.voice,
-    flow: voiceAndFlowData.flow,
-    otherFlow: otherFlowData,
-  }
+    const mergedData: UnicomData = {
+      fee: feeData,
+      voice: voiceAndFlowData.voice,
+      flow: voiceAndFlowData.flow,
+      otherFlow: otherFlowData,
+    }
 
-  // 确保 settings 不为 null
-  if (!settings) {
-    Widget.present(<Text>请先在主应用中设置联通 Cookie，或配置 BoxJs 地址。</Text>, reloadPolicy)
-    return
-  }
+    // 更新每日读数并计算柱形图数据
+    const flowUsed = (voiceAndFlowData.flow.used ?? 0) + (otherFlowData?.used ?? 0)
+    const voiceUsed = voiceAndFlowData.voice.used ?? 0
+    const readings = updateReadings(flowUsed, voiceUsed)
 
-  Widget.present(<WidgetView data={mergedData} settings={settings} />, reloadPolicy)
+    const chartMode = settings?.chartMode ?? "flow"
+    const barCount = Widget.family === "systemSmall" ? 7 : 15
+    const { deltas, startDate, endDate } = calcDeltas(readings, barCount, chartMode)
+
+    if (Widget.family === "systemSmall") {
+      Widget.present(<SmallWidget data={mergedData} settings={settings!} deltas={deltas} startDate={startDate} endDate={endDate} />, reloadPolicy)
+    } else {
+      Widget.present(<MediumWidget data={mergedData} settings={settings!} deltas={deltas} startDate={startDate} endDate={endDate} />, reloadPolicy)
+    }
+  } catch (e) {
+    Widget.present(
+      <VStack alignment="center" padding={PADDING}>
+        <Image systemName="wifi.exclamationmark" font="title" foregroundStyle="systemRed" />
+        <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 6 }}>
+          获取失败
+        </Text>
+        <Text font="caption2" foregroundStyle="tertiaryLabel">
+          {(e as Error).message}
+        </Text>
+      </VStack>,
+      reloadPolicy
+    )
+  }
 }
 
-render()
+main()
