@@ -1,10 +1,12 @@
 import {
+  AccessoryWidgetBackground,
   HStack,
   Image,
   Spacer,
   Text,
   VStack,
   Widget,
+  ZStack,
   fetch,
 } from "scripting"
 import { SmallWidget, BarChart, formatDate } from "./small_widget"
@@ -309,7 +311,9 @@ function MediumWidget({ bill, deltas, usage, avg, startDate, endDate }: { bill: 
   })()
 
   return (
-    <VStack padding={PADDING} spacing={0}>
+    <ZStack alignment="leading">
+      <AccessoryWidgetBackground />
+      <VStack padding={{ leading: PADDING, trailing: PADDING, top: 18, bottom: 20 }} spacing={0}>
       {/* 顶部：标题 + 状态 */}
       <HStack frame={{ maxWidth: Infinity }}>
         <HStack spacing={4}>
@@ -363,13 +367,16 @@ function MediumWidget({ bill, deltas, usage, avg, startDate, endDate }: { bill: 
       <Spacer />
 
       {/* 底部：柱形图 + 日期 */}
-      <BarChart deltas={deltas} barHeight={24} />
-      <HStack frame={{ maxWidth: Infinity }}>
-        <Text font="caption2" foregroundStyle="tertiaryLabel">{formatDate(startStr)}</Text>
-        <Spacer />
-        <Text font="caption2" foregroundStyle="#FF8C38">{formatDate(endStr)}</Text>
-      </HStack>
-    </VStack>
+      <VStack spacing={6}>
+        <BarChart deltas={deltas} barHeight={24} />
+        <HStack frame={{ maxWidth: Infinity }}>
+          <Text font="caption2" foregroundStyle="tertiaryLabel">{formatDate(startStr)}</Text>
+          <Spacer />
+          <Text font="caption2" foregroundStyle="#FF8C38">{formatDate(endStr)}</Text>
+        </HStack>
+      </VStack>
+      </VStack>
+    </ZStack>
   )
 }
 
@@ -388,12 +395,15 @@ async function main() {
 
   if (!token) {
     Widget.present(
-      <VStack alignment="center" padding={PADDING}>
-        <Image systemName="flame.fill" font="title" foregroundStyle="#FF8C38" />
-        <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 6 }}>
-          请先打开应用配置 Token
-        </Text>
-      </VStack>
+      <ZStack alignment="center">
+        <AccessoryWidgetBackground />
+        <VStack alignment="center" padding={PADDING}>
+          <Image systemName="flame.fill" font="title" foregroundStyle="#FF8C38" />
+          <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 6 }}>
+            请先打开应用配置 Token
+          </Text>
+        </VStack>
+      </ZStack>
     )
     return
   }
@@ -402,9 +412,12 @@ async function main() {
     const cards = await getCards(token)
     if (!cards || cards.length === 0) {
       Widget.present(
-        <VStack alignment="center" padding={PADDING}>
-          <Text foregroundStyle="secondaryLabel">未找到绑定的燃气卡</Text>
-        </VStack>
+        <ZStack alignment="center">
+          <AccessoryWidgetBackground />
+          <VStack alignment="center" padding={PADDING}>
+            <Text foregroundStyle="secondaryLabel">未找到绑定的燃气卡</Text>
+          </VStack>
+        </ZStack>
       )
       return
     }
@@ -445,15 +458,18 @@ async function main() {
     }
   } catch (e) {
     Widget.present(
-      <VStack alignment="center" padding={PADDING}>
-        <Image systemName="wifi.exclamationmark" font="title" foregroundStyle="systemRed" />
-        <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 6 }}>
-          获取失败
-        </Text>
-        <Text font="caption2" foregroundStyle="tertiaryLabel">
-          {(e as Error).message}
-        </Text>
-      </VStack>
+      <ZStack alignment="center">
+        <AccessoryWidgetBackground />
+        <VStack alignment="center" padding={PADDING}>
+          <Image systemName="wifi.exclamationmark" font="title" foregroundStyle="systemRed" />
+          <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 6 }}>
+            获取失败
+          </Text>
+          <Text font="caption2" foregroundStyle="tertiaryLabel">
+            {(e as Error).message}
+          </Text>
+        </VStack>
+      </ZStack>
     )
   }
 }

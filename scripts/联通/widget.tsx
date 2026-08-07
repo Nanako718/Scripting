@@ -361,7 +361,7 @@ function MediumWidget({ data, settings, deltas, startDate, endDate }: { data: Un
   const totalFlowFormatted = formatFlowValue(flowRemain + otherRemain, "MB")
 
   return (
-    <VStack padding={PADDING} spacing={0}>
+    <VStack padding={{ leading: PADDING, trailing: PADDING, top: 18, bottom: 20 }} spacing={0}>
       {/* 顶部：标题 + 状态 */}
       <HStack frame={{ maxWidth: Infinity }}>
         <HStack spacing={4}>
@@ -413,12 +413,14 @@ function MediumWidget({ data, settings, deltas, startDate, endDate }: { data: Un
       <Spacer />
 
       {/* 底部：柱形图 + 日期 */}
-      <BarChart deltas={deltas} barHeight={24} />
-      <HStack frame={{ maxWidth: Infinity }}>
+      <VStack spacing={6}>
+        <BarChart deltas={deltas} barHeight={24} />
+        <HStack frame={{ maxWidth: Infinity }}>
         <Text font="caption2" foregroundStyle="tertiaryLabel">{formatDate(startDate)}</Text>
         <Spacer />
         <Text font="caption2" foregroundStyle="#FF8C38">{formatDate(endDate)}</Text>
       </HStack>
+      </VStack>
     </VStack>
   )
 }
@@ -439,14 +441,14 @@ function SmallWidget({ data, settings, deltas, startDate, endDate }: { data: Uni
   const totalFlowFormatted = formatFlowValue(flowRemain + otherRemain, "MB")
 
   return (
-    <VStack padding={{ leading: PADDING, trailing: PADDING, bottom: PADDING, top: 8 }} alignment="leading" spacing={4}>
+    <VStack padding={{ leading: PADDING, trailing: PADDING, bottom: 18, top: 12 }} alignment="leading" spacing={4}>
       <Text font="caption" foregroundStyle="secondaryLabel">剩余流量</Text>
       <Text font="title3" fontWeight="bold" foregroundStyle="label">
         {showFlow ? totalFlowFormatted.balance + " " + totalFlowFormatted.unit : "--"}
       </Text>
       <Text font="caption2" foregroundStyle="tertiaryLabel">{"话费 " + data.fee.balance + " " + data.fee.unit}</Text>
       <Spacer />
-      <VStack spacing={-16}>
+      <VStack spacing={6}>
         <BarChart deltas={deltas} barHeight={50} />
         <HStack frame={{ maxWidth: Infinity }}>
           <Text font="caption2" foregroundStyle="tertiaryLabel">{formatDate(startDate)}</Text>

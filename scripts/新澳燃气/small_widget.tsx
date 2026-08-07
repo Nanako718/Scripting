@@ -1,10 +1,12 @@
 import {
+  AccessoryWidgetBackground,
   Color,
   HStack,
   Rectangle,
   Spacer,
   Text,
   VStack,
+  ZStack,
 } from "scripting"
 
 const PADDING = 14
@@ -59,19 +61,22 @@ export function SmallWidget({ deltas, usage, avg, startDate, endDate }: { deltas
   })()
 
   return (
-    <VStack padding={{ leading: PADDING, trailing: PADDING, bottom: PADDING, top: 8 }} alignment="leading" spacing={4}>
-      <Text font="caption" foregroundStyle="secondaryLabel">用气量</Text>
-      <Text font="title3" fontWeight="bold" foregroundStyle="label">{"平均 " + avg + " m³"}</Text>
-      <Text font="caption2" foregroundStyle="tertiaryLabel">近7天用气趋势</Text>
-      <Spacer />
-      <VStack spacing={-16}>
-        <BarChart deltas={deltas} barHeight={50} />
-        <HStack frame={{ maxWidth: Infinity }}>
-          <Text font="caption2" foregroundStyle="tertiaryLabel">{formatDate(startStr)}</Text>
-          <Spacer />
-          <Text font="caption2" foregroundStyle="#FF8C38">{formatDate(endStr)}</Text>
-        </HStack>
+    <ZStack alignment="leading">
+      <AccessoryWidgetBackground />
+      <VStack padding={{ leading: PADDING, trailing: PADDING, bottom: 18, top: 12 }} alignment="leading" spacing={4}>
+        <Text font="caption" foregroundStyle="secondaryLabel">用气量</Text>
+        <Text font="title3" fontWeight="bold" foregroundStyle="label">{"平均 " + avg + " m³"}</Text>
+        <Text font="caption2" foregroundStyle="tertiaryLabel">近7天用气趋势</Text>
+        <Spacer />
+        <VStack spacing={6}>
+          <BarChart deltas={deltas} barHeight={50} />
+          <HStack frame={{ maxWidth: Infinity }}>
+            <Text font="caption2" foregroundStyle="tertiaryLabel">{formatDate(startStr)}</Text>
+            <Spacer />
+            <Text font="caption2" foregroundStyle="#FF8C38">{formatDate(endStr)}</Text>
+          </HStack>
+        </VStack>
       </VStack>
-    </VStack>
+    </ZStack>
   )
 }
