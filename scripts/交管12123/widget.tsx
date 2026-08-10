@@ -104,7 +104,7 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
         <Rectangle frame={{ height: 0.5 }} foregroundStyle={{ light: 'rgba(0,0,0,0.15)', dark: 'rgba(255,255,255,0.2)' }} padding={{ top: 6, bottom: 6 }} />
 
         {/* 下方内容 */}
-        <HStack alignment="center" spacing={0}>
+        <HStack alignment="bottom" spacing={0}>
           {/* 左侧：记分图片 + 准驾车型 */}
           <VStack alignment="center" spacing={8} frame={{ maxWidth: Infinity }}>
             <Image
