@@ -131,27 +131,24 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
           {/* 间距 */}
           <Spacer minLength={20} />
 
-          {/* 右侧：日期，右对齐与0违章对齐 */}
-          <VStack alignment="trailing" spacing={6}>
+          {/* 右侧：日期 */}
+          <VStack alignment="trailing" spacing={8}>
             <Spacer />
-            <RoundedRectangle cornerRadius={6} foregroundStyle={{ light: '#E8F4FD', dark: '#1A3A5C' }}>
-              <HStack alignment="center" spacing={6} padding={{ leading: 8, trailing: 8, top: 4, bottom: 4 }}>
-                <Text font={10} fontWeight="medium" foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} lineLimit={1}>换证</Text>
-                <Text font={11} fontWeight="medium" foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} lineLimit={1}>{data.renewalDate}</Text>
-              </HStack>
-            </RoundedRectangle>
-            <RoundedRectangle cornerRadius={6} foregroundStyle={{ light: '#FFF4E6', dark: '#5C4A1A' }}>
-              <HStack alignment="center" spacing={6} padding={{ leading: 8, trailing: 8, top: 4, bottom: 4 }}>
-                <Text font={10} fontWeight="medium" foregroundStyle={{ light: '#F5A623', dark: '#F5A623' }} lineLimit={1}>年检</Text>
-                <Text font={11} fontWeight="medium" foregroundStyle={{ light: '#F5A623', dark: '#F5A623' }} lineLimit={1}>{data.annualInspectionDate}</Text>
-              </HStack>
-            </RoundedRectangle>
-            <RoundedRectangle cornerRadius={6} foregroundStyle={{ light: '#F3E8FF', dark: '#3D1A5C' }}>
-              <HStack alignment="center" spacing={6} padding={{ leading: 8, trailing: 8, top: 4, bottom: 4 }}>
-                <Text font={10} fontWeight="medium" foregroundStyle={{ light: '#722ED1', dark: '#9D6FFF' }} lineLimit={1}>清分</Text>
-                <Text font={11} fontWeight="medium" foregroundStyle={{ light: '#722ED1', dark: '#9D6FFF' }} lineLimit={1}>{data.reaccDate}</Text>
-              </HStack>
-            </RoundedRectangle>
+            <HStack alignment="center" spacing={6}>
+              <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} frame={{ width: 3, height: 14 }} />
+              <Text font={11} foregroundStyle={secondaryText} lineLimit={1} frame={{ width: 28, alignment: "trailing" }}>换证</Text>
+              <Text font={12} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.renewalDate}</Text>
+            </HStack>
+            <HStack alignment="center" spacing={6}>
+              <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#F5A623', dark: '#F5A623' }} frame={{ width: 3, height: 14 }} />
+              <Text font={11} foregroundStyle={secondaryText} lineLimit={1} frame={{ width: 28, alignment: "trailing" }}>年检</Text>
+              <Text font={12} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.annualInspectionDate}</Text>
+            </HStack>
+            <HStack alignment="center" spacing={6}>
+              <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#722ED1', dark: '#9D6FFF' }} frame={{ width: 3, height: 14 }} />
+              <Text font={11} foregroundStyle={secondaryText} lineLimit={1} frame={{ width: 28, alignment: "trailing" }}>清分</Text>
+              <Text font={12} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.reaccDate}</Text>
+            </HStack>
             <Spacer />
           </VStack>
         </HStack>
