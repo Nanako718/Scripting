@@ -1,0 +1,6 @@
+{
+  "component": true,
+  "usingComponents": {
+    "Navigation": "/components/weui/navigation-bar/navigation-bar"
+  }
+}

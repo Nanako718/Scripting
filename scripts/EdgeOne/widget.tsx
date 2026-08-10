@@ -5,7 +5,6 @@ import {
   Text,
   Spacer,
   WidgetReloadPolicy,
-  ZStack,
   Image,
   DynamicShapeStyle,
 } from "scripting";
@@ -109,20 +108,13 @@ function WidgetView({
   const timeString = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <ZStack
-      frame={{ maxWidth: Infinity, maxHeight: Infinity }}
-      widgetBackground={{
-        style: theme.bg,
-        shape: { type: "rect", cornerRadius: 24, style: "continuous" } as any,
-      }}
-    >
-      <VStack padding={{ top: 18, leading: 16, bottom: 18, trailing: 16 }} spacing={0}>
+    <VStack padding={{ top: 18, leading: 16, bottom: 18, trailing: 16 }} spacing={0}>
         {/* 标题行 */}
         <HStack alignment="center" padding={{ bottom: 10 }} spacing={4}>
           <Text font={14} fontWeight="bold" foregroundStyle={theme.tencentGray}>Tencent</Text>
           <Text font={10} fontWeight="bold" foregroundStyle={theme.edgeBlue}>EdgeOne</Text>
           <Spacer />
-          <Text font={10} fontWeight="medium" foregroundStyle={theme.secondary}>{timeRangeLabel} · {timeString}</Text>
+          <Text font={10} fontWeight="medium" foregroundStyle={theme.secondary}>{timeString}</Text>
         </HStack>
 
         {/* 2x2：与控制台概览一致 — 总流量、总请求、带宽峰值、缓存命中率 */}
@@ -162,7 +154,6 @@ function WidgetView({
           </HStack>
         </VStack>
       </VStack>
-    </ZStack>
   );
 }
 
@@ -189,7 +180,7 @@ function MetricCard({
       padding={10}
       frame={{ minWidth: 0, maxWidth: Infinity }}
       widgetBackground={{
-        style: theme.card,
+        style: { light: "rgba(0,0,0,0.06)", dark: "rgba(255,255,255,0.08)" },
         shape: { type: "rect", cornerRadius: 14, style: "continuous" } as any,
       }}
     >

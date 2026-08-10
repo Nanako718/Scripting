@@ -29,6 +29,9 @@ export type TrafficData = {
   penaltyPoints: number;
   recordInfo: string;
   vehicleImageUrl?: string;
+  licenseStatus: string;
+  reaccDate: string;
+  idNumber: string;
 }
 
 const BOXJS_KEY = "12123.token"; // BoxJs 中存储的 key
@@ -56,6 +59,12 @@ export async function fetchTokenFromBoxJs(boxJsUrl: string): Promise<string | nu
     // 静默失败
   }
   return null;
+}
+
+// 脱敏身份证号：前6位 + * + 后4位
+function maskIdNumber(id: string): string {
+  if (!id || id.length < 11) return id || '—'
+  return id.slice(0, 6) + '*'.repeat(id.length - 10) + id.slice(-4)
 }
 
 // 格式化日期（显示完整日期：年-月-日）
@@ -258,6 +267,9 @@ export async function fetchTrafficData(token: string): Promise<TrafficData | nul
       penaltyPoints,
       recordInfo: `备案信息：${drivingLicense?.name || ''}, 驾驶证状态(${licenseStatus}), ${drivingLicense?.issueOrganizationName || ''}`,
       vehicleImageUrl: vehicle.vehicleImageUrl,
+      licenseStatus,
+      reaccDate: formatDate(drivingLicense?.reaccDate || ''),
+      idNumber: maskIdNumber(drivingLicense?.idNumber || ''),
     };
     
     return data;

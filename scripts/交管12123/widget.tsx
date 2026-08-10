@@ -19,78 +19,34 @@ import {
 } from "./api"
 
 const SETTINGS_KEY = "traffic12123Settings"
-const VEHICLE_IMAGE_CACHE_KEY = "traffic12123_vehicle_image_path"
-const VEHICLE_IMAGE_URL_KEY = "traffic12123_vehicle_image_url"
 
-// 下载并缓存车辆图片
-async function getVehicleImagePath(imageUrl?: string): Promise<string | null> {
-  if (!imageUrl) return null
+// 记分图片映射
+const POINTS_IMAGE_MAP: Record<number, string> = {
+  0: '0',
+  1: '1',
+  2: '2',
+  3: '3',
+  4: '4',
+  5: '5',
+  6: '6',
+  7: '7',
+  8: '8',
+  9: '9',
+  10: '10',
+  11: '11',
+  12: '12',
+}
 
-  try {
-    // 检查缓存：如果 URL 相同且文件存在，直接返回
-    const cachedUrl = Storage.get<string>(VEHICLE_IMAGE_URL_KEY)
-    const cachedPath = Storage.get<string>(VEHICLE_IMAGE_CACHE_KEY)
-    
-    if (cachedUrl === imageUrl && cachedPath && FileManager.existsSync(cachedPath)) {
-      return cachedPath
-    }
-
-    // URL 变化或缓存文件不存在，清除旧缓存
-    if (cachedPath && FileManager.existsSync(cachedPath)) {
-      try {
-        FileManager.removeSync(cachedPath)
-      } catch (e) {
-        // 忽略删除失败
-      }
-    }
-
-    // 下载新图片
-    const response = await fetch(imageUrl)
-    if (!response.ok) {
-      return null
-    }
-
-    const imageData = await response.arrayBuffer()
-    const fileName = `vehicle_${Date.now()}.png`
-    const tempDir = FileManager.temporaryDirectory
-    const filePath = `${tempDir}/${fileName}`
-
-    // 将 ArrayBuffer 转换为 Uint8Array
-    const uint8Array = new Uint8Array(imageData)
-    FileManager.writeAsBytesSync(filePath, uint8Array)
-    
-    // 同时缓存 URL 和文件路径
-    Storage.set(VEHICLE_IMAGE_URL_KEY, imageUrl)
-    Storage.set(VEHICLE_IMAGE_CACHE_KEY, filePath)
-
-    return filePath
-  } catch (error) {
-    return null
-  }
+function getPointsImageName(points: number): string {
+  const clamped = Math.max(0, Math.min(12, points))
+  return POINTS_IMAGE_MAP[clamped] || POINTS_IMAGE_MAP[0]
 }
 
 // 主组件视图
-function WidgetView({ data, vehicleImagePath, imageWidth, imageHeight, imageOffsetY }: { 
-  data: TrafficData; 
-  vehicleImagePath?: string | null;
-  imageWidth?: number;
-  imageHeight?: number;
-  imageOffsetY?: number;
-}) {
-  // 使用渐变背景色（浅蓝色到稍深的蓝色）
-  const lightBg: DynamicShapeStyle = {
-    light: '#E8F4FD', // 浅蓝色背景
-    dark: '#1A1A2E'
-  }
-
+function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: boolean }) {
   const primaryBlue: DynamicShapeStyle = {
     light: '#2581F2',
     dark: '#4A9EFF'
-  }
-
-  const purple: DynamicShapeStyle = {
-    light: '#722ED1',
-    dark: '#9D6FFF'
   }
 
   const textColor: DynamicShapeStyle = {
@@ -98,225 +54,114 @@ function WidgetView({ data, vehicleImagePath, imageWidth, imageHeight, imageOffs
     dark: '#FFFFFF'
   }
 
+  const secondaryText: DynamicShapeStyle = {
+    light: '#666666',
+    dark: '#AAAAAA'
+  }
+
+  const pointsImageName = getPointsImageName(data.penaltyPoints)
+  const pointsImageUrl = `https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/${pointsImageName}.png`
+
   return (
     <ZStack
       frame={{ maxWidth: Infinity, maxHeight: Infinity }}
-      widgetBackground={{
-        style: lightBg,
-        shape: {
-          type: "rect",
-          cornerRadius: 20,
-          style: "continuous"
-        }
-      }}
     >
-      {/* 主内容层 */}
       <VStack
         padding={{ top: 13, leading: 13, bottom: 13, trailing: 13 }}
         spacing={0}
       >
+        {/* Token 过期提示 */}
+        {tokenExpired && (
+          <HStack alignment="center" spacing={4} padding={{ bottom: 4 }}>
+            <Image systemName="exclamationmark.circle.fill" font={10} foregroundStyle={{ light: '#FF6B6B', dark: '#FF6B6B' }} />
+            <Text font={10} foregroundStyle={{ light: '#FF6B6B', dark: '#FF6B6B' }} lineLimit={1}>Token已过期，请更新</Text>
+          </HStack>
+        )}
+
+        {/* 标题行：车牌号 + 违章数 */}
+        <HStack alignment="center" spacing={0}>
+          <Text
+            font={19}
+            fontWeight="bold"
+            foregroundStyle={textColor}
+            lineLimit={1}
+          >
+            {data.plateNumber}
+          </Text>
+          <Spacer />
+          <Text
+            font={14}
+            fontWeight="medium"
+            foregroundStyle={primaryBlue}
+            lineLimit={1}
+          >
+            {data.violationCount}违章
+          </Text>
+        </HStack>
+
+        <Spacer minLength={4} />
+
+        {/* 下方内容 */}
         <HStack alignment="top" spacing={0}>
-          {/* ========== 左侧区域：车牌、准驾、换证、年检、违章、记分 ========== */}
-          <VStack alignment="leading" spacing={0} frame={{ width: 100 }} padding={{ trailing: 3 }}>
-            {/* 车牌号 */}
-            <Text
-              font={19.5}
-              fontWeight="medium"
-              foregroundStyle={textColor}
-              lineLimit={1}
-              padding={{ bottom: 3 }}
-            >
-              {data.plateNumber}
-            </Text>
-            
-            {/* 准驾车型 */}
-            <HStack alignment="center" spacing={4.8}>
+          {/* 左侧：记分图片 + 准驾车型 */}
+          <VStack alignment="center" spacing={8} frame={{ width: 90 }}>
+            <Spacer />
+            <Image
+              imageUrl={pointsImageUrl}
+              frame={{ width: 84, height: 68 }}
+              resizable={true}
+            />
+            <HStack alignment="center" spacing={2}>
               <Image
                 systemName="car.fill"
-                font={15}
-                foregroundStyle={primaryBlue}
+                font={9}
+                foregroundStyle={secondaryText}
               />
               <Text
-                font={11.5}
-                fontWeight="medium"
-                foregroundStyle={textColor}
+                font={9}
+                foregroundStyle={secondaryText}
                 lineLimit={1}
-                opacity={0.78}
               >
-                准驾车型 {data.drivingLicenseType}
+                准驾车型{data.drivingLicenseType}
               </Text>
             </HStack>
-            
-            {/* 换证日期 */}
-            <Text
-              font={11.5}
-              fontWeight="medium"
-              foregroundStyle={textColor}
-              lineLimit={1}
-              opacity={0.78}
-            >
-              换证 {data.renewalDate}
-            </Text>
-            
-            {/* 年检日期 */}
-            <Text
-              font={11.5}
-              fontWeight="medium"
-              foregroundStyle={textColor}
-              lineLimit={1}
-              opacity={0.78}
-            >
-              年检 {data.annualInspectionDate}
-            </Text>
-
             <Spacer />
-
-            {/* 违章按钮 */}
-            <ZStack
-              frame={{ width: 90 }}
-              clipShape={{
-                type: "rect",
-                cornerRadius: 10,
-                style: "continuous"
-              }}
-            >
-              <RoundedRectangle
-                cornerRadius={10}
-                style="continuous"
-                stroke={{
-                  shapeStyle: primaryBlue,
-                  strokeStyle: {
-                    lineWidth: 1,
-                    lineCap: "round",
-                    lineJoin: "round"
-                  }
-                }}
-              />
-              <HStack
-                alignment="center"
-                padding={{ top: 3, leading: 10, bottom: 3, trailing: 10 }}
-                spacing={4}
-              >
-                <Image
-                  systemName="exclamationmark.triangle.fill"
-                  font={16}
-                  foregroundStyle={primaryBlue}
-                />
-                <Text
-                  font={11}
-                  fontWeight="medium"
-                  foregroundStyle={primaryBlue}
-                  lineLimit={1}
-                >
-                  {data.violationCount} 违章
-                </Text>
-              </HStack>
-            </ZStack>
-            <Spacer minLength={8} />
-
-            {/* 记分按钮 */}
-            <ZStack
-              frame={{ width: 90 }}
-              clipShape={{
-                type: "rect",
-                cornerRadius: 10,
-                style: "continuous"
-              }}
-            >
-              <RoundedRectangle
-                cornerRadius={10}
-                style="continuous"
-                stroke={{
-                  shapeStyle: purple,
-                  strokeStyle: {
-                    lineWidth: 1,
-                    lineCap: "round",
-                    lineJoin: "round"
-                  }
-                }}
-              />
-              <HStack
-                alignment="center"
-                padding={{ top: 3, leading: 10, bottom: 3, trailing: 10 }}
-                spacing={4}
-              >
-                <Image
-                  systemName="square.fill"
-                  font={16}
-                  foregroundStyle={purple}
-                />
-                <Text
-                  font={11}
-                  fontWeight="medium"
-                  foregroundStyle={purple}
-                  lineLimit={1}
-                  opacity={0.75}
-                >
-                  记{data.penaltyPoints}分
-                </Text>
-              </HStack>
-            </ZStack>
           </VStack>
-          
-          <Spacer />
-          
-          {/* ========== 右侧区域：12123、备案信息 ========== */}
-          <VStack alignment="leading" spacing={0} frame={{ width: 200 }}>
-            {/* 12123标识 */}
-            <HStack alignment="center" spacing={0} padding={{ bottom: 3 }}>
-              <Spacer />
-              <Text
-                font={18}
-                fontWeight="medium"
-                foregroundStyle={primaryBlue}
-                lineLimit={1}
-              >
-                12123
-              </Text>
-            </HStack>
-            
+
+          {/* 间距 */}
+          <Spacer minLength={20} />
+
+          {/* 右侧：日期，右对齐与0违章对齐 */}
+          <VStack alignment="trailing" spacing={6}>
             <Spacer />
-            
-            {/* 备案信息 */}
-            <VStack alignment="center" spacing={0} frame={{ width: 200, height: 28 }}>
-              <Text
-                font={11}
-                fontWeight="medium"
-                foregroundStyle={textColor}
-                lineLimit={2}
-                opacity={0.8}
-                minScaleFactor={0.7}
-                frame={{ maxWidth: Infinity }}
-                multilineTextAlignment="center"
-              >
-                {data.recordInfo}
-              </Text>
-            </VStack>
+            <RoundedRectangle cornerRadius={6} foregroundStyle={{ light: '#E8F4FD', dark: '#1A3A5C' }}>
+              <HStack alignment="center" spacing={6} padding={{ leading: 8, trailing: 8, top: 4, bottom: 4 }}>
+                <Text font={10} fontWeight="medium" foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} lineLimit={1}>换证</Text>
+                <Text font={11} fontWeight="medium" foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} lineLimit={1}>{data.renewalDate}</Text>
+              </HStack>
+            </RoundedRectangle>
+            <RoundedRectangle cornerRadius={6} foregroundStyle={{ light: '#FFF4E6', dark: '#5C4A1A' }}>
+              <HStack alignment="center" spacing={6} padding={{ leading: 8, trailing: 8, top: 4, bottom: 4 }}>
+                <Text font={10} fontWeight="medium" foregroundStyle={{ light: '#F5A623', dark: '#F5A623' }} lineLimit={1}>年检</Text>
+                <Text font={11} fontWeight="medium" foregroundStyle={{ light: '#F5A623', dark: '#F5A623' }} lineLimit={1}>{data.annualInspectionDate}</Text>
+              </HStack>
+            </RoundedRectangle>
+            <RoundedRectangle cornerRadius={6} foregroundStyle={{ light: '#F3E8FF', dark: '#3D1A5C' }}>
+              <HStack alignment="center" spacing={6} padding={{ leading: 8, trailing: 8, top: 4, bottom: 4 }}>
+                <Text font={10} fontWeight="medium" foregroundStyle={{ light: '#722ED1', dark: '#9D6FFF' }} lineLimit={1}>清分</Text>
+                <Text font={11} fontWeight="medium" foregroundStyle={{ light: '#722ED1', dark: '#9D6FFF' }} lineLimit={1}>{data.reaccDate}</Text>
+              </HStack>
+            </RoundedRectangle>
+            <Spacer />
           </VStack>
         </HStack>
       </VStack>
-      
-      {/* 车辆图片层 - 悬浮在最上层，参考联通小组件的实现方式 */}
-      {/* 图片位置：右侧区域，12123 下方，备案信息上方 */}
-      {vehicleImagePath ? (
-        <VStack alignment="leading" frame={{ maxWidth: Infinity, maxHeight: Infinity }} padding={{ top: 13, leading: 13, bottom: 13, trailing: 13 }}>
-          <Spacer minLength={imageOffsetY ?? 30} />
-          <HStack alignment="center" frame={{ maxWidth: Infinity }}>
-            <Spacer />
-            <VStack alignment="leading">
-              <Image
-                filePath={vehicleImagePath}
-                frame={{ width: imageWidth ?? 120, height: imageHeight ?? 60 }}
-                resizable
-              />
-            </VStack>
-          </HStack>
-          <Spacer />
-        </VStack>
-      ) : null}
     </ZStack>
   )
 }
+
+// 缓存数据的key
+const CACHE_KEY = "traffic12123CachedData"
 
 // 渲染函数
 async function render() {
@@ -355,6 +200,15 @@ async function render() {
 
   // 检查 token 配置
   if (!token) {
+    // 尝试使用缓存数据
+    const cachedData = Storage.get<TrafficData>(CACHE_KEY)
+    if (cachedData) {
+      Widget.present(
+        <WidgetView data={cachedData} tokenExpired={true} />,
+        reloadPolicy
+      )
+      return
+    }
     Widget.present(
       <Link url="alipays://platformapi/startapp?appId=2019050964403523">
         <VStack padding spacing={8} alignment="center">
@@ -379,6 +233,15 @@ async function render() {
     const data = await fetchTrafficData(token)
 
     if (!data) {
+      // Token过期，尝试使用缓存数据
+      const cachedData = Storage.get<TrafficData>(CACHE_KEY)
+      if (cachedData) {
+        Widget.present(
+          <WidgetView data={cachedData} tokenExpired={true} />,
+          reloadPolicy
+        )
+        return
+      }
       Widget.present(
         <Link url="alipays://platformapi/startapp?appId=2019050964403523">
           <VStack padding spacing={8} alignment="center">
@@ -399,18 +262,11 @@ async function render() {
       return
     }
 
-    // 下载车辆图片（如果配置了）
-    const imageUrl = settings?.vehicleImageUrl || data.vehicleImageUrl;
-    const vehicleImagePath = imageUrl ? await getVehicleImagePath(imageUrl) : null;
-    
+    // 缓存最新数据
+    Storage.set(CACHE_KEY, data)
+
     Widget.present(
-      <WidgetView 
-        data={data} 
-        vehicleImagePath={vehicleImagePath}
-        imageWidth={settings?.vehicleImageWidth}
-        imageHeight={settings?.vehicleImageHeight}
-        imageOffsetY={settings?.vehicleImageOffsetY}
-      />, 
+      <WidgetView data={data} />,
       reloadPolicy
     );
   } catch (error) {
@@ -418,6 +274,15 @@ async function render() {
     if (error instanceof Error) {
       console.error('错误信息:', error.message)
       console.error('错误堆栈:', error.stack)
+    }
+    // 出错时尝试使用缓存数据
+    const cachedData = Storage.get<TrafficData>(CACHE_KEY)
+    if (cachedData) {
+      Widget.present(
+        <WidgetView data={cachedData} tokenExpired={true} />,
+        reloadPolicy
+      )
+      return
     }
     Widget.present(
       <Link url="alipays://platformapi/startapp?appId=2019050964403523">

@@ -1,0 +1,193 @@
+{
+  "entryPagePath": "pages/index/index.html",
+  "pages": [
+    "pages/index/index",
+    "pages/login/login",
+    "pages/login/face/face",
+    "pages/login/biopsy/biopsy",
+    "pages/register/register",
+    "pages/verify/identity/identity",
+    "pages/verify/revalidate/revalidate",
+    "pages/mine/mine",
+    "pages/help/index/index",
+    "pages/help/faq/faq",
+    "pages/webview/webview",
+    "pages/debug/debug",
+    "pages/vehicle/bind/bind",
+    "pages/vehicle/detail/detail",
+    "pages/search/car/car",
+    "pages/search/car/illist/illist",
+    "pages/search/car/detail/detail",
+    "pages/driver/bind/bind",
+    "pages/search/driver/driver",
+    "pages/driver/detail/detail",
+    "pages/payment/verify/verify",
+    "pages/payment/history/history",
+    "pages/payment/success/success"
+  ],
+  "page": {
+    "pages/index/index.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/login/login.html": {
+      "window": {
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "pages/login/face/face.html": {
+      "window": {
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "pages/login/biopsy/biopsy.html": {
+      "window": {}
+    },
+    "pages/register/register.html": {
+      "window": {
+        "navigationBarBackgroundColor": "#F7F7F7",
+        "backgroundColor": "#F7F7F7",
+        "navigationBarTitleText": "完善个人信息"
+      }
+    },
+    "pages/verify/identity/identity.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/verify/revalidate/revalidate.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/mine/mine.html": {
+      "window": {
+        "navigationBarBackgroundColor": "#F7F7F7",
+        "backgroundColor": "#F7F7F7",
+        "navigationBarTitleText": "个人中心"
+      }
+    },
+    "pages/help/index/index.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/help/faq/faq.html": {
+      "window": {
+        "navigationBarBackgroundColor": "#F7F7F7",
+        "backgroundColor": "#F7F7F7",
+        "navigationBarTitleText": "问题详情"
+      }
+    },
+    "pages/webview/webview.html": {
+      "window": {
+        "navigationBarTitleText": ""
+      }
+    },
+    "pages/debug/debug.html": {
+      "window": {
+        "navigationBarTitleText": ""
+      }
+    },
+    "pages/vehicle/bind/bind.html": {
+      "window": {
+        "navigationBarBackgroundColor": "#F7F7F7",
+        "backgroundColor": "#F7F7F7",
+        "navigationBarTitleText": "备案机动车"
+      }
+    },
+    "pages/vehicle/detail/detail.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/search/car/car.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/search/car/illist/illist.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/search/car/detail/detail.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/driver/bind/bind.html": {
+      "window": {
+        "navigationBarBackgroundColor": "#F7F7F7",
+        "backgroundColor": "#F7F7F7",
+        "navigationBarTitleText": "备案驾驶证"
+      }
+    },
+    "pages/search/driver/driver.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/driver/detail/detail.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/payment/verify/verify.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/payment/history/history.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    },
+    "pages/payment/success/success.html": {
+      "window": {
+        "navigationStyle": "custom",
+        "backgroundColorTop": "#326dad"
+      }
+    }
+  },
+  "global": {
+    "window": {
+      "backgroundColor": "#F6F6F6",
+      "backgroundTextStyle": "light",
+      "navigationBarBackgroundColor": "#F6F6F6",
+      "navigationBarTitleText": "",
+      "navigationBarTextStyle": "black",
+      "disableScroll": true
+    }
+  },
+  "networkTimeout": {
+    "request": 30000,
+    "connectSocket": 30000,
+    "uploadFile": 30000,
+    "downloadFile": 30000
+  },
+  "style": "v2",
+  "renderer": {
+    "allUsed": ["webview"],
+    "default": "webview"
+  },
+  "componentFramework": {
+    "allUsed": ["exparser"],
+    "default": "exparser"
+  }
+}
