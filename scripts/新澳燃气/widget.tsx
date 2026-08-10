@@ -292,9 +292,22 @@ function calcDeltas(readings: DailyReading[], count: number): { deltas: number[]
   return { deltas: result, startDate: start, endDate: end }
 }
 
+// ========== 缓存 ==========
+
+const CACHE_KEY = "xinao_gas_cached_data"
+
+type CachedData = {
+  bill: any
+  deltas: number[]
+  usage: number
+  avg: string
+  startDate?: string
+  endDate?: string
+}
+
 // ========== 中型组件 ==========
 
-function MediumWidget({ bill, deltas, usage, avg, startDate, endDate }: { bill: any; deltas: number[]; usage: number; avg: string; startDate?: string; endDate?: string }) {
+function MediumWidget({ bill, deltas, usage, avg, startDate, endDate, tokenExpired }: { bill: any; deltas: number[]; usage: number; avg: string; startDate?: string; endDate?: string; tokenExpired?: boolean }) {
   const balance = bill.totalBalance ?? bill.balance ?? 0
   const arrears = bill.totalArrears ?? 0
   const hasArrears = arrears > 0
@@ -321,16 +334,23 @@ function MediumWidget({ bill, deltas, usage, avg, startDate, endDate }: { bill: 
           <Text font="callout" fontWeight="semibold" foregroundStyle="label">新澳燃气</Text>
         </HStack>
         <Spacer />
-        <HStack spacing={4}>
-          <Image
-            systemName={hasArrears ? "exclamationmark.circle.fill" : "checkmark.circle.fill"}
-            foregroundStyle={statusColor}
-            font="caption2"
-          />
-          <Text font="caption2" foregroundStyle={statusColor}>
-            {hasArrears ? "有欠费" : "正常"}
-          </Text>
-        </HStack>
+        {tokenExpired ? (
+          <HStack spacing={4}>
+            <Image systemName="exclamationmark.circle.fill" foregroundStyle="systemRed" font="caption2" />
+            <Text font="caption2" foregroundStyle="systemRed">未登录</Text>
+          </HStack>
+        ) : (
+          <HStack spacing={4}>
+            <Image
+              systemName={hasArrears ? "exclamationmark.circle.fill" : "checkmark.circle.fill"}
+              foregroundStyle={statusColor}
+              font="caption2"
+            />
+            <Text font="caption2" foregroundStyle={statusColor}>
+              {hasArrears ? "有欠费" : "正常"}
+            </Text>
+          </HStack>
+        )}
       </HStack>
 
       <Spacer minLength={10} />
@@ -394,6 +414,17 @@ async function main() {
   if (!token) token = Widget.parameter || ""
 
   if (!token) {
+    // 尝试使用缓存数据
+    const cached = Storage.get<CachedData>(CACHE_KEY)
+    if (cached) {
+      const family = Widget.family
+      if (family === "systemSmall") {
+        Widget.present(<SmallWidget deltas={cached.deltas} usage={cached.usage} avg={cached.avg} startDate={cached.startDate} endDate={cached.endDate} />)
+      } else {
+        Widget.present(<MediumWidget bill={cached.bill} deltas={cached.deltas} usage={cached.usage} avg={cached.avg} startDate={cached.startDate} endDate={cached.endDate} tokenExpired={true} />)
+      }
+      return
+    }
     Widget.present(
       <ZStack alignment="center">
         <AccessoryWidgetBackground />
@@ -450,6 +481,10 @@ async function main() {
       deltas = Array.from({ length: barCount }, () => 0)
     }
 
+    // 缓存数据
+    const cacheData: CachedData = { bill, deltas, usage, avg, startDate, endDate }
+    Storage.set(CACHE_KEY, cacheData)
+
     const family = Widget.family
     if (family === "systemSmall") {
       Widget.present(<SmallWidget deltas={deltas} usage={usage} avg={avg} startDate={startDate} endDate={endDate} />)
@@ -457,6 +492,17 @@ async function main() {
       Widget.present(<MediumWidget bill={bill} deltas={deltas} usage={usage} avg={avg} startDate={startDate} endDate={endDate} />)
     }
   } catch (e) {
+    // 尝试使用缓存数据
+    const cached = Storage.get<CachedData>(CACHE_KEY)
+    if (cached) {
+      const family = Widget.family
+      if (family === "systemSmall") {
+        Widget.present(<SmallWidget deltas={cached.deltas} usage={cached.usage} avg={cached.avg} startDate={cached.startDate} endDate={cached.endDate} />)
+      } else {
+        Widget.present(<MediumWidget bill={cached.bill} deltas={cached.deltas} usage={cached.usage} avg={cached.avg} startDate={cached.startDate} endDate={cached.endDate} tokenExpired={true} />)
+      }
+      return
+    }
     Widget.present(
       <ZStack alignment="center">
         <AccessoryWidgetBackground />
