@@ -109,17 +109,17 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
           <VStack alignment="center" spacing={8} frame={{ maxWidth: Infinity }}>
             <Image
               imageUrl={pointsImageUrl}
-              frame={{ width: 80, height: 65 }}
+              frame={{ width: 90, height: 73 }}
               resizable={true}
             />
             <HStack alignment="center" spacing={2}>
               <Image
                 systemName="car.fill"
-                font={9}
+                font={10}
                 foregroundStyle={secondaryText}
               />
               <Text
-                font={9}
+                font={10}
                 foregroundStyle={secondaryText}
                 lineLimit={1}
               >
@@ -133,20 +133,20 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
 
           {/* 右侧：日期 */}
           <VStack alignment="leading" spacing={0} frame={{ maxWidth: Infinity }}>
-            <HStack alignment="center" spacing={6} frame={{ height: 29 }}>
-              <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} frame={{ width: 3, height: 14 }} />
-              <Text font={11} foregroundStyle={secondaryText} lineLimit={1}>换证</Text>
-              <Text font={12} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.renewalDate}</Text>
+            <HStack alignment="center" spacing={6} frame={{ height: 32 }}>
+              <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} frame={{ width: 3, height: 16 }} />
+              <Text font={12} foregroundStyle={secondaryText} lineLimit={1}>换证</Text>
+              <Text font={13} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.renewalDate}</Text>
             </HStack>
-            <HStack alignment="center" spacing={6} frame={{ height: 29 }}>
-              <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#F5A623', dark: '#F5A623' }} frame={{ width: 3, height: 14 }} />
-              <Text font={11} foregroundStyle={secondaryText} lineLimit={1}>年检</Text>
-              <Text font={12} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.annualInspectionDate}</Text>
+            <HStack alignment="center" spacing={6} frame={{ height: 32 }}>
+              <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#F5A623', dark: '#F5A623' }} frame={{ width: 3, height: 16 }} />
+              <Text font={12} foregroundStyle={secondaryText} lineLimit={1}>年检</Text>
+              <Text font={13} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.annualInspectionDate}</Text>
             </HStack>
-            <HStack alignment="center" spacing={6} frame={{ height: 29 }}>
-              <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#722ED1', dark: '#9D6FFF' }} frame={{ width: 3, height: 14 }} />
-              <Text font={11} foregroundStyle={secondaryText} lineLimit={1}>清分</Text>
-              <Text font={12} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.reaccDate}</Text>
+            <HStack alignment="center" spacing={6} frame={{ height: 32 }}>
+              <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#722ED1', dark: '#9D6FFF' }} frame={{ width: 3, height: 16 }} />
+              <Text font={12} foregroundStyle={secondaryText} lineLimit={1}>清分</Text>
+              <Text font={13} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.reaccDate}</Text>
             </HStack>
           </VStack>
         </HStack>
