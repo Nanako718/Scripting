@@ -56,7 +56,7 @@ function md5(str: string): string {
     k = (I - (I % 4)) / 4; d = (I % 4) * 8; aa[k] = aa[k] | (128 << d); aa[H - 2] = F << 3; aa[H - 1] = F >>> 29; return aa
   }
   function B(x: number): string {
-    var k = ""; var F = ""; var Z: number
+    var k = ""; var F: number = 0; var Z: number
     for (Z = 0; Z <= 3; Z++) { F = (x >>> (Z * 8)) & 255; var d = "0" + F.toString(16); k = k + d.substr(d.length - 2, 2) }
     return k
   }
@@ -219,7 +219,7 @@ function SettingsPage() {
           header={<Text>手动配置</Text>}
           footer={<Text>如果不使用 BoxJs，可在此手动输入 Token。从微信小程序抓包获取。</Text>}
         >
-          <TextField title="Token" value={token} onChanged={setToken} placeholder="粘贴抓包获取的 Token" />
+          <TextField title="Token" value={token} onChanged={setToken} prompt="粘贴抓包获取的 Token" />
         </Section>
 
         <Button title="保存设置" action={handleSave} />
