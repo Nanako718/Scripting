@@ -134,7 +134,7 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
           <Rectangle frame={{ width: 0.5 }} foregroundStyle={{ light: 'rgba(0,0,0,0.15)', dark: 'rgba(255,255,255,0.2)' }} padding={{ leading: 8, trailing: 8 }} />
 
           {/* 右侧：日期 */}
-          <VStack alignment="center" spacing={10} frame={{ maxWidth: Infinity }}>
+          <VStack alignment="center" spacing={10} frame={{ width: 130 }}>
             <Spacer />
             <HStack alignment="center" spacing={8}>
               <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} frame={{ width: 3, height: 16 }} />
