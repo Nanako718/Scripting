@@ -104,10 +104,9 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
         <Rectangle frame={{ height: 0.5 }} foregroundStyle={{ light: 'rgba(0,0,0,0.15)', dark: 'rgba(255,255,255,0.2)' }} padding={{ top: 6, bottom: 6 }} />
 
         {/* 下方内容 */}
-        <HStack alignment="top" spacing={0}>
+        <HStack alignment="center" spacing={0}>
           {/* 左侧：记分图片 + 准驾车型 */}
           <VStack alignment="center" spacing={8} frame={{ maxWidth: Infinity }}>
-            <Spacer />
             <Image
               imageUrl={pointsImageUrl}
               frame={{ width: 80, height: 65 }}
@@ -127,7 +126,6 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
                 准驾车型{data.drivingLicenseType}
               </Text>
             </HStack>
-            <Spacer />
           </VStack>
 
           {/* 竖向分界线（居中） */}
@@ -135,15 +133,6 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
 
           {/* 右侧：日期 */}
           <VStack alignment="leading" spacing={8} frame={{ maxWidth: Infinity }}>
-            <Spacer />
-            <HStack alignment="center" frame={{ maxWidth: Infinity }}>
-              <Image
-                imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/12123logo.0067acd9.png"
-                frame={{ width: 28, height: 28 }}
-                resizable={true}
-                aspectRatio={1}
-              />
-            </HStack>
             <HStack alignment="center" spacing={6}>
               <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} frame={{ width: 3, height: 14 }} />
               <Text font={11} foregroundStyle={secondaryText} lineLimit={1}>换证</Text>
@@ -159,7 +148,6 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
               <Text font={11} foregroundStyle={secondaryText} lineLimit={1}>清分</Text>
               <Text font={12} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.reaccDate}</Text>
             </HStack>
-            <Spacer />
           </VStack>
         </HStack>
       </VStack>
