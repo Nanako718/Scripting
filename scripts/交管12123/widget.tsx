@@ -132,7 +132,7 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
           <Spacer minLength={20} />
 
           {/* 右侧：日期 */}
-          <VStack alignment="trailing" spacing={8}>
+          <VStack alignment="leading" spacing={8}>
             <Spacer />
             <HStack alignment="center" spacing={6}>
               <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} frame={{ width: 3, height: 14 }} />
