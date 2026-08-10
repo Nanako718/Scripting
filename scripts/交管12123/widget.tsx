@@ -136,6 +136,11 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
           {/* 右侧：日期 */}
           <VStack alignment="leading" spacing={8} frame={{ maxWidth: Infinity }}>
             <Spacer />
+            <Image
+              imageUrl="https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/12123logo.0067acd9.png"
+              frame={{ width: 28, height: 28 }}
+              resizable={true}
+            />
             <HStack alignment="center" spacing={6}>
               <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} frame={{ width: 3, height: 14 }} />
               <Text font={11} foregroundStyle={secondaryText} lineLimit={1}>换证</Text>
