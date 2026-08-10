@@ -132,18 +132,18 @@ function WidgetView({ data, tokenExpired }: { data: TrafficData; tokenExpired?: 
           <Rectangle frame={{ width: 0.5 }} foregroundStyle={{ light: 'rgba(0,0,0,0.15)', dark: 'rgba(255,255,255,0.2)' }} padding={{ leading: 8, trailing: 8 }} />
 
           {/* 右侧：日期 */}
-          <VStack alignment="leading" spacing={8} frame={{ maxWidth: Infinity }}>
-            <HStack alignment="center" spacing={6}>
+          <VStack alignment="leading" spacing={0} frame={{ maxWidth: Infinity }}>
+            <HStack alignment="center" spacing={6} frame={{ height: 29 }}>
               <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#2581F2', dark: '#4A9EFF' }} frame={{ width: 3, height: 14 }} />
               <Text font={11} foregroundStyle={secondaryText} lineLimit={1}>换证</Text>
               <Text font={12} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.renewalDate}</Text>
             </HStack>
-            <HStack alignment="center" spacing={6}>
+            <HStack alignment="center" spacing={6} frame={{ height: 29 }}>
               <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#F5A623', dark: '#F5A623' }} frame={{ width: 3, height: 14 }} />
               <Text font={11} foregroundStyle={secondaryText} lineLimit={1}>年检</Text>
               <Text font={12} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.annualInspectionDate}</Text>
             </HStack>
-            <HStack alignment="center" spacing={6}>
+            <HStack alignment="center" spacing={6} frame={{ height: 29 }}>
               <RoundedRectangle cornerRadius={2} foregroundStyle={{ light: '#722ED1', dark: '#9D6FFF' }} frame={{ width: 3, height: 14 }} />
               <Text font={11} foregroundStyle={secondaryText} lineLimit={1}>清分</Text>
               <Text font={12} fontWeight="medium" foregroundStyle={textColor} lineLimit={1}>{data.reaccDate}</Text>
