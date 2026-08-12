@@ -24,7 +24,7 @@ const VW_LOGO_URL =
   'https://img.alicdn.com/imgextra/i1/2038135983/O1CN01qQJPD21u4GnjSqt68_!!2038135983.png'
 
 const CAR_IMAGE_URL =
-  'https://raw.githubusercontent.com/Nanako718/Scripting/main/images/vw330.PNG'
+  'https://raw.githubusercontent.com/Nanako718/Scripting/main/images/330.png'
 
 // 密集分段进度条
 const BAR_COUNT = 30
