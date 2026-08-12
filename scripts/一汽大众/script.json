@@ -1,0 +1,41 @@
+{
+  "name" : "一汽大众",
+  "runInApp" : false,
+  "entry" : "index.tsx",
+  "contributors" : [
+
+  ],
+  "localizedDescriptions" : {
+    "ja" : "",
+    "en" : "",
+    "de" : "",
+    "pt" : "",
+    "it" : "",
+    "zh" : "",
+    "fr" : "",
+    "es" : "",
+    "ru" : ""
+  },
+  "version" : "1.0.0",
+  "icon" : "square.2.layers.3d.fill",
+  "description" : null,
+  "localizedNames" : {
+    "ja" : "",
+    "en" : "",
+    "de" : "",
+    "pt" : "",
+    "it" : "",
+    "zh" : "",
+    "fr" : "",
+    "es" : "",
+    "ru" : ""
+  },
+  "permissions" : null,
+  "color" : "rgba(252, 124, 93,1)",
+  "iconImage" : null,
+  "intentInputTypes" : [
+
+  ],
+  "author" : null,
+  "remoteResource" : null
+}
