@@ -4,27 +4,36 @@
 // 左下：续航圆角进度条
 // 右下：330 车辆图片
 
-import { HStack, Image, RoundedRectangle, Script, Spacer, Text, VStack, Widget } from 'scripting'
+import {
+  HStack,
+  Image,
+  RoundedRectangle,
+  Script,
+  Spacer,
+  Text,
+  VStack,
+  Widget
+} from 'scripting'
 import { getSession } from './api'
 import { getDefaultBasicVehicle, getDefaultFullVehicle } from './vehicle'
 import type { BasicVehicleData, FullVehicleData } from './types'
 
 // 颜色常量
-const SUCCESS_COLOR = '#34C759'
-const DANGER_COLOR = '#d20f39'
-const WARNING_COLOR = '#eed49f'
+const SUCCESS_COLOR = '#34C759'   // 充足电量 / 正常状态 — 绿色
+const DANGER_COLOR = '#d41010'    // 低电量 / 警告状态 — 红色
+const WARNING_COLOR = '#eed49f'   // 中等电量 / 注意状态 — 暖黄色
 
-const BAR_BG_COLOR = '#a5adce'
-const TITLE_COLOR = '#e6e9ef'
-const SUBTITLE_COLOR = '#9ca0b0'
-const SECONDARY_COLOR = '#8E8E93'
+const BAR_BG_COLOR = '#aaaaadf9'  // 进度条背景色
+const TITLE_COLOR = '#f9f9fa'     // 主标题文字 — 浅灰白
+const SUBTITLE_COLOR = '#e1e1e4'  // 副标题文字 — 稍深灰
+const SECONDARY_COLOR = '#e1e1e4' // 次要元素 / 图标描边 — 纯白
 
 // 图片链接
 const VW_LOGO_URL =
   'https://img.alicdn.com/imgextra/i1/2038135983/O1CN01qQJPD21u4GnjSqt68_!!2038135983.png'
 
 const CAR_IMAGE_URL =
-  'https://raw.githubusercontent.com/Nanako718/Scripting/main/images/330.png'
+  'https://raw.githubusercontent.com/Nanako718/Scripting/main/images/vw300.png'
 
 // 密集分段进度条
 const BAR_COUNT = 30

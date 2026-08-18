@@ -1,7 +1,7 @@
 
 // 使用代理后端 jc-api.i95.me
 
-import { Button, List, Navigation, NavigationStack, Script, Section, SecureField, Text, TextField, useEffect, useState } from 'scripting'
+import { Button, Dialog, List, Navigation, NavigationStack, Script, Section, SecureField, Text, TextField, useEffect, useState } from 'scripting'
 import { getSession } from './api'
 import { login, logout } from './auth'
 import { getVehicleList, getDefaultBasicVehicle, getDefaultFullVehicle, getCurrentEntitlement } from './vehicle'
