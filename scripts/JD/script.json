@@ -1,0 +1,41 @@
+{
+  "localizedDescriptions" : {
+    "zh" : "",
+    "es" : "",
+    "ja" : "",
+    "pt" : "",
+    "fr" : "",
+    "de" : "",
+    "it" : "",
+    "en" : "",
+    "ru" : ""
+  },
+  "contributors" : [
+
+  ],
+  "localizedNames" : {
+    "zh" : "",
+    "es" : "",
+    "ja" : "",
+    "pt" : "",
+    "fr" : "",
+    "de" : "",
+    "it" : "",
+    "en" : "",
+    "ru" : ""
+  },
+  "version" : "1.0.0",
+  "name" : "JD",
+  "runInApp" : false,
+  "entry" : "index.tsx",
+  "iconImage" : null,
+  "description" : null,
+  "author" : null,
+  "remoteResource" : null,
+  "icon" : "square.2.layers.3d.fill",
+  "permissions" : null,
+  "intentInputTypes" : [
+
+  ],
+  "color" : "rgba(233, 123, 199,1)"
+}
