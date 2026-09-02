@@ -16,17 +16,18 @@ import {
 } from 'scripting'
 import { getSession } from './api'
 import { getDefaultBasicVehicle, getDefaultFullVehicle } from './vehicle'
+import { fetchOilPrice } from './oilPriceApi'
 import type { BasicVehicleData, FullVehicleData } from './types'
 
-// 颜色常量
-const SUCCESS_COLOR = '#34C759'   // 充足电量 / 正常状态 — 绿色
-const DANGER_COLOR = '#d41010'    // 低电量 / 警告状态 — 红色
-const WARNING_COLOR = '#eed49f'   // 中等电量 / 注意状态 — 暖黄色
+// 进度条渲染颜色常量
+const SUCCESS_COLOR = '#34C759'   // 充足
+const DANGER_COLOR = '#d41010'    // 低
+const WARNING_COLOR = '#ff9d00'   // 中等
 
-const BAR_BG_COLOR = '#aaaaadf9'  // 进度条背景色
-const TITLE_COLOR = '#f9f9fa'     // 主标题文字 — 浅灰白
-const SUBTITLE_COLOR = '#e1e1e4'  // 副标题文字 — 稍深灰
-const SECONDARY_COLOR = '#e1e1e4' // 次要元素 / 图标描边 — 纯白
+const BAR_BG_COLOR = '#e3e3e8'  // 进度条背景色
+const TITLE_COLOR = '#f9f9fa'     // 主标题文字 
+const SUBTITLE_COLOR = '#e1e1e4'  // 副标题文字
+const SECONDARY_COLOR = '#e1e1e4' // 次要元素 / 图标描边
 
 // 图片链接
 const VW_LOGO_URL =
@@ -95,35 +96,99 @@ const ProgressBar = ({
   )
 }
 
-// 获取车辆数据
-const fetchVehicleData = async (): Promise<
-  BasicVehicleData | FullVehicleData | null
-> => {
+// 油价设置
+type OilSettings = {
+  oilGrade: string
+  tankCapacity: string
+  useManualProvince: boolean
+  manualProvinceId: string
+}
+
+// 获取车辆数据 + 油价数据
+const fetchVehicleData = async (): Promise<{
+  vehicleData: BasicVehicleData | FullVehicleData | null
+  oilPrice: number | null
+  oilGrade: string
+  tankCapacity: string
+  temperature: number | null
+}> => {
   const session = getSession()
+  const oilSettings = Storage.get<OilSettings>('oilPriceSettings')
+  const oilGrade = oilSettings?.oilGrade || '95'
+  const tankCapacity = oilSettings?.tankCapacity || ''
+  const manualProvinceId = oilSettings?.useManualProvince ? oilSettings.manualProvinceId : undefined
 
-  if (!session) {
-    return null
+  let vehicleData: BasicVehicleData | FullVehicleData | null = null
+  let oilPrice: number | null = null
+  let temperature: number | null = null
+
+  // 并行获取车辆数据和油价
+  const tasks: Promise<void>[] = []
+
+  if (session) {
+    tasks.push(
+      (async () => {
+        try {
+          const ent = await (await import('./vehicle')).getCurrentEntitlement()
+          if (ent.featureTier === 'FULL') {
+            vehicleData = await getDefaultFullVehicle(false)
+          } else {
+            vehicleData = await getDefaultBasicVehicle()
+          }
+          temperature = vehicleData?.vehicle.outsideTemperatureC ?? null
+        } catch (error) {
+          console.error('[组件] 获取车辆数据失败:', error)
+        }
+      })()
+    )
   }
 
-  try {
-    const ent = await (await import('./vehicle')).getCurrentEntitlement()
+  tasks.push(
+    (async () => {
+      try {
+        const data = await fetchOilPrice(oilGrade, manualProvinceId)
+        oilPrice = data?.currentPrice ?? null
+      } catch (error) {
+        console.error('[组件] 获取油价数据失败:', error)
+      }
+    })()
+  )
 
-    if (ent.featureTier === 'FULL') {
-      return await getDefaultFullVehicle(false)
-    }
+  await Promise.all(tasks)
 
-    return await getDefaultBasicVehicle()
-  } catch (error) {
-    console.error('[组件] 获取车辆数据失败:', error)
-    return null
+  const oilPct = vehicleData?.featureTier === 'FULL' ? (vehicleData as FullVehicleData).vehicle.oil?.levelPercent : null
+  console.log('\n========== 组件数据源 ==========')
+  console.log('汽油标号:', oilGrade)
+  console.log('油箱容量:', tankCapacity, 'L')
+  console.log('油价:', oilPrice)
+  console.log('温度:', temperature)
+  console.log('续航里程:', vehicleData?.vehicle.rangeKm, 'km')
+  console.log('续航百分比:', vehicleData?.vehicle.rangePercent, '%')
+  if (vehicleData?.featureTier === 'FULL') {
+    console.log('油量支持:', (vehicleData as FullVehicleData).vehicle.oil?.supported)
+    console.log('油量百分比:', (vehicleData as FullVehicleData).vehicle.oil?.levelPercent, '%')
+    console.log('油量升数:', (vehicleData as FullVehicleData).vehicle.oil?.volumeLiters, 'L')
+    console.log('油量状态:', (vehicleData as FullVehicleData).vehicle.oil?.status)
   }
+  console.log('权益等级:', vehicleData?.featureTier)
+  console.log('=================================\n')
+
+  return { vehicleData, oilPrice, oilGrade, tankCapacity, temperature }
 }
 
 // 中型组件视图
 const MediumWidgetView = ({
-  data
+  data,
+  oilPrice,
+  oilGrade,
+  tankCapacity,
+  temperature
 }: {
   data: BasicVehicleData | FullVehicleData
+  oilPrice: number | null
+  oilGrade: string
+  tankCapacity: string
+  temperature: number | null
 }) => {
   const v = data.vehicle
 
@@ -151,7 +216,7 @@ const MediumWidgetView = ({
         alignment="center"
         spacing={6}
         padding={{
-          top: 12,
+          top: 15,
           leading: 14,
           trailing: 14,
           bottom: 0
@@ -213,7 +278,7 @@ const MediumWidgetView = ({
         padding={{
           top: 8,
           leading: 14,
-          bottom: 14,
+          bottom: -8,
           trailing: 14
         }}
         frame={{
@@ -243,7 +308,7 @@ const MediumWidgetView = ({
 
             <Text
               font="caption"
-              foregroundStyle={SECONDARY_COLOR}
+              // foregroundStyle={SECONDARY_COLOR}
             >
               km
             </Text>
@@ -253,7 +318,7 @@ const MediumWidgetView = ({
             <Text
               font="caption2"
               fontWeight="medium"
-              foregroundStyle={barColor}
+              foregroundStyle={SECONDARY_COLOR}
             >
               {v.rangePercent}%
             </Text>
@@ -277,6 +342,89 @@ const MediumWidgetView = ({
           }}
         />
       </HStack>
+
+      {/* 底部信息栏：油价 / 油耗 / 温度 / 总里程 */}
+      <HStack
+        alignment="center"
+        spacing={0}
+        padding={{
+          top: 0,
+          leading: 14,
+          bottom: 15,
+          trailing: 14
+        }}
+        frame={{
+          maxWidth: 'infinity'
+        }}
+      >
+        {/* 加油图标 + 油价 */}
+        <Image
+          systemName="fuelpump.fill"
+          foregroundStyle="#FF9500"
+          font="caption2"
+        />
+        <Text
+          font="caption2"
+          foregroundStyle={SECONDARY_COLOR}
+          padding={{ leading: 3 }}
+        >
+        ¥ {oilPrice !== null ? oilPrice.toFixed(2) : '--'}/L
+        </Text>
+
+        <Spacer />
+
+        {/* 油耗 */}
+        <Image
+          systemName="drop.fill"
+          foregroundStyle="#5AC8FA"
+          font="caption2"
+        />
+        <Text
+          font="caption2"
+          foregroundStyle={SECONDARY_COLOR}
+          padding={{ leading: 3 }}
+        >
+          {(() => {
+            const tc = parseFloat(tankCapacity)
+            if (tc > 0 && v.rangePercent > 0 && v.rangeKm > 0) {
+              return (tc * v.rangePercent / v.rangeKm).toFixed(1)
+            }
+            return '--'
+          })()}L/100Km
+        </Text>
+
+        <Spacer />
+
+        {/* 温度 */}
+        <Image
+          systemName="thermometer.medium"
+          foregroundStyle="#FF3B30"
+          font="caption2"
+        />
+        <Text
+          font="caption2"
+          foregroundStyle={SECONDARY_COLOR}
+          padding={{ leading: 3 }}
+        >
+          {temperature !== null ? `${temperature}°C` : '--°C'}
+        </Text>
+
+        <Spacer />
+
+        {/* 总里程 */}
+        <Image
+          systemName="road.lanes"
+          foregroundStyle="#34C759"
+          font="caption2"
+        />
+        <Text
+          font="caption2"
+          foregroundStyle={SECONDARY_COLOR}
+          padding={{ leading: 3 }}
+        >
+          {data.featureTier === 'FULL' ? ((data as FullVehicleData).vehicle.totalMileageKm?.toLocaleString() ?? '--') : '--'}Km
+        </Text>
+      </HStack>
     </VStack>
   )
 }
@@ -285,9 +433,9 @@ const MediumWidgetView = ({
 const runWidget = async () => {
   console.log('[组件] 开始渲染中型组件')
 
-  const data = await fetchVehicleData()
+  const result = await fetchVehicleData()
 
-  if (!data) {
+  if (!result.vehicleData) {
     console.log('[组件] 无车辆数据，显示空状态')
 
     Widget.present(
@@ -321,11 +469,17 @@ const runWidget = async () => {
 
   console.log(
     '[组件] 渲染车辆数据:',
-    data.vehicle.displayName
+    result.vehicleData.vehicle.displayName
   )
 
   Widget.present(
-    <MediumWidgetView data={data} />
+    <MediumWidgetView
+      data={result.vehicleData}
+      oilPrice={result.oilPrice}
+      oilGrade={result.oilGrade}
+      tankCapacity={result.tankCapacity}
+      temperature={result.temperature}
+    />
   )
 }
 

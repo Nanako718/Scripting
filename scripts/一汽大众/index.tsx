@@ -1,12 +1,39 @@
 
 // 使用代理后端 jc-api.i95.me
 
-import { Button, Dialog, List, Navigation, NavigationStack, Script, Section, SecureField, Text, TextField, useEffect, useState } from 'scripting'
+import { Button, Dialog, List, Navigation, NavigationStack, Picker, Script, Section, SecureField, Text, TextField, Toggle, HStack, Spacer, Image, useEffect, useState } from 'scripting'
 import { getSession } from './api'
 import { login, logout } from './auth'
 import { getVehicleList, getDefaultBasicVehicle, getDefaultFullVehicle, getCurrentEntitlement } from './vehicle'
 import { requestTencentCaptcha } from './tencent-captcha'
+import { provinces } from './oilPriceApi'
 import type { BasicVehicleData, FullVehicleData, VehicleListData } from './types'
+
+// ============ 油价设置 ============
+
+type OilSettings = {
+  oilGrade: string;       // 92, 95, 98
+  tankCapacity: string;   // 油箱容量（升）
+  useManualProvince: boolean;
+  manualProvinceId: string;
+}
+
+const OIL_SETTINGS_KEY = 'oilPriceSettings'
+
+const defaultOilSettings: OilSettings = {
+  oilGrade: '95',
+  tankCapacity: '',
+  useManualProvince: false,
+  manualProvinceId: '33',
+}
+
+const getOilSettings = (): OilSettings => {
+  return Storage.get<OilSettings>(OIL_SETTINGS_KEY) ?? defaultOilSettings
+}
+
+const saveOilSettings = (settings: OilSettings) => {
+  Storage.set(OIL_SETTINGS_KEY, settings)
+}
 
 // 生成设备 ID
 const generateDeviceDid = (): string => {
@@ -121,6 +148,117 @@ const VehicleDetailSection = ({ data }: VehicleDetailSectionProps) => {
   )
 }
 
+// ============ 省份选择页面 ============
+
+const ProvinceSelectionPage = ({
+  currentProvinceId,
+  onProvinceSelected,
+}: {
+  currentProvinceId: string
+  onProvinceSelected: (provinceId: string) => void
+}) => {
+  const dismiss = Navigation.useDismiss()
+  return (
+    <List navigationTitle="选择省份">
+      <Section>
+        {provinces.map((province) => (
+          <Button
+            key={province.value}
+            action={() => {
+              onProvinceSelected(province.value)
+              dismiss()
+            }}
+          >
+            <HStack alignment="center" spacing={8}>
+              <Text font="body">{province.label}</Text>
+              <Spacer />
+              {province.value === currentProvinceId ? (
+                <Image systemName="checkmark" foregroundStyle="accentColor" />
+              ) : null}
+            </HStack>
+          </Button>
+        ))}
+      </Section>
+    </List>
+  )
+}
+
+// ============ 油价设置组件 ============
+
+type OilSettingsSectionProps = {
+  oilSettings: OilSettings
+  onOilSettingsChange: (settings: OilSettings) => void
+  onSave: () => void
+}
+
+const oilGradeOptions = [
+  { label: '92#', value: '92' },
+  { label: '95#', value: '95' },
+  { label: '98#', value: '98' },
+]
+
+const OilSettingsSection = ({ oilSettings, onOilSettingsChange, onSave }: OilSettingsSectionProps) => {
+  const selectedProvince = provinces.find((p) => p.value === oilSettings.manualProvinceId)
+
+  const update = (patch: Partial<OilSettings>) => {
+    onOilSettingsChange({ ...oilSettings, ...patch })
+  }
+
+  return (
+    <Section header={<Text font="headline">油价设置</Text>}>
+      {/* 汽油标号 - 下拉菜单 */}
+      <Picker
+        title="汽油标号"
+        value={oilSettings.oilGrade}
+        onChanged={(v) => update({ oilGrade: v })}
+      >
+        {oilGradeOptions.map((opt) => (
+          <Text key={opt.value} tag={opt.value}>{opt.label}</Text>
+        ))}
+      </Picker>
+
+      {/* 油箱容量 */}
+      <TextField
+        title="油箱容量 (L)"
+        value={oilSettings.tankCapacity}
+        onChanged={(v) => update({ tankCapacity: v })}
+        prompt="例如: 50"
+        keyboardType="decimalPad"
+      />
+
+      {/* 手动选择省份 */}
+      <Toggle
+        title="手动选择省份"
+        value={oilSettings.useManualProvince}
+        onChanged={(v) => update({ useManualProvince: v })}
+      />
+      {oilSettings.useManualProvince ? (
+        <Button
+          action={() => {
+            Navigation.present(
+              <ProvinceSelectionPage
+                currentProvinceId={oilSettings.manualProvinceId}
+                onProvinceSelected={(id) => update({ manualProvinceId: id })}
+              />
+            )
+          }}
+        >
+          <HStack alignment="center" spacing={8}>
+            <Text font="body">选择省份</Text>
+            <Spacer />
+            <Text font="body" foregroundStyle="secondaryLabel">
+              {selectedProvince?.label || '未选择'}
+            </Text>
+            <Image systemName="chevron.right" foregroundStyle="tertiaryLabel" />
+          </HStack>
+        </Button>
+      ) : null}
+
+      <Button title="保存设置" action={onSave} />
+    </Section>
+  )
+}
+
 // ============ 主屏幕 ============
 
 const MainScreen = () => {
@@ -134,6 +272,12 @@ const MainScreen = () => {
   const [loggedIn, setLoggedIn] = useState(!!session)
   const [vehicleList, setVehicleList] = useState<VehicleListData | null>(null)
   const [vehicleData, setVehicleData] = useState<BasicVehicleData | FullVehicleData | null>(null)
+  const [oilSettings, setOilSettingsState] = useState<OilSettings>(getOilSettings)
+
+  const handleOilSettingsChange = (newSettings: OilSettings) => {
+    setOilSettingsState(newSettings)
+    saveOilSettings(newSettings)
+  }
 
   // 打印完整车辆数据到控制台
   const logVehicleData = (data: BasicVehicleData | FullVehicleData) => {
@@ -367,6 +511,15 @@ const MainScreen = () => {
         {loggedIn && vehicleData ? (
           <VehicleDetailSection data={vehicleData} />
         ) : null}
+
+        <OilSettingsSection
+          oilSettings={oilSettings}
+          onOilSettingsChange={handleOilSettingsChange}
+          onSave={() => {
+            saveOilSettings(oilSettings)
+            dismiss()
+          }}
+        />
       </List>
     </NavigationStack>
   )
