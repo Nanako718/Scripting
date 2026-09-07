@@ -3,6 +3,7 @@ import {
   Form,
   Section,
   TextField,
+  Toggle,
   Button,
   useState,
   Text,
@@ -10,7 +11,7 @@ import {
   Spacer,
   HStack,
 } from "scripting";
-import { SynologySettings } from "./api";
+import { SynologySettings, ChartMetricKey } from "./api";
 
 const SETTINGS_KEY = "synologyMonitorSettings";
 
@@ -37,7 +38,16 @@ const defaultSettings: SynologySettings = {
   username: "",
   password: "",
   deviceName: "",
+  chartMetrics: ["cpu", "temp", "ram", "tx", "rx"],
 };
+
+const ALL_METRICS: { key: ChartMetricKey; label: string }[] = [
+  { key: "cpu", label: "CPU" },
+  { key: "temp", label: "温度" },
+  { key: "ram", label: "RAM" },
+  { key: "tx", label: "TX" },
+  { key: "rx", label: "RX" },
+];
 
 function SettingsPage() {
   const dismiss = Navigation.useDismiss();
@@ -48,6 +58,19 @@ function SettingsPage() {
   const [username, setUsername] = useState(initialSettings.username);
   const [password, setPassword] = useState(initialSettings.password);
   const [deviceName, setDeviceName] = useState(initialSettings.deviceName ?? "");
+  const [chartMetrics, setChartMetrics] = useState<ChartMetricKey[]>(
+    initialSettings.chartMetrics ?? ["cpu", "temp", "ram", "tx", "rx"]
+  );
+
+  const toggleMetric = (key: ChartMetricKey) => {
+    setChartMetrics((prev) => {
+      if (prev.includes(key)) {
+        return prev.filter((k) => k !== key);
+      }
+      if (prev.length >= 5) return prev;
+      return [...prev, key];
+    });
+  };
 
   const handleSave = () => {
     const newSettings: SynologySettings = {
@@ -55,6 +78,7 @@ function SettingsPage() {
       username: username.trim(),
       password: password.trim(),
       deviceName: deviceName.trim() || undefined,
+      chartMetrics: chartMetrics.length > 0 ? chartMetrics : undefined,
     };
 
     // 验证必填项
@@ -108,6 +132,20 @@ function SettingsPage() {
           />
           <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 4 }}>
             自定义设备显示名称，留空则使用服务器地址
+          </Text>
+        </Section>
+
+        <Section title="曲线图指标（最多5项）">
+          {ALL_METRICS.map((m) => (
+            <Toggle
+              key={m.key}
+              title={m.label}
+              value={chartMetrics.includes(m.key)}
+              onChanged={() => toggleMetric(m.key)}
+            />
+          ))}
+          <Text font="caption" foregroundStyle="secondaryLabel" padding={{ top: 4 }}>
+            选择要在小组件曲线图中显示的指标
           </Text>
         </Section>
 
