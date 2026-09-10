@@ -308,7 +308,7 @@ const MediumWidgetView = ({
 
             <Text
               font="caption"
-              // foregroundStyle={SECONDARY_COLOR}
+              foregroundStyle={SECONDARY_COLOR}
             >
               km
             </Text>
@@ -318,7 +318,7 @@ const MediumWidgetView = ({
             <Text
               font="caption2"
               fontWeight="medium"
-              foregroundStyle={SECONDARY_COLOR}
+              foregroundStyle={barColor}
             >
               {v.rangePercent}%
             </Text>
