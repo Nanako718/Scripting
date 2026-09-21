@@ -193,6 +193,15 @@ export type FullVehicleData = {
 
 export type VehicleData = BasicVehicleData | FullVehicleData
 
+/** 车辆位置（完整数据中的 location 字段） */
+export type VehicleLocation = NonNullable<FullVehicle['location']>
+
+/** 远程状态：兼容旧文档字段名，对应 BasicVehicle */
+export type VehicleRemoteStatus = BasicVehicle
+
+/** 车辆快照：基础/完整数据二选一 */
+export type VehicleSnapshot = BasicVehicleData | FullVehicleData
+
 export type CurrentUserEntitlement = {
   featureTier: FeatureTier
   status: string

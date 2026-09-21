@@ -123,7 +123,80 @@ export const requestJson = async <T = unknown>(
 
 // ============ 会话管理 ============
 const SESSION_KEY = 'yqdz_terminal_session'
+// 显式登出后，终端重新注册/刷新可能带回后端车企绑定，本地用该标记保持待登录态
+const FAWVW_ACCOUNT_LOGOUT_PENDING_KEY = 'yqdz_fawvw_account_logout_pending'
+const TERMINAL_DEVICE_ID_KEY = 'yqdz_terminal_device_id'
+const FAWVW_DEVICE_UUID_KEY = 'yqdz_fawvw_device_uuid'
 let currentSession: TerminalSession | null = null
+
+export const getOrCreateUuid = (key: string): string => {
+  const stored = Storage.get<string>(key)
+  if (typeof stored === 'string' && stored.trim() !== '') {
+    return stored.trim()
+  }
+  const generated = UUID.string()
+  Storage.set(key, generated)
+  return generated
+}
+
+export const getTerminalDeviceId = (): string => {
+  return getOrCreateUuid(TERMINAL_DEVICE_ID_KEY)
+}
+
+export const getFawVwDeviceUuid = (): string => {
+  return getOrCreateUuid(FAWVW_DEVICE_UUID_KEY)
+}
+
+export const markFawVwAccountLogoutPending = (): void => {
+  Storage.set(FAWVW_ACCOUNT_LOGOUT_PENDING_KEY, true)
+}
+
+export const clearFawVwAccountLogoutPending = (): void => {
+  Storage.remove(FAWVW_ACCOUNT_LOGOUT_PENDING_KEY)
+}
+
+export const hasFawVwAccountLogoutPending = (): boolean => {
+  return Storage.get<boolean>(FAWVW_ACCOUNT_LOGOUT_PENDING_KEY) === true
+}
+
+export const normalizeVehicleAccountId = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null
+  }
+  const normalized = value.trim()
+  return normalized === '' ? null : normalized
+}
+
+export const hasVehicleAccountSession = (session?: TerminalSession | null): session is TerminalSession => {
+  return normalizeVehicleAccountId(session?.fawvwAccountId) !== null
+}
+
+const applyFawVwAccountLogoutPending = (session: TerminalSession): TerminalSession => {
+  // 对齐 JoinerCar：显式登出后，本地不能被终端重新注册带回旧车企绑定
+  if (!hasFawVwAccountLogoutPending()) {
+    return session
+  }
+  if (!session.fawvwAccountId) {
+    return session
+  }
+  return {
+    ...session,
+    fawvwAccountId: null
+  }
+}
+
+const normalizeTerminalSession = (session: TerminalSession): TerminalSession => {
+  return applyFawVwAccountLogoutPending({
+    ...session,
+    fawvwAccountId: normalizeVehicleAccountId(session.fawvwAccountId)
+  })
+}
+
+const commitSession = (session: TerminalSession | null): TerminalSession | null => {
+  currentSession = session ? normalizeTerminalSession(session) : null
+  saveSession(currentSession)
+  return currentSession
+}
 
 // 从 Keychain 加载会话
 const loadSession = (): TerminalSession | null => {
@@ -133,7 +206,7 @@ const loadSession = (): TerminalSession | null => {
     const session = JSON.parse(json) as TerminalSession
     // 验证基本结构
     if (session.accessToken && session.refreshToken && session.crypto?.enabled) {
-      return session
+      return normalizeTerminalSession(session)
     }
     return null
   } catch {
@@ -158,19 +231,23 @@ export const getSession = (): TerminalSession | null => {
 }
 
 export const setSession = (session: TerminalSession | null): void => {
-  currentSession = session
-  saveSession(session)
+  commitSession(session)
+}
+
+export const clearTerminalSession = (): void => {
+  commitSession(null)
 }
 
 export const ensureSession = async (): Promise<TerminalSession> => {
-  if (currentSession) {
+  const existing = getSession()
+  if (existing) {
     // 检查是否过期（提前 60 秒刷新）
-    if (currentSession.expiresAt - Date.now() > 60 * 1000) {
-      return currentSession
+    if (existing.expiresAt - Date.now() > 60 * 1000) {
+      return existing
     }
     // 尝试刷新
     try {
-      return await refreshSession(currentSession)
+      return await refreshSession(existing)
     } catch {
       // 刷新失败，重新注册
     }
@@ -190,7 +267,7 @@ export const registerTerminal = async (): Promise<TerminalSession> => {
     method: 'POST',
     body: {
       platform: PLATFORM,
-      deviceId: Device.uuid ?? UUID.string(),
+      deviceId: getTerminalDeviceId(),
       appVersion: APP_VERSION
     }
   })
@@ -208,9 +285,7 @@ export const registerTerminal = async (): Promise<TerminalSession> => {
     fawvwAccountId: data.fawvwAccountId
   }
 
-  currentSession = session
-  saveSession(session)
-  return session
+  return commitSession(session)!
 }
 
 export const refreshSession = async (session: TerminalSession): Promise<TerminalSession> => {
@@ -231,9 +306,34 @@ export const refreshSession = async (session: TerminalSession): Promise<Terminal
     crypto: data.crypto
   }
 
-  currentSession = refreshed
-  saveSession(refreshed)
-  return refreshed
+  return commitSession(refreshed)!
+}
+
+export const bindFawVwAccountToSession = (fawvwAccountId: string): TerminalSession => {
+  const account = normalizeVehicleAccountId(fawvwAccountId)
+  if (!account) {
+    throw new Error('登录结果缺少一汽大众账号 ID')
+  }
+
+  const session = getSession()
+  if (!session) {
+    throw new Error('终端会话不存在，请先重试登录')
+  }
+
+  clearFawVwAccountLogoutPending()
+  return commitSession({
+    ...session,
+    fawvwAccountId: account
+  })!
+}
+
+const requiresVehicleAccountPath = (path: string): boolean => {
+  return (
+    path.startsWith('/v1/basic/vehicles') ||
+    path.startsWith('/v1/full/vehicles') ||
+    path.startsWith('/v1/fawvw/vehicles') ||
+    path.startsWith('/v1/redemptions/')
+  )
 }
 
 // ============ 带鉴权的请求 ============
@@ -242,6 +342,9 @@ export const requestAuthedJson = async <T = unknown>(
   options: { method?: string; body?: object } = {}
 ): Promise<T> => {
   const session = await ensureSession()
+  if (requiresVehicleAccountPath(path) && !hasVehicleAccountSession(session)) {
+    throw new Error('请先完成一汽大众账号登录')
+  }
 
   try {
     return await requestJson<T>(path, { ...options, session })
@@ -249,6 +352,9 @@ export const requestAuthedJson = async <T = unknown>(
     // Token 失效，尝试恢复
     if (error instanceof ApiError && error.reason === 'invalid_access_token') {
       const recovered = await refreshSession(session)
+      if (requiresVehicleAccountPath(path) && !hasVehicleAccountSession(recovered)) {
+        throw new Error('请先完成一汽大众账号登录')
+      }
       return await requestJson<T>(path, { ...options, session: recovered })
     }
     throw error

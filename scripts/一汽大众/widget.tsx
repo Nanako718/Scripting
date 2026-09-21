@@ -8,26 +8,28 @@ import {
   HStack,
   Image,
   RoundedRectangle,
-  Script,
   Spacer,
   Text,
   VStack,
   Widget
 } from 'scripting'
-import { getSession } from './api'
-import { getDefaultBasicVehicle, getDefaultFullVehicle } from './vehicle'
+import { getSession, hasVehicleAccountSession } from './api'
+import { getCurrentEntitlement, getDefaultBasicVehicle, getDefaultFullVehicle } from './vehicle'
 import { fetchOilPrice } from './oilPriceApi'
 import type { BasicVehicleData, FullVehicleData } from './types'
 
-// 进度条渲染颜色常量
-const SUCCESS_COLOR = '#34C759'   // 充足
-const DANGER_COLOR = '#d41010'    // 低
-const WARNING_COLOR = '#ff9d00'   // 中等
+// Scripting 的 fill/foregroundStyle 需要字面量 hex，不能是普通 string
+type WidgetHexColor = `#${string}`
 
-const BAR_BG_COLOR = '#e3e3e8'  // 进度条背景色
-const TITLE_COLOR = '#f9f9fa'     // 主标题文字 
-const SUBTITLE_COLOR = '#e1e1e4'  // 副标题文字
-const SECONDARY_COLOR = '#e1e1e4' // 次要元素 / 图标描边
+// 进度条渲染颜色常量
+const SUCCESS_COLOR: WidgetHexColor = '#34C759'   // 充足
+const DANGER_COLOR: WidgetHexColor = '#d41010'    // 低
+const WARNING_COLOR: WidgetHexColor = '#ff9d00'   // 中等
+
+const BAR_BG_COLOR: WidgetHexColor = '#e3e3e8'  // 进度条背景色
+const TITLE_COLOR: WidgetHexColor = '#f9f9fa'     // 主标题文字
+const SUBTITLE_COLOR: WidgetHexColor = '#e1e1e4'  // 副标题文字
+const SECONDARY_COLOR: WidgetHexColor = '#e1e1e4' // 次要元素 / 图标描边
 
 // 图片链接
 const VW_LOGO_URL =
@@ -40,7 +42,7 @@ const CAR_IMAGE_URL =
 const BAR_COUNT = 30
 
 // 根据百分比获取进度条颜色
-const getRangeColor = (percent: number): string => {
+const getRangeColor = (percent: number): WidgetHexColor => {
   if (percent <= 20) {
     return DANGER_COLOR
   }
@@ -58,7 +60,7 @@ const ProgressBar = ({
   color
 }: {
   percent: number
-  color: string
+  color: WidgetHexColor
 }) => {
   const clamped = Math.max(0, Math.min(100, percent))
   const end = Math.floor((clamped / 100) * BAR_COUNT)
@@ -104,6 +106,26 @@ type OilSettings = {
   manualProvinceId: string
 }
 
+type LoadedVehicle = {
+  data: BasicVehicleData | FullVehicleData
+  temperature: number | null
+}
+
+const loadVehicleBundle = async (): Promise<LoadedVehicle | null> => {
+  try {
+    const ent = await getCurrentEntitlement()
+    if (ent.featureTier === 'FULL') {
+      const data = await getDefaultFullVehicle(false)
+      return { data, temperature: data.vehicle.outsideTemperatureC ?? null }
+    }
+    const data = await getDefaultBasicVehicle()
+    return { data, temperature: data.vehicle.outsideTemperatureC ?? null }
+  } catch (error) {
+    console.error('[组件] 获取车辆数据失败:', error)
+    return null
+  }
+}
+
 // 获取车辆数据 + 油价数据
 const fetchVehicleData = async (): Promise<{
   vehicleData: BasicVehicleData | FullVehicleData | null
@@ -113,50 +135,34 @@ const fetchVehicleData = async (): Promise<{
   temperature: number | null
 }> => {
   const session = getSession()
+  // 对齐 JoinerCar：小组件只在车企账号仍绑定时拉车辆数据
+  const hasVehicleAccount = hasVehicleAccountSession(session)
   const oilSettings = Storage.get<OilSettings>('oilPriceSettings')
   const oilGrade = oilSettings?.oilGrade || '95'
   const tankCapacity = oilSettings?.tankCapacity || ''
   const manualProvinceId = oilSettings?.useManualProvince ? oilSettings.manualProvinceId : undefined
 
-  let vehicleData: BasicVehicleData | FullVehicleData | null = null
-  let oilPrice: number | null = null
-  let temperature: number | null = null
+  const vehicleTask: Promise<LoadedVehicle | null> = hasVehicleAccount
+    ? loadVehicleBundle()
+    : Promise.resolve(null)
 
-  // 并行获取车辆数据和油价
-  const tasks: Promise<void>[] = []
+  const oilTask = (async (): Promise<number | null> => {
+    try {
+      const data = await fetchOilPrice(oilGrade, manualProvinceId)
+      return data?.currentPrice ?? null
+    } catch (error) {
+      console.error('[组件] 获取油价数据失败:', error)
+      return null
+    }
+  })()
 
-  if (session) {
-    tasks.push(
-      (async () => {
-        try {
-          const ent = await (await import('./vehicle')).getCurrentEntitlement()
-          if (ent.featureTier === 'FULL') {
-            vehicleData = await getDefaultFullVehicle(false)
-          } else {
-            vehicleData = await getDefaultBasicVehicle()
-          }
-          temperature = vehicleData?.vehicle.outsideTemperatureC ?? null
-        } catch (error) {
-          console.error('[组件] 获取车辆数据失败:', error)
-        }
-      })()
-    )
-  }
+  const [loadedVehicle, oilPrice] = await Promise.all([vehicleTask, oilTask])
+  const vehicleData = loadedVehicle?.data ?? null
+  const temperature = loadedVehicle?.temperature ?? null
 
-  tasks.push(
-    (async () => {
-      try {
-        const data = await fetchOilPrice(oilGrade, manualProvinceId)
-        oilPrice = data?.currentPrice ?? null
-      } catch (error) {
-        console.error('[组件] 获取油价数据失败:', error)
-      }
-    })()
-  )
-
-  await Promise.all(tasks)
-
-  const oilPct = vehicleData?.featureTier === 'FULL' ? (vehicleData as FullVehicleData).vehicle.oil?.levelPercent : null
+  const oilPct = vehicleData && vehicleData.featureTier === 'FULL'
+    ? (vehicleData as FullVehicleData).vehicle.oil?.levelPercent
+    : null
   console.log('\n========== 组件数据源 ==========')
   console.log('汽油标号:', oilGrade)
   console.log('油箱容量:', tankCapacity, 'L')
@@ -164,13 +170,15 @@ const fetchVehicleData = async (): Promise<{
   console.log('温度:', temperature)
   console.log('续航里程:', vehicleData?.vehicle.rangeKm, 'km')
   console.log('续航百分比:', vehicleData?.vehicle.rangePercent, '%')
-  if (vehicleData?.featureTier === 'FULL') {
-    console.log('油量支持:', (vehicleData as FullVehicleData).vehicle.oil?.supported)
-    console.log('油量百分比:', (vehicleData as FullVehicleData).vehicle.oil?.levelPercent, '%')
-    console.log('油量升数:', (vehicleData as FullVehicleData).vehicle.oil?.volumeLiters, 'L')
-    console.log('油量状态:', (vehicleData as FullVehicleData).vehicle.oil?.status)
+  if (vehicleData && vehicleData.featureTier === 'FULL') {
+    const full = vehicleData as FullVehicleData
+    console.log('油量支持:', full.vehicle.oil?.supported)
+    console.log('油量百分比:', full.vehicle.oil?.levelPercent, '%')
+    console.log('油量升数:', full.vehicle.oil?.volumeLiters, 'L')
+    console.log('油量状态:', full.vehicle.oil?.status)
   }
   console.log('权益等级:', vehicleData?.featureTier)
+  console.log('油量参考 oilPct:', oilPct)
   console.log('=================================\n')
 
   return { vehicleData, oilPrice, oilGrade, tankCapacity, temperature }
@@ -459,7 +467,7 @@ const runWidget = async () => {
           font="caption"
           foregroundStyle={SECONDARY_COLOR}
         >
-          请先在 App 中登录
+          请先在脚本中登录一汽大众账号
         </Text>
       </VStack>
     )

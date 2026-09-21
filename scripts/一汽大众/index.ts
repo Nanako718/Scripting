@@ -1,7 +1,22 @@
 // 一汽大众 API 模块入口
 // 使用代理后端 jc-api.i95.me，无需自己计算签名
 
-export { requestJson, requestAuthedJson, ensureSession, registerTerminal, refreshSession, getSession, setSession } from './api'
+export {
+  requestJson,
+  requestAuthedJson,
+  ensureSession,
+  registerTerminal,
+  refreshSession,
+  getSession,
+  setSession,
+  clearTerminalSession,
+  hasVehicleAccountSession,
+  markFawVwAccountLogoutPending,
+  clearFawVwAccountLogoutPending,
+  bindFawVwAccountToSession,
+  getTerminalDeviceId,
+  getFawVwDeviceUuid
+} from './api'
 export { ApiError } from './api'
 
 export { login, logout, getLoginOptions, loginByPassword, sendSmsCode, verifySmsCode, syncMe, syncRuntimeConfig } from './auth'
@@ -31,6 +46,11 @@ export type {
   FeatureTier,
   VehicleListItem,
   VehicleListData,
+  BasicVehicle,
+  FullVehicle,
+  BasicVehicleData,
+  FullVehicleData,
+  VehicleData,
   VehicleSnapshot,
   VehicleRemoteStatus,
   VehicleLocation,
@@ -40,6 +60,7 @@ export type {
   LoginResult,
   SmsSendResult
 } from './types'
+export type { CaptchaResult } from './vehicle-types'
 
 export { encrypt, decrypt, isCryptoEnvelope } from './crypto'
 export { CryptoError } from './crypto'

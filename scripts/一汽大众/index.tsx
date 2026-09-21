@@ -1,8 +1,9 @@
 
 // 使用代理后端 jc-api.i95.me
 
-import { Button, Dialog, List, Navigation, NavigationStack, Picker, Script, Section, SecureField, Text, TextField, Toggle, HStack, Spacer, Image, useEffect, useState } from 'scripting'
-import { getSession } from './api'
+// Dialog 是 Scripting 运行时全局对象，不要从 'scripting' import（否则 Dialog.prompt 为 undefined）
+import { Button, List, Navigation, NavigationStack, Picker, Script, Section, SecureField, Text, TextField, Toggle, HStack, Spacer, Image, Widget, useEffect, useRef, useState } from 'scripting'
+import { getSession, hasVehicleAccountSession, getFawVwDeviceUuid } from './api'
 import { login, logout } from './auth'
 import { getVehicleList, getDefaultBasicVehicle, getDefaultFullVehicle, getCurrentEntitlement } from './vehicle'
 import { requestTencentCaptcha } from './tencent-captcha'
@@ -35,12 +36,11 @@ const saveOilSettings = (settings: OilSettings) => {
   Storage.set(OIL_SETTINGS_KEY, settings)
 }
 
-// 生成设备 ID
+// 生成设备 ID（稳定 UUID，对齐 JoinerCar）
 const generateDeviceDid = (): string => {
-  const uuid = crypto.randomUUID()
   const iosVersion = Device.systemVersion ?? '27.0'
   const appVersion = '4.24.1'
-  return `VW_APP_iPhone_${uuid}_${iosVersion}_${appVersion}`
+  return `VW_APP_iPhone_${getFawVwDeviceUuid()}_${iosVersion}_${appVersion}`
 }
 
 // ============ 类型定义 ============
@@ -99,7 +99,7 @@ const ActionsSection = ({ busy, onSync, onLogout }: ActionsSectionProps) => {
   return (
     <Section header={<Text font="headline">操作</Text>}>
       <Button title={busy ? '处理中...' : '同步车辆数据'} action={onSync} />
-      <Button title="登出账号" action={onLogout} foregroundStyle="systemRed" />
+      <Button title={busy ? '处理中...' : '退出登录'} action={onLogout} foregroundStyle="systemRed" />
     </Section>
   )
 }
@@ -261,18 +261,31 @@ const OilSettingsSection = ({ oilSettings, onOilSettingsChange, onSave }: OilSet
 
 // ============ 主屏幕 ============
 
+const reloadWidgets = (): void => {
+  try {
+    Widget.reloadAll()
+    Widget.reloadUserWidgets()
+  } catch (error) {
+    console.warn('[登出] 刷新小组件失败:', error)
+  }
+}
+
 const MainScreen = () => {
   const dismiss = Navigation.useDismiss()
   const session = getSession()
+  // 对齐 JoinerCar：登录态看车企账号绑定，不能只看终端会话是否存在
+  const accountLoggedIn = hasVehicleAccountSession(session)
 
   const [mobile, setMobile] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
-  const [statusText, setStatusText] = useState(session ? '已登录' : '未登录')
-  const [loggedIn, setLoggedIn] = useState(!!session)
+  const [statusText, setStatusText] = useState(accountLoggedIn ? '已登录' : '未登录')
+  const [loggedIn, setLoggedIn] = useState(accountLoggedIn)
   const [vehicleList, setVehicleList] = useState<VehicleListData | null>(null)
   const [vehicleData, setVehicleData] = useState<BasicVehicleData | FullVehicleData | null>(null)
   const [oilSettings, setOilSettingsState] = useState<OilSettings>(getOilSettings)
+  const busyLockRef = useRef(false)
+  const authViewEpochRef = useRef(0)
 
   const handleOilSettingsChange = (newSettings: OilSettings) => {
     setOilSettingsState(newSettings)
@@ -342,7 +355,14 @@ const MainScreen = () => {
 
   // 同步车辆数据
   const handleSync = async () => {
-    if (busy) return
+    if (busyLockRef.current) return
+    if (!hasVehicleAccountSession(getSession())) {
+      setLoggedIn(false)
+      setStatusText('未登录')
+      return
+    }
+
+    busyLockRef.current = true
     setBusy(true)
     setStatusText('正在同步车辆数据...')
     console.log('[同步] 开始同步车辆数据')
@@ -376,13 +396,14 @@ const MainScreen = () => {
       setStatusText(`同步失败: ${message}`)
       await Dialog.alert({ title: '同步失败', message })
     } finally {
+      busyLockRef.current = false
       setBusy(false)
     }
   }
 
   // 登录
   const handleLogin = async () => {
-    if (busy) return
+    if (busyLockRef.current) return
     if (!mobile.trim()) {
       await Dialog.alert({ title: '请输入手机号', message: '手机号不能为空' })
       return
@@ -392,6 +413,7 @@ const MainScreen = () => {
       return
     }
 
+    busyLockRef.current = true
     setBusy(true)
     setStatusText('正在登录...')
     console.log('[登录] 开始登录，手机号:', mobile.trim())
@@ -434,43 +456,65 @@ const MainScreen = () => {
 
       console.log('[登录] 登录成功:', result)
       setStatusText(`登录成功！账号: ${result.fawvwAccountId}`)
+      authViewEpochRef.current += 1
       setLoggedIn(true)
+      reloadWidgets()
 
       // 登录后自动同步
       console.log('[登录] 登录成功，开始自动同步')
+      busyLockRef.current = false
+      setBusy(false)
       await handleSync()
+      return
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.error('[登录] 登录失败:', message)
       setStatusText(`登录失败: ${message}`)
       await Dialog.alert({ title: '登录失败', message })
     } finally {
+      busyLockRef.current = false
       setBusy(false)
     }
   }
 
-  // 登出
+  // 退出登录（对齐 JoinerCar：确认后清会话/绑定/本地车辆态，并刷新小组件）
   const handleLogout = async () => {
-    if (busy) return
+    if (busyLockRef.current) {
+      await Dialog.alert({
+        title: '暂时无法退出',
+        message: '当前正在处理登录或同步，请稍候再试。'
+      })
+      return
+    }
+
     const confirmed = await Dialog.confirm({
-      title: '登出账号',
-      message: '将清除登录状态，是否继续？',
-      confirmLabel: '登出',
+      title: '退出登录',
+      message: '将清除终端会话和车辆数据，保留油价设置。',
+      confirmLabel: '退出',
       cancelLabel: '取消'
     })
     if (!confirmed) return
 
-    logout()
-    setLoggedIn(false)
-    setVehicleList(null)
-    setVehicleData(null)
-    setStatusText('已登出')
-    console.log('[登出] 登出成功')
+    try {
+      authViewEpochRef.current += 1
+      logout()
+      setLoggedIn(false)
+      setVehicleList(null)
+      setVehicleData(null)
+      setStatusText('已退出登录')
+      console.log('[登出] 登出成功')
+      reloadWidgets()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[登出] 登出失败:', message)
+      setStatusText(`登出失败: ${message}`)
+      await Dialog.alert({ title: '退出失败', message })
+    }
   }
 
-  // 已登录时自动同步
+  // 已登录时自动同步（必须有车企账号绑定，不能仅终端会话）
   useEffect(() => {
-    if (session && !busy) {
+    if (hasVehicleAccountSession(getSession()) && !busyLockRef.current) {
       console.log('[自动同步] 检测到已登录，开始自动同步')
       handleSync()
     }
@@ -531,12 +575,20 @@ const main = async () => {
   console.log('=== 一汽大众 ===')
   console.log('[启动] 应用初始化')
   try {
-    await Navigation.present({
-      element: <MainScreen />
-    })
+    // 与 JD / JoinerCar 相同：直接 present，保证设置页立刻弹出
+    await Navigation.present({ element: <MainScreen /> })
     console.log('[启动] 页面已关闭')
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
     console.error('[启动] 应用启动失败:', error)
+    try {
+      await Dialog.alert({
+        title: '一汽大众启动失败',
+        message
+      })
+    } catch (dialogError) {
+      console.error('[启动] 错误提示也失败:', dialogError)
+    }
   } finally {
     Script.exit()
   }

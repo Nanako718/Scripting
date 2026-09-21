@@ -55,7 +55,7 @@ console.log(vehicle.location?.address)  // 位置
 | 函数 | 说明 |
 |------|------|
 | `login(options)` | 完整登录流程 |
-| `logout()` | 登出 |
+| `logout()` | 登出（对齐 JoinerCar：标记登出待处理 + 清除终端会话，防止重新注册带回账号绑定） |
 | `getLoginOptions()` | 获取登录配置 |
 | `loginByPassword(mobile, password, deviceDid, ticket, randstr)` | 密码登录 |
 | `sendSmsCode(mobile, deviceDid)` | 发送短信验证码 |

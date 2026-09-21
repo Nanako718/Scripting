@@ -1,6 +1,12 @@
 // 一汽大众登录模块
 
-import { requestAuthedJson, requestJson, ensureSession, setSession } from './api'
+import {
+  bindFawVwAccountToSession,
+  clearTerminalSession,
+  markFawVwAccountLogoutPending,
+  requestAuthedJson,
+  clearFawVwAccountLogoutPending
+} from './api'
 import type { TerminalMeData, RuntimeConfigData, LoginResult, SmsSendResult } from './types'
 
 // ============ 登录接口 ============
@@ -107,7 +113,12 @@ export const login = async (options: LoginOptions): Promise<{ fawvwAccountId: st
     throw new Error(`登录失败: ${loginResult.loginState}`)
   }
 
-  // 5. 同步状态
+  // 5. 本地绑定车企账号（对齐 JoinerCar：登录成功后必须写入 fawvwAccountId 并清除登出待处理标记）
+  onStatus?.('正在保存账号登录状态...')
+  clearFawVwAccountLogoutPending()
+  bindFawVwAccountToSession(loginResult.fawvwAccountId!)
+
+  // 6. 同步状态
   onStatus?.('正在同步账号状态...')
   await syncMe()
   await syncRuntimeConfig()
@@ -120,6 +131,12 @@ export const login = async (options: LoginOptions): Promise<{ fawvwAccountId: st
 
 // ============ 登出 ============
 
+/**
+ * 对齐 JoinerCar 的登出语义：
+ * 1. 标记登出待处理，防止终端重新注册带回后端车企绑定
+ * 2. 清除本地终端会话
+ */
 export const logout = (): void => {
-  setSession(null)
+  markFawVwAccountLogoutPending()
+  clearTerminalSession()
 }

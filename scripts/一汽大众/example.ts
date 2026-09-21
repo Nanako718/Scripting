@@ -59,13 +59,14 @@ const getVehicleDataExample = async () => {
 
     // 获取默认车辆完整数据
     const vehicle = await getDefaultFullVehicle(true)
+    const v = vehicle.vehicle
     console.log('车辆数据:', {
-      名称: vehicle.vehicle.displayName,
-      车牌: vehicle.vehicle.plateNumber,
-      续航: vehicle.remoteStatus.rangeKm + 'km',
-      电量: vehicle.remoteStatus.batteryPercent + '%',
-      锁车状态: vehicle.remoteStatus.lockState,
-      位置: vehicle.location?.address
+      名称: v.displayName,
+      车牌: v.plateNumber,
+      续航: v.rangeKm + 'km',
+      电量: v.batteryPercent + '%',
+      锁车状态: v.lockState,
+      位置: v.location?.address
     })
   } catch (error) {
     console.error('获取数据失败:', error)
@@ -89,7 +90,7 @@ const refreshVehicleExample = async () => {
     console.log('刷新结果:', {
       刷新状态: snapshot.refreshState,
       更新时间: snapshot.servedAt,
-      续航: snapshot.remoteStatus.rangeKm + 'km'
+      续航: snapshot.vehicle.rangeKm + 'km'
     })
   } catch (error) {
     console.error('刷新失败:', error)

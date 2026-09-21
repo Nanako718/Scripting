@@ -1,11 +1,3 @@
-/**
- * 电量小组件 —— Home Assistant 版。
- *
- * 移植（Scripting 版）：SylvanRoe · telegram: @Air_QT
- * 维护：jpcnmm · telegram: @jpcnmm
- *
- * 原创UI，修改套用请注明来源
- */
 import {
   Widget,
   VStack,
@@ -18,6 +10,7 @@ import {
   type DynamicShapeStyle,
   type ShapeStyle,
 } from 'scripting'
+
 import { getBillData } from './lib/api'
 import { loadSettings } from './lib/store'
 import { recentDays, shortTime } from './lib/calc'
@@ -25,68 +18,345 @@ import type { BillViewModel } from './lib/types'
 
 const settings = loadSettings()
 
-const bg: DynamicShapeStyle = { light: '#F2F2F7', dark: '#1C1C1E' }
-const panelBg: DynamicShapeStyle = { light: '#E2E2E7', dark: '#2C2C2F' }
-const labelColor: DynamicShapeStyle = { light: '#6E6E73', dark: '#98989F' }
-const valueColor: DynamicShapeStyle = { light: '#1C1C1E', dark: '#F2F2F7' }
-const sepGray: DynamicShapeStyle = { light: 'rgba(120,120,120,0.35)', dark: 'rgba(180,180,180,0.28)' }
+/**
+ * ============================================================
+ * 配色
+ * ============================================================
+ */
 
-const chartColor = '#0db38e' as ShapeStyle
-const accentColor = '#3A9690' as ShapeStyle
-
-const LOGO_URL = 'https://raw.githubusercontent.com/anker1209/icon/main/gjdw.png'
-const PANEL_WIDTH = 124
-
-function formatKwh(n: number): string {
-  return n < 10 ? n.toFixed(2) : n.toFixed(0)
+/**
+ * 左侧背景
+ *
+ * 跟随系统浅色 / 深色模式
+ */
+const bg: DynamicShapeStyle = {
+  light: '#F2F2F7',
+  dark: '#1C1C1E',
 }
 
-function Metric({ label, value, unit, align = 'leading' }: {
-  label: string; value: string; unit: string; align?: 'leading' | 'trailing'
+/**
+ * 右侧背景
+ *
+ * 固定亮色
+ */
+const panelBg = '#D9E8E6' as ShapeStyle
+
+/**
+ * ============================================================
+ * 左侧颜色
+ * ============================================================
+ */
+
+/**
+ * 左侧主数值
+ *
+ * 浅色模式：黑色
+ * 深色模式：白色
+ */
+const leftValueColor: DynamicShapeStyle = {
+  light: '#1C1C1E',
+  dark: '#F2F2F7',
+}
+
+/**
+ * 左侧单位
+ */
+const leftUnitColor: DynamicShapeStyle = {
+  light: '#636366',
+  dark: '#AEAEB2',
+}
+
+/**
+ * 左侧标签
+ */
+const leftLabelColor: DynamicShapeStyle = {
+  light: '#6E6E73',
+  dark: '#98989F',
+}
+
+/**
+ * ============================================================
+ * 右侧颜色
+ * ============================================================
+ *
+ * 数值保持各自的主题色
+ *
+ * 单位「度 / 元」统一使用暖白色
+ */
+
+/**
+ * 今日用电
+ * 青绿色
+ */
+const todayColor = '#0DB38E' as ShapeStyle
+
+/**
+ * 本月电量
+ * 蓝色
+ */
+const monthColor = '#1479FF' as ShapeStyle
+
+/**
+ * 上月电量
+ * 紫色
+ */
+const lastMonthColor = '#8B5CF6' as ShapeStyle
+
+/**
+ * 年度电量
+ * 绿色
+ */
+const yearUsageColor = '#0A9F78' as ShapeStyle
+
+/**
+ * 年度电费
+ * 橙色
+ */
+const yearFeeColor = '#E67E22' as ShapeStyle
+
+/**
+ * 右侧单位
+ *
+ * 暖白色
+ */
+const rightUnitColor = '#fdfdfb' as ShapeStyle
+
+/**
+ * 右侧标签
+ */
+const rightLabelColor = '#fdfdfb' as ShapeStyle
+
+/**
+ * 右侧分割线
+ */
+const sepGray =
+  'rgba(73,107,104,0.25)' as ShapeStyle
+
+/**
+ * 左侧 Logo / 图标强调色
+ */
+const accentColor = '#3A9690' as ShapeStyle
+
+/**
+ * ============================================================
+ * 基础参数
+ * ============================================================
+ */
+
+const LOGO_URL =
+  'https://raw.githubusercontent.com/anker1209/icon/main/gjdw.png'
+
+const PANEL_WIDTH = 124
+
+/**
+ * ============================================================
+ * 工具函数
+ * ============================================================
+ */
+
+function formatKwh(n: number): string {
+  return n < 10
+    ? n.toFixed(2)
+    : n.toFixed(0)
+}
+
+/**
+ * ============================================================
+ * 右侧通用指标
+ * ============================================================
+ */
+
+function Metric({
+  label,
+  value,
+  unit,
+  color,
+  align = 'leading',
+}: {
+  label: string
+  value: string
+  unit: string
+  color: ShapeStyle
+  align?: 'leading' | 'trailing'
 }) {
   return (
-    <VStack alignment={align} spacing={1}>
-      <Text font={11} fontWeight="semibold" foregroundStyle={labelColor}>{label}</Text>
-      <HStack alignment="firstTextBaseline" spacing={1.5}>
-        <Text font={17} fontWeight="medium" fontDesign="rounded" foregroundStyle={valueColor}>{value}</Text>
-        <Text font={9} fontWeight="semibold" foregroundStyle={labelColor}>{unit}</Text>
+    <VStack
+      alignment={align}
+      spacing={1}
+    >
+      <Text
+        font={11}
+        fontWeight="semibold"
+        foregroundStyle={rightLabelColor}
+        lineLimit={1}
+      >
+        {label}
+      </Text>
+
+      <HStack
+        alignment="firstTextBaseline"
+        spacing={1.5}
+      >
+        {/* 数值：保持各自颜色 */}
+        <Text
+          font={17}
+          fontWeight="medium"
+          fontDesign="rounded"
+          foregroundStyle={color}
+          lineLimit={1}
+        >
+          {value}
+        </Text>
+
+        {/* 单位：统一暖白色 */}
+        <Text
+          font={9}
+          fontWeight="semibold"
+          foregroundStyle={rightUnitColor}
+        >
+          {unit}
+        </Text>
       </HStack>
     </VStack>
   )
 }
 
+/**
+ * ============================================================
+ * 每日柱状图
+ * ============================================================
+ */
+
 const BAR_W = 5
 const BAR_GAP = 6
 const CHART_H = 31
 const CORNER_R = 2
+
 const CHART_BOX_HEIGHT = 34
 const BASELINE_DESCENT = 4
+
 const VALUE_FONT = 9
 const VALUE_GAP = 1
 
-function DayChart({ data }: { data: BillViewModel['dayElePq'] }) {
-  const bars = recentDays(data, settings.dayAmount)
+function DayChart({
+  data,
+}: {
+  data: BillViewModel['dayElePq']
+}) {
+  const bars = recentDays(
+    data,
+    settings.dayAmount,
+  )
+
   const n = bars.length
-  const showValues = settings.showChartValues && n <= 7
-  const gap = showValues ? 3 : BAR_GAP
+
+  const showValues =
+    settings.showChartValues && n <= 7
+
+  const gap = showValues
+    ? 3
+    : BAR_GAP
+
   const VALUE_W = 16
-  const itemW = showValues ? Math.max(BAR_W, VALUE_W) : BAR_W
-  const chartWidth = n * itemW + (n - 1) * gap
+
+  const itemW = showValues
+    ? Math.max(BAR_W, VALUE_W)
+    : BAR_W
+
+  const chartWidth =
+    n * itemW +
+    (n - 1) * gap
+
+  /**
+   * 没有数据
+   */
   if (n === 0) {
-    return <Text font={11} fontWeight="semibold" foregroundStyle={labelColor} frame={{ width: chartWidth }}>暂无用电数据</Text>
+    return (
+      <Text
+        font={11}
+        fontWeight="semibold"
+        foregroundStyle={rightLabelColor}
+        frame={{
+          width: chartWidth,
+        }}
+      >
+        暂无用电数据
+      </Text>
+    )
   }
-  const max = Math.max(...bars.map(b => b.elePq), 0.01)
-  const boxHeight = showValues ? CHART_BOX_HEIGHT + VALUE_FONT + VALUE_GAP : CHART_BOX_HEIGHT
+
+  const max = Math.max(
+    ...bars.map(
+      (b) => b.elePq,
+    ),
+    0.01,
+  )
+
+  const boxHeight = showValues
+    ? CHART_BOX_HEIGHT +
+      VALUE_FONT +
+      VALUE_GAP
+    : CHART_BOX_HEIGHT
+
   return (
-    <ZStack alignment="bottomLeading" frame={{ width: chartWidth, height: boxHeight }} offset={{ x: 0, y: -BASELINE_DESCENT }}>
-      <HStack alignment="bottom" spacing={gap}>
-        {bars.map(item => {
-          const ratio = item.elePq / max
-          const h = Math.max(ratio * CHART_H, 2)
+    <ZStack
+      alignment="bottomLeading"
+      frame={{
+        width: chartWidth,
+        height: boxHeight,
+      }}
+      offset={{
+        x: 0,
+        y: -BASELINE_DESCENT,
+      }}
+    >
+      <HStack
+        alignment="bottom"
+        spacing={gap}
+      >
+        {bars.map((item) => {
+          const ratio =
+            item.elePq / max
+
+          const h = Math.max(
+            ratio * CHART_H,
+            2,
+          )
+
           return (
-            <VStack key={item.label} alignment="center" spacing={VALUE_GAP}>
-              {showValues ? <Text font={VALUE_FONT} fontWeight="bold" foregroundStyle={labelColor} frame={{ width: VALUE_W }}>{Math.round(item.elePq)}</Text> : null}
-              <Rectangle fill={chartColor} frame={{ width: BAR_W, height: h }} clipShape={{ type: 'rect', cornerRadius: CORNER_R }} />
+            <VStack
+              key={item.label}
+              alignment="center"
+              spacing={VALUE_GAP}
+            >
+              {showValues ? (
+                <Text
+                  font={VALUE_FONT}
+                  fontWeight="bold"
+                  foregroundStyle={
+                    rightLabelColor
+                  }
+                  frame={{
+                    width: VALUE_W,
+                  }}
+                >
+                  {Math.round(
+                    item.elePq,
+                  )}
+                </Text>
+              ) : null}
+
+              <Rectangle
+                fill={todayColor}
+                frame={{
+                  width: BAR_W,
+                  height: h,
+                }}
+                clipShape={{
+                  type: 'rect',
+                  cornerRadius: CORNER_R,
+                }}
+              />
             </VStack>
           )
         })}
@@ -95,167 +365,640 @@ function DayChart({ data }: { data: BillViewModel['dayElePq'] }) {
   )
 }
 
-function DayFeeMetric({ vm, align = 'leading' }: { vm: BillViewModel; align?: 'leading' | 'trailing' }) {
-  return (
-    <VStack alignment={align} spacing={1}>
-      <Text font={10} fontWeight="semibold" foregroundStyle={labelColor} lineLimit={1}>今日用电</Text>
-      <HStack alignment="firstTextBaseline" spacing={1}>
-        <Text font={18} fontWeight="semibold" fontDesign="rounded" foregroundStyle={chartColor} lineLimit={1}>{vm.dayFee.toFixed(2)}</Text>
-        <Text font={10} fontWeight="semibold" foregroundStyle={labelColor}>度</Text>
-      </HStack>
-    </VStack>
-  )
-}
+/**
+ * ============================================================
+ * 今日用电
+ * ============================================================
+ */
 
-function LeftPanel({ vm, logoImage }: { vm: BillViewModel; logoImage?: UIImage | null }) {
+function DayFeeMetric({
+  vm,
+  align = 'leading',
+}: {
+  vm: BillViewModel
+  align?: 'leading' | 'trailing'
+}) {
   return (
-    <VStack alignment="leading" spacing={0} padding={{ leading: 22, trailing: 12, vertical: 24 }}>
-      <HStack padding={{ trailing: 10 }}>
-        <Spacer />
-        {logoImage ? (
-          <Image image={logoImage} resizable scaleToFit frame={{ width: 50, height: 50 }} />
-        ) : (
-          <Image systemName="bolt.circle.fill" resizable scaleToFit frame={{ width: 50, height: 50 }} foregroundStyle={accentColor} />
-        )}
-        <Spacer />
-      </HStack>
-      <Spacer />
-      <Text font={10} fontWeight="semibold" foregroundStyle={labelColor}>上期电费</Text>
-      <HStack alignment="firstTextBaseline" spacing={2}>
+    <VStack
+      alignment={align}
+      spacing={1}
+    >
+      <Text
+        font={10}
+        fontWeight="semibold"
+        foregroundStyle={rightLabelColor}
+        lineLimit={1}
+      >
+        今日用电
+      </Text>
+
+      <HStack
+        alignment="firstTextBaseline"
+        spacing={1}
+      >
+        {/* 今日用电数值：青绿色 */}
         <Text
-          font={(() => { const len = vm.monthFee.toFixed(2).length; return len <= 5 ? 22 : len === 6 ? 20 : 18; })()}
-          fontWeight="semibold" fontDesign="rounded" foregroundStyle={valueColor}
-        >{vm.monthFee.toFixed(2)}</Text>
-        <Text font={11} fontWeight="semibold" foregroundStyle={labelColor}>元</Text>
+          font={18}
+          fontWeight="semibold"
+          fontDesign="rounded"
+          foregroundStyle={todayColor}
+          lineLimit={1}
+        >
+          {vm.dayFee.toFixed(2)}
+        </Text>
+
+        {/* 单位：暖白色 */}
+        <Text
+          font={10}
+          fontWeight="semibold"
+          foregroundStyle={rightUnitColor}
+        >
+          度
+        </Text>
       </HStack>
+    </VStack>
+  )
+}
+
+/**
+ * ============================================================
+ * 左侧面板
+ * ============================================================
+ */
+
+function LeftPanel({
+  vm,
+  logoImage,
+}: {
+  vm: BillViewModel
+  logoImage?: UIImage | null
+}) {
+  return (
+    <VStack
+      alignment="leading"
+      spacing={0}
+      padding={{
+        leading: 22,
+        trailing: 12,
+        vertical: 24,
+      }}
+    >
+      {/* Logo */}
+      <HStack
+        padding={{
+          trailing: 10,
+        }}
+      >
+        <Spacer />
+
+        {logoImage ? (
+          <Image
+            image={logoImage}
+            resizable
+            scaleToFit
+            frame={{
+              width: 50,
+              height: 50,
+            }}
+          />
+        ) : (
+          <Image
+            systemName="bolt.circle.fill"
+            resizable
+            scaleToFit
+            frame={{
+              width: 50,
+              height: 50,
+            }}
+            foregroundStyle={
+              accentColor
+            }
+          />
+        )}
+
+        <Spacer />
+      </HStack>
+
       <Spacer />
+
+      {/* 上期电费 */}
+      <Text
+        font={10}
+        fontWeight="semibold"
+        foregroundStyle={
+          leftLabelColor
+        }
+      >
+        上期电费
+      </Text>
+
+      <HStack
+        alignment="firstTextBaseline"
+        spacing={2}
+      >
+        <Text
+          font={(() => {
+            const len =
+              vm.monthFee
+                .toFixed(2)
+                .length
+
+            return len <= 5
+              ? 22
+              : len === 6
+                ? 20
+                : 18
+          })()}
+          fontWeight="semibold"
+          fontDesign="rounded"
+          foregroundStyle={
+            leftValueColor
+          }
+        >
+          {vm.monthFee.toFixed(2)}
+        </Text>
+
+        <Text
+          font={11}
+          fontWeight="semibold"
+          foregroundStyle={
+            leftUnitColor
+          }
+        >
+          元
+        </Text>
+      </HStack>
+
+      <Spacer />
+
+      {/* 更新时间 */}
       <HStack spacing={3}>
-        <Image systemName="clock" resizable scaleToFit frame={{ width: 11, height: 11 }} foregroundStyle={labelColor} />
-        <Text font={11} fontWeight="semibold" foregroundStyle={labelColor} lineLimit={1}>{shortTime(vm.update)}</Text>
+        <Image
+          systemName="clock"
+          resizable
+          scaleToFit
+          frame={{
+            width: 11,
+            height: 11,
+          }}
+          foregroundStyle={
+            leftLabelColor
+          }
+        />
+
+        <Text
+          font={11}
+          fontWeight="semibold"
+          foregroundStyle={
+            leftLabelColor
+          }
+          lineLimit={1}
+        >
+          {shortTime(vm.update)}
+        </Text>
       </HStack>
     </VStack>
   )
 }
 
-function ThinLine({ color = sepGray, height = 0.5 }: { color?: ShapeStyle | DynamicShapeStyle; height?: number }) {
-  return <Rectangle fill={color} frame={{ height }} />
+/**
+ * ============================================================
+ * 分割线
+ * ============================================================
+ */
+
+function ThinLine({
+  color = sepGray,
+  height = 0.5,
+}: {
+  color?:
+    | ShapeStyle
+    | DynamicShapeStyle
+  height?: number
+}) {
+  return (
+    <Rectangle
+      fill={color}
+      frame={{
+        height,
+      }}
+    />
+  )
 }
 
-function RightPanel({ vm }: { vm: BillViewModel }) {
+/**
+ * ============================================================
+ * 右侧面板
+ * ============================================================
+ */
+
+function RightPanel({
+  vm,
+}: {
+  vm: BillViewModel
+}) {
   return (
-    <VStack alignment="leading" spacing={0} padding={{ leading: 14, trailing: 16, vertical: 22 }}>
-      {/* 第一栏：今日用电 + 日用电图表 */}
-      <HStack alignment="bottom" spacing={0} frame={{ maxWidth: 'infinity' }}>
-        <VStack alignment="leading"><DayFeeMetric vm={vm} /></VStack>
+    <VStack
+      alignment="leading"
+      spacing={0}
+      padding={{
+        leading: 14,
+        trailing: 16,
+        vertical: 22,
+      }}
+    >
+      {/* ================================================== */}
+      {/* 今日用电 + 柱状图 */}
+      {/* ================================================== */}
+
+      <HStack
+        alignment="bottom"
+        spacing={0}
+        frame={{
+          maxWidth: 'infinity',
+        }}
+      >
+        <VStack alignment="leading">
+          <DayFeeMetric vm={vm} />
+        </VStack>
+
         <Spacer />
-        <VStack alignment="trailing"><DayChart data={vm.dayElePq} /></VStack>
+
+        <VStack alignment="trailing">
+          <DayChart
+            data={vm.dayElePq}
+          />
+        </VStack>
       </HStack>
 
-      <Spacer /><ThinLine /><Spacer />
+      <Spacer />
 
-      {/* 第二栏：本月电量 + 上月电量 */}
-      <HStack alignment="firstTextBaseline" spacing={0} frame={{ maxWidth: 'infinity' }}>
+      <ThinLine />
+
+      <Spacer />
+
+      {/* ================================================== */}
+      {/* 本月电量 / 上月电量 */}
+      {/* ================================================== */}
+
+      <HStack
+        alignment="firstTextBaseline"
+        spacing={0}
+        frame={{
+          maxWidth: 'infinity',
+        }}
+      >
         <VStack alignment="leading">
-          <Metric label="本月电量" value={formatKwh(vm.currentMonthEle)} unit="度" />
+          <Metric
+            label="本月电量"
+            value={formatKwh(
+              vm.currentMonthEle,
+            )}
+            unit="度"
+            color={monthColor}
+          />
         </VStack>
+
         <Spacer />
+
         <VStack alignment="trailing">
-          <Metric label="上月电量" value={formatKwh(vm.monthUsage)} unit="度" align="trailing" />
+          <Metric
+            label="上月电量"
+            value={formatKwh(
+              vm.monthUsage,
+            )}
+            unit="度"
+            color={
+              lastMonthColor
+            }
+            align="trailing"
+          />
         </VStack>
       </HStack>
 
-      <Spacer /><ThinLine /><Spacer />
+      <Spacer />
 
-      {/* 第三栏：年度电量 + 年度电费 */}
-      <HStack alignment="firstTextBaseline" spacing={0} frame={{ maxWidth: 'infinity' }}>
+      <ThinLine />
+
+      <Spacer />
+
+      {/* ================================================== */}
+      {/* 年度电量 / 年度电费 */}
+      {/* ================================================== */}
+
+      <HStack
+        alignment="firstTextBaseline"
+        spacing={0}
+        frame={{
+          maxWidth: 'infinity',
+        }}
+      >
         <VStack alignment="leading">
-          <Metric label="年度电量" value={formatKwh(vm.yearUsage)} unit="度" />
+          <Metric
+            label="年度电量"
+            value={formatKwh(
+              vm.yearUsage,
+            )}
+            unit="度"
+            color={
+              yearUsageColor
+            }
+          />
         </VStack>
+
         <Spacer />
+
         <VStack alignment="trailing">
-          <Metric label="年度电费" value={vm.yearFee.toFixed(2)} unit="元" align="trailing" />
+          <Metric
+            label="年度电费"
+            value={vm.yearFee.toFixed(
+              2,
+            )}
+            unit="元"
+            color={
+              yearFeeColor
+            }
+            align="trailing"
+          />
         </VStack>
       </HStack>
     </VStack>
   )
 }
 
-function WidgetView({ vm, logoImage }: { vm: BillViewModel; logoImage?: UIImage | null }) {
+/**
+ * ============================================================
+ * 主 Widget
+ * ============================================================
+ */
+
+function WidgetView({
+  vm,
+  logoImage,
+}: {
+  vm: BillViewModel
+  logoImage?: UIImage | null
+}) {
   return (
-    <HStack spacing={0} widgetBackground={panelBg}>
-      <VStack spacing={0} frame={{ width: PANEL_WIDTH }} background={bg}>
-        <LeftPanel vm={vm} logoImage={logoImage} />
-      </VStack>
+    <HStack
+      spacing={0}
+      widgetBackground={panelBg}
+    >
+      {/* ================================================== */}
+      {/* 左侧 */}
+      {/* ================================================== */}
+      <ZStack
+        frame={{
+          width: PANEL_WIDTH,
+        }}
+      >
+        {/* 
+         * 重要：
+         * 不再使用 VStack 的 background={bg}
+         *
+         * 使用 Rectangle + DynamicShapeStyle
+         * 确保浅色 / 深色模式正确切换
+         */}
+        <Rectangle
+          fill={bg}
+        />
+
+        <LeftPanel
+          vm={vm}
+          logoImage={logoImage}
+        />
+      </ZStack>
+
+      {/* ================================================== */}
+      {/* 右侧 */}
+      {/* ================================================== */}
       <RightPanel vm={vm} />
     </HStack>
   )
 }
 
-function ErrorView({ message }: { message: string }) {
+/**
+ * ============================================================
+ * 错误页面
+ * ============================================================
+ */
+
+function ErrorView({
+  message,
+}: {
+  message: string
+}) {
   return (
-    <VStack spacing={6} padding={{ horizontal: 20, vertical: 16 }} widgetBackground={bg}>
-      <Image systemName="exclamationmark.triangle.fill" resizable scaleToFit frame={{ width: 30, height: 30 }} foregroundStyle="#FF9500" />
-      <Text font={13} fontWeight="semibold" foregroundStyle={valueColor}>数据加载失败</Text>
-      <Text font={10} foregroundStyle={labelColor} multilineTextAlignment="center" lineLimit={2}>{message}</Text>
-      <Text font={9} foregroundStyle={labelColor}>请检查 Home Assistant 配置与网络</Text>
+    <VStack
+      spacing={6}
+      padding={{
+        horizontal: 20,
+        vertical: 16,
+      }}
+      widgetBackground={bg}
+    >
+      <Image
+        systemName="exclamationmark.triangle.fill"
+        resizable
+        scaleToFit
+        frame={{
+          width: 30,
+          height: 30,
+        }}
+        foregroundStyle="#FF9500"
+      />
+
+      <Text
+        font={13}
+        fontWeight="semibold"
+        foregroundStyle={
+          leftValueColor
+        }
+      >
+        数据加载失败
+      </Text>
+
+      <Text
+        font={10}
+        foregroundStyle={
+          leftLabelColor
+        }
+        multilineTextAlignment="center"
+        lineLimit={2}
+      >
+        {message}
+      </Text>
+
+      <Text
+        font={9}
+        foregroundStyle={
+          leftLabelColor
+        }
+      >
+        请检查 Home Assistant 配置与网络
+      </Text>
     </VStack>
   )
 }
 
+/**
+ * ============================================================
+ * Demo 数据
+ * ============================================================
+ */
+
 function demoViewModel(): BillViewModel {
   const now = new Date()
+
   const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const days = Array.from({ length: 10 }, (_, i) => ({
-    label: `${y}${m}${String(i + 12).padStart(2, '0')}`,
-    elePq: Number((6 + Math.sin(i * 1.1) * 4 + i * 0.35).toFixed(2)),
-  }))
+
+  const m = String(
+    now.getMonth() + 1,
+  ).padStart(2, '0')
+
+  const days = Array.from(
+    {
+      length: 10,
+    },
+    (_, i) => ({
+      label: `${y}${m}${String(
+        i + 12,
+      ).padStart(2, '0')}`,
+
+      elePq: Number(
+        (
+          6 +
+          Math.sin(i * 1.1) * 4 +
+          i * 0.35
+        ).toFixed(2),
+      ),
+    }),
+  )
+
   return {
     consNo: 'sensor.demo',
+
     consName: '演示数据',
+
     yearFee: 968.4,
+
     yearUsage: 515,
+
     monthFee: 198.25,
+
     monthUsage: 305,
+
     currentMonthEle: 37.5,
-    dayFee: days[days.length - 1].elePq,
+
+    dayFee:
+      days[
+        days.length - 1
+      ].elePq,
+
     dayElePq: days,
+
     monthElePq: [
-      { label: `${y}06`, elePq: 210, cost: 126.5 },
-      { label: `${y}07`, elePq: 305, cost: 198.25 },
+      {
+        label: `${y}06`,
+        elePq: 210,
+        cost: 126.5,
+      },
+      {
+        label: `${y}07`,
+        elePq: 305,
+        cost: 198.25,
+      },
     ],
+
     update: '演示数据',
   }
 }
 
-async function main() {
-  const param = (Widget.parameter ?? '').trim().toLowerCase()
+/**
+ * ============================================================
+ * 主入口
+ * ============================================================
+ */
 
-  let logoImage: UIImage | null = null
+async function main() {
+  const param = (
+    Widget.parameter ?? ''
+  )
+    .trim()
+    .toLowerCase()
+
+  /**
+   * 加载 Logo
+   */
+  let logoImage: UIImage | null =
+    null
+
   try {
-    logoImage = await UIImage.fromURL(LOGO_URL)
+    logoImage =
+      await UIImage.fromURL(
+        LOGO_URL,
+      )
   } catch (e) {
-    console.log(`logo 加载失败：${e instanceof Error ? e.message : e}`)
+    console.log(
+      `logo 加载失败：${
+        e instanceof Error
+          ? e.message
+          : e
+      }`,
+    )
   }
 
+  /**
+   * Demo 模式
+   */
   if (param === 'demo') {
-    Widget.present(<WidgetView vm={demoViewModel()} logoImage={logoImage} />, {
-      policy: 'system',
-    })
+    Widget.present(
+      <WidgetView
+        vm={demoViewModel()}
+        logoImage={logoImage}
+      />,
+      {
+        policy: 'system',
+      },
+    )
+
     return
   }
 
+  /**
+   * 正常 Home Assistant 数据
+   */
   try {
-    const vm = await getBillData(settings)
-    Widget.present(<WidgetView vm={vm} logoImage={logoImage} />, {
-      policy: 'system',
-    })
+    const vm =
+      await getBillData(settings)
+
+    Widget.present(
+      <WidgetView
+        vm={vm}
+        logoImage={logoImage}
+      />,
+      {
+        policy: 'system',
+      },
+    )
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
-    console.error(`小组件渲染失败：${message}`)
-    Widget.present(<ErrorView message={message} />, {
-      policy: 'system',
-    })
+    const message =
+      e instanceof Error
+        ? e.message
+        : String(e)
+
+    console.error(
+      `小组件渲染失败：${message}`,
+    )
+
+    Widget.present(
+      <ErrorView
+        message={message}
+      />,
+      {
+        policy: 'system',
+      },
+    )
   }
 }
 
