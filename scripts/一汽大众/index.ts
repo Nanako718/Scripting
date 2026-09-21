@@ -64,3 +64,10 @@ export type { CaptchaResult } from './vehicle-types'
 
 export { encrypt, decrypt, isCryptoEnvelope } from './crypto'
 export { CryptoError } from './crypto'
+
+export {
+  getWidgetUiStyle,
+  setWidgetUiStyle,
+  WIDGET_UI_STYLE_OPTIONS
+} from './widgetUiStyle'
+export type { WidgetUiStyle } from './widgetUiStyle'

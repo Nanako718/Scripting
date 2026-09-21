@@ -1,8 +1,7 @@
 // 一汽大众中型组件
-// 左上：VW Logo + 车辆名称 + 副标题
-// 右上：锁车状态
-// 左下：续航圆角进度条
-// 右下：330 车辆图片
+// version: 2026-09-21-2310 ui-v2.6-agibot-font
+// 第一套 classic：VW Logo + 车辆名 + 锁车 + 分段续航 + 底部信息栏
+// 第二套 magotan：顶栏左 MAGOTAN / 右状态；主体左车图，右油位·续航·油耗（标签左、数值右）
 
 import {
   HStack,
@@ -17,6 +16,13 @@ import { getSession, hasVehicleAccountSession } from './api'
 import { getCurrentEntitlement, getDefaultBasicVehicle, getDefaultFullVehicle } from './vehicle'
 import { fetchOilPrice } from './oilPriceApi'
 import type { BasicVehicleData, FullVehicleData } from './types'
+
+// 与 index.tsx 相同的样式存储 key（此处直接读 Storage，避免额外模块依赖）
+const WIDGET_UI_STYLE_KEY = 'yqdz_widget_ui_style'
+const readWidgetUiStyle = (): 'classic' | 'magotan' => {
+  const stored = Storage.get<string>(WIDGET_UI_STYLE_KEY)
+  return stored === 'magotan' ? 'magotan' : 'classic'
+}
 
 // Scripting 的 fill/foregroundStyle 需要字面量 hex，不能是普通 string
 type WidgetHexColor = `#${string}`
@@ -38,6 +44,10 @@ const VW_LOGO_URL =
 const CAR_IMAGE_URL =
   'https://raw.githubusercontent.com/Nanako718/Scripting/main/images/vw300.png'
 
+// 第二套 UI 使用的 MAGOTAN 车图
+const MAGOTAN_CAR_IMAGE_URL =
+  'https://raw.githubusercontent.com/Nanako718/Scripting/refs/heads/main/images/MT330.PNG'
+
 // 密集分段进度条
 const BAR_COUNT = 30
 
@@ -52,6 +62,41 @@ const getRangeColor = (percent: number): WidgetHexColor => {
   }
 
   return SUCCESS_COLOR
+}
+
+const formatUpdateTime = (raw: string | null | undefined): string => {
+  if (!raw) {
+    return '--:--'
+  }
+  const text = String(raw).trim()
+  // 尝试取 HH:mm（兼容 ISO / 本地字符串）
+  const isoMatch = text.match(/T(\d{2}):(\d{2})/)
+  if (isoMatch) {
+    return `${isoMatch[1]}:${isoMatch[2]}`
+  }
+  const timeMatch = text.match(/(\d{1,2}):(\d{2})/)
+  if (timeMatch) {
+    return timeMatch[1].padStart(2, '0') + ':' + timeMatch[2]
+  }
+  return text.slice(-5)
+}
+
+const formatFuelConsumption = (
+  tankCapacity: string,
+  rangeKm: number,
+  rangePercent: number
+): string => {
+  const tc = parseFloat(tankCapacity)
+  if (tc > 0 && rangePercent > 0 && rangeKm > 0) {
+    return (tc * rangePercent / rangeKm).toFixed(1)
+  }
+  return '--'
+}
+
+const getOilLevelPercent = (data: BasicVehicleData | FullVehicleData): number | null => {
+  // 用户确认：油位 = 续航百分比 rangePercent（oil.levelPercent 不可靠）
+  const percent = data.vehicle.rangePercent
+  return typeof percent === 'number' && Number.isFinite(percent) ? percent : null
 }
 
 // 密集分段进度条 - 窄条圆角 + 小间距
@@ -159,33 +204,25 @@ const fetchVehicleData = async (): Promise<{
   const [loadedVehicle, oilPrice] = await Promise.all([vehicleTask, oilTask])
   const vehicleData = loadedVehicle?.data ?? null
   const temperature = loadedVehicle?.temperature ?? null
+  const oilLevel = vehicleData ? getOilLevelPercent(vehicleData) : null
 
-  const oilPct = vehicleData && vehicleData.featureTier === 'FULL'
-    ? (vehicleData as FullVehicleData).vehicle.oil?.levelPercent
-    : null
   console.log('\n========== 组件数据源 ==========')
+  console.log('UI 样式:', readWidgetUiStyle())
   console.log('汽油标号:', oilGrade)
   console.log('油箱容量:', tankCapacity, 'L')
   console.log('油价:', oilPrice)
   console.log('温度:', temperature)
   console.log('续航里程:', vehicleData?.vehicle.rangeKm, 'km')
   console.log('续航百分比:', vehicleData?.vehicle.rangePercent, '%')
-  if (vehicleData && vehicleData.featureTier === 'FULL') {
-    const full = vehicleData as FullVehicleData
-    console.log('油量支持:', full.vehicle.oil?.supported)
-    console.log('油量百分比:', full.vehicle.oil?.levelPercent, '%')
-    console.log('油量升数:', full.vehicle.oil?.volumeLiters, 'L')
-    console.log('油量状态:', full.vehicle.oil?.status)
-  }
-  console.log('权益等级:', vehicleData?.featureTier)
-  console.log('油量参考 oilPct:', oilPct)
+  console.log('油位:', oilLevel)
   console.log('=================================\n')
 
   return { vehicleData, oilPrice, oilGrade, tankCapacity, temperature }
 }
 
-// 中型组件视图
-const MediumWidgetView = ({
+// ============ 第一套：经典中型组件 ============
+
+const MediumWidgetViewClassic = ({
   data,
   oilPrice,
   oilGrade,
@@ -199,15 +236,8 @@ const MediumWidgetView = ({
   temperature: number | null
 }) => {
   const v = data.vehicle
-
   const isLocked = v.isLocked === true
-
-  // 锁车状态颜色
-  const lockColor = isLocked
-    ? SUCCESS_COLOR
-    : DANGER_COLOR
-
-  // 续航颜色根据百分比自动变化
+  const lockColor = isLocked ? SUCCESS_COLOR : DANGER_COLOR
   const barColor = getRangeColor(v.rangePercent)
 
   return (
@@ -266,11 +296,7 @@ const MediumWidgetView = ({
         <Spacer />
 
         <Image
-          systemName={
-            isLocked
-              ? 'lock.fill'
-              : 'lock.open'
-          }
+          systemName={isLocked ? 'lock.fill' : 'lock.open'}
           foregroundStyle={lockColor}
           frame={{
             width: 20,
@@ -294,13 +320,11 @@ const MediumWidgetView = ({
           maxHeight: 'infinity'
         }}
       >
-        {/* 左侧：续航信息 */}
         <VStack
           alignment="leading"
           spacing={5}
           frame={{ maxWidth: 'infinity' }}
         >
-          {/* 续航 + 百分比 */}
           <HStack
             alignment="lastTextBaseline"
             spacing={2}
@@ -332,14 +356,12 @@ const MediumWidgetView = ({
             </Text>
           </HStack>
 
-          {/* 进度条 */}
           <ProgressBar
             percent={v.rangePercent}
             color={barColor}
           />
         </VStack>
 
-        {/* 右侧：车辆图片 */}
         <Image
           imageUrl={CAR_IMAGE_URL}
           resizable
@@ -365,7 +387,6 @@ const MediumWidgetView = ({
           maxWidth: 'infinity'
         }}
       >
-        {/* 加油图标 + 油价 */}
         <Image
           systemName="fuelpump.fill"
           foregroundStyle="#FF9500"
@@ -376,12 +397,11 @@ const MediumWidgetView = ({
           foregroundStyle={SECONDARY_COLOR}
           padding={{ leading: 3 }}
         >
-        ¥ {oilPrice !== null ? oilPrice.toFixed(2) : '--'}/L
+          ¥ {oilPrice !== null ? oilPrice.toFixed(2) : '--'}/L
         </Text>
 
         <Spacer />
 
-        {/* 油耗 */}
         <Image
           systemName="drop.fill"
           foregroundStyle="#5AC8FA"
@@ -392,18 +412,11 @@ const MediumWidgetView = ({
           foregroundStyle={SECONDARY_COLOR}
           padding={{ leading: 3 }}
         >
-          {(() => {
-            const tc = parseFloat(tankCapacity)
-            if (tc > 0 && v.rangePercent > 0 && v.rangeKm > 0) {
-              return (tc * v.rangePercent / v.rangeKm).toFixed(1)
-            }
-            return '--'
-          })()}L/100Km
+          {formatFuelConsumption(tankCapacity, v.rangeKm, v.rangePercent)}L/100Km
         </Text>
 
         <Spacer />
 
-        {/* 温度 */}
         <Image
           systemName="thermometer.medium"
           foregroundStyle="#FF3B30"
@@ -419,7 +432,6 @@ const MediumWidgetView = ({
 
         <Spacer />
 
-        {/* 总里程 */}
         <Image
           systemName="road.lanes"
           foregroundStyle="#34C759"
@@ -437,9 +449,212 @@ const MediumWidgetView = ({
   )
 }
 
+// ============ 第二套：MAGOTAN 中型组件 ============
+
+const MediumWidgetViewMagotan = ({
+  data,
+  tankCapacity
+}: {
+  data: BasicVehicleData | FullVehicleData
+  tankCapacity: string
+}) => {
+  const v = data.vehicle
+  const updateTime = formatUpdateTime(v.appRefreshedAt || data.servedAt)
+  const oilLevel = getOilLevelPercent(data)
+  const oilColor = oilLevel === null
+    ? SECONDARY_COLOR
+    : (oilLevel <= 15 ? DANGER_COLOR : (oilLevel <= 30 ? WARNING_COLOR : SUCCESS_COLOR))
+  const rangeColor = getRangeColor(v.rangePercent)
+
+  return (
+    <VStack
+      alignment="leading"
+      spacing={0}
+      frame={{
+        maxWidth: 'infinity',
+        maxHeight: 'infinity'
+      }}
+    >
+      {/* 顶行：左 MAGOTAN，右 对号+更新时间+VW Logo（用户反馈：左右对调） */}
+      <HStack
+        alignment="center"
+        spacing={6}
+        padding={{
+          top: 12,
+          leading: 14,
+          trailing: 14,
+          bottom: 0
+        }}
+        frame={{ maxWidth: 'infinity' }}
+      >
+        {/* MAGOTAN：用户提供的 Agibot Display（PostScript: AgibotDisplay）
+            字体文件：assets/AgibotDisplay-Regular.ttf
+            若未生效：在 iOS/Scripting 中安装该字体，或用 FontPicker.pickFont() 查看 PostScript 名 */}
+        <Text
+          font={{ name: 'AgibotDisplay', size: 24 }}
+          foregroundStyle={TITLE_COLOR}
+          lineLimit={1}
+        >
+          MAGOTAN
+        </Text>
+
+        <Spacer />
+
+        <Image
+          systemName="checkmark.circle.fill"
+          foregroundStyle={SUCCESS_COLOR}
+          font="caption"
+          frame={{ width: 14, height: 14 }}
+        />
+
+        <Text
+          font="caption2"
+          foregroundStyle={SECONDARY_COLOR}
+          lineLimit={1}
+        >
+          {updateTime}
+        </Text>
+
+        <Image
+          imageUrl={VW_LOGO_URL}
+          resizable
+          scaleToFit
+          frame={{ width: 16, height: 16 }}
+        />
+      </HStack>
+
+      {/* 主体：左车辆图，右油位/续航/油耗（标签左对齐、数值右对齐） */}
+      <HStack
+        alignment="center"
+        spacing={10}
+        padding={{
+          top: 6,
+          leading: 14,
+          bottom: 14,
+          trailing: 14
+        }}
+        frame={{
+          maxWidth: 'infinity',
+          maxHeight: 'infinity'
+        }}
+      >
+        <Image
+          imageUrl={MAGOTAN_CAR_IMAGE_URL}
+          resizable
+          scaleToFit
+          frame={{
+            width: 168,
+            height: 104
+          }}
+        />
+
+        <Spacer minLength={8} />
+
+        <VStack
+          alignment="leading"
+          spacing={8}
+          frame={{ maxWidth: 'infinity' }}
+        >
+          {/* 油位 = 续航百分比：标签左对齐，数值右对齐 */}
+          <HStack
+            alignment="firstTextBaseline"
+            spacing={0}
+            frame={{ maxWidth: 'infinity' }}
+          >
+            <Text
+              font="caption2"
+              foregroundStyle={SECONDARY_COLOR}
+            >
+              油位
+            </Text>
+            <Spacer minLength={16} />
+            <Text
+              font="headline"
+              fontWeight="bold"
+              foregroundStyle={oilColor}
+              monospacedDigit
+            >
+              {oilLevel !== null ? `${oilLevel}%` : '--%'}
+            </Text>
+          </HStack>
+
+          {/* 续航里程 */}
+          <HStack
+            alignment="firstTextBaseline"
+            spacing={0}
+            frame={{ maxWidth: 'infinity' }}
+          >
+            <Text
+              font="caption2"
+              foregroundStyle={SECONDARY_COLOR}
+            >
+              续航里程
+            </Text>
+            <Spacer minLength={16} />
+            <HStack
+              alignment="lastTextBaseline"
+              spacing={2}
+            >
+              <Text
+                font="headline"
+                fontWeight="bold"
+                foregroundStyle={rangeColor}
+                monospacedDigit
+              >
+                {v.rangeKm}
+              </Text>
+              <Text
+                font="caption2"
+                foregroundStyle={SECONDARY_COLOR}
+              >
+                km
+              </Text>
+            </HStack>
+          </HStack>
+
+          {/* 油耗 */}
+          <HStack
+            alignment="firstTextBaseline"
+            spacing={0}
+            frame={{ maxWidth: 'infinity' }}
+          >
+            <Text
+              font="caption2"
+              foregroundStyle={SECONDARY_COLOR}
+            >
+              油耗
+            </Text>
+            <Spacer minLength={16} />
+            <HStack
+              alignment="lastTextBaseline"
+              spacing={2}
+            >
+              <Text
+                font="subheadline"
+                fontWeight="semibold"
+                foregroundStyle={TITLE_COLOR}
+                monospacedDigit
+              >
+                {formatFuelConsumption(tankCapacity, v.rangeKm, v.rangePercent)}
+              </Text>
+              <Text
+                font="caption2"
+                foregroundStyle={SECONDARY_COLOR}
+              >
+                L/100KM
+              </Text>
+            </HStack>
+          </HStack>
+        </VStack>
+      </HStack>
+    </VStack>
+  )
+}
+
 // 组件运行逻辑
 const runWidget = async () => {
-  console.log('[组件] 开始渲染中型组件')
+  const uiStyle = readWidgetUiStyle()
+  console.log('[组件] 开始渲染中型组件, 样式:', uiStyle)
 
   const result = await fetchVehicleData()
 
@@ -477,11 +692,23 @@ const runWidget = async () => {
 
   console.log(
     '[组件] 渲染车辆数据:',
-    result.vehicleData.vehicle.displayName
+    result.vehicleData.vehicle.displayName,
+    '样式:',
+    uiStyle
   )
 
+  if (uiStyle === 'magotan') {
+    Widget.present(
+      <MediumWidgetViewMagotan
+        data={result.vehicleData}
+        tankCapacity={result.tankCapacity}
+      />
+    )
+    return
+  }
+
   Widget.present(
-    <MediumWidgetView
+    <MediumWidgetViewClassic
       data={result.vehicleData}
       oilPrice={result.oilPrice}
       oilGrade={result.oilGrade}
