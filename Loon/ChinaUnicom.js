@@ -8,7 +8,7 @@
 const APIKey = '10010'; // 日志前缀；Cookie 实际写入键名见 COOKIE_KEY
 const COOKIE_KEY = '#10010.cookie'; // Loon 持久化：去掉 # 后为 10010.cookie
 
-$ = new API(APIKey, true);
+$ = new API(APIKey, false);
 
 if (typeof $request !== 'undefined') {
     GetCookie();
@@ -17,8 +17,6 @@ if (typeof $request !== 'undefined') {
 function GetCookie() {
     const headers = $request.headers || {};
     const cookie = headers.Cookie || headers.cookie || '';
-
-    $.log(headers);
 
     if (cookie && cookie.indexOf('JSESSIONID') > -1) {
         $.write(cookie, COOKIE_KEY);
